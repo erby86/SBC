@@ -57,5 +57,5 @@ TEST_DATABASE_URL=postgres://.../ฐานว่าง pnpm --filter @sbc-noc/db
 | งานก่อน M04             | เสร็จ — issue M00–M38 ใน Gitea, access list `sbc-noc-mgmt` ยืนยันแล้ว (วง 192.168.1.x เข้าได้, วงอื่นได้ 403), ปิดพอร์ต 5190                 |
 | M04 นำเข้าข้อมูลตั้งต้น | เสร็จ 2026-10-02 — นำเข้าบน dev: 173 LOC (LOC-187, SPORT → LOC-188..191), อุปกรณ์ 50, ไฟเบอร์ FO-* 8 เส้น; CI นำเข้า 2 รอบ รอบสองเขียน 0 แถว |
 | M09 worker + คิวงาน     | กำลังทำ — โค้ด + test ผ่าน (PostgreSQL + Redis จริง); รอรันบน sbc-ubuntu                                                                     |
-| M07 รายงานตรวจความครบ   | โค้ดเสร็จ — CLI + `GET /registry/checks` + หน้า noc-dev; error 48 = not_in_zabbix 47 (รอ M08) + sample 1 (รอตัดสินใจ)                        |
+| M07 รายงานตรวจความครบ   | โค้ดเสร็จ + ใช้บน dev — error 47 = not_in_zabbix ทั้งหมด (ปิดใน M08); AP ตัวอย่าง `ap-ba-2-1` soft delete แล้ว                               |
 | ถัดไป                   | M12 (NET: ผู้ใช้ API Zabbix) → M08 จับคู่ host + tag; M05, M06 — รอผู้ใช้ยืนยัน                                                              |
