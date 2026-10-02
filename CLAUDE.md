@@ -41,7 +41,7 @@ TEST_DATABASE_URL=postgres://.../ฐานว่าง pnpm --filter @sbc-noc/db
 ## สภาพแวดล้อมจริง (ยืนยันแล้ว 2026-10-02)
 
 - Gitea `http://git.sbc.lan` (= 192.168.1.6:3000) repo `sbc/sbc-noc`; runner `sbc-main-runner` (container `sbc-gitea-runner`, ใช้ร่วมกับ Portal) label `ubuntu-latest` แบบ docker, capacity 2
-- dev stack บน sbc-ubuntu: `/opt/sbc-noc/src` (clone), env `/opt/sbc-noc/dev.env` (600), compose `infra/compose/compose.dev.yml`, เว็บ `http://noc-dev.sbc.lan` (NPM → :5190)
+- dev stack บน sbc-ubuntu: `/opt/sbc-noc/src` (clone), env `/opt/sbc-noc/dev.env` (600), compose `infra/compose/compose.dev.yml`, เว็บ `http://noc-dev.sbc.lan` (NPM → `sbc-noc-dev-web:80` บน network ของ NPM, access list `sbc-noc-mgmt` = 192.168.1.0/24, ไม่เปิดพอร์ตตรง)
 - `sbc-redis` อยู่ network `db-net` ต้องใช้รหัสผ่าน; dev ใช้ prefix `noc:dev:`
 - DNS `*.sbc.lan` → 192.168.1.6 บน MikroTik
 - Renovate รันทุกจันทร์ 05:00 ด้วยบัญชี `renovate-bot`

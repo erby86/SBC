@@ -77,12 +77,12 @@ services:
     image: sbc-noc-web:dev
     container_name: sbc-noc-dev-web
     restart: unless-stopped
-    ports:
-      - '${WEB_PORT:-5190}:80'
     depends_on: [noc-dev-api]
     environment:
       API_UPSTREAM: http://noc-dev-api:3001
-    networks: [internal]
+    # No published port: reachable only through Nginx Proxy Manager on the proxy network,
+    # so the NPM access list cannot be bypassed via http://<host>:<port> (baseline §8, M17).
+    networks: [internal, proxy]
     deploy:
       resources:
         limits: { cpus: '0.5', memory: 128M }
@@ -94,6 +94,10 @@ networks:
   shared:
     external: true
     name: ${SBC_SHARED_NETWORK:?set SBC_SHARED_NETWORK in the env file}
+  # Existing network that sbc-npm is attached to; NPM forwards noc-dev.sbc.lan to sbc-noc-dev-web:80.
+  proxy:
+    external: true
+    name: ${SBC_PROXY_NETWORK:?set SBC_PROXY_NETWORK in the env file}
 
 volumes:
   db-data:
