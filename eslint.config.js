@@ -4,7 +4,15 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/coverage/**', '**/.turbo/**', '**/node_modules/**'] },
+  {
+    ignores: [
+      '**/dist/**',
+      '**/coverage/**',
+      '**/.turbo/**',
+      '**/node_modules/**',
+      '.pnpm-store/**',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.strict,
   {
