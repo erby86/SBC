@@ -19,3 +19,4 @@
 | [0015](0015-release-rollback.md)    | การออกรุ่นและย้อนกลับ         |
 | [0016](0016-ci-security.md)         | ความปลอดภัยใน CI              |
 | [0017](0017-time.md)                | เวลา                          |
+| [0018](0018-db-migrations.md)       | migration ฐานข้อมูล           |

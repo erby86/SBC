@@ -14,7 +14,7 @@ x-node-env: &node-env
 
 services:
   noc-dev-db:
-    image: postgres:18-alpine
+    image: postgres:16-alpine # design v1.2 targets PostgreSQL 16
     container_name: sbc-noc-dev-db
     restart: unless-stopped
     environment:
@@ -23,7 +23,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the env file}
       TZ: UTC
     volumes:
-      - db-data:/var/lib/postgresql
+      - db-data:/var/lib/postgresql/data
     networks: [internal]
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U sbc_noc -d sbc_noc']
@@ -34,6 +34,18 @@ services:
       resources:
         limits: { cpus: '1', memory: 512M }
 
+  # One-shot: applies packages/db/migrations before api/worker start (M03).
+  noc-dev-migrate:
+    image: sbc-noc-api:dev # built by noc-dev-api; never pulled
+    pull_policy: never
+    container_name: sbc-noc-dev-migrate
+    command: ['node', 'node_modules/@sbc-noc/db/dist/migrate-cli.js']
+    environment: *node-env
+    depends_on:
+      noc-dev-db: { condition: service_healthy }
+    networks: [internal]
+    restart: 'no'
+
   noc-dev-api:
     build: { context: ../.., dockerfile: apps/api/Dockerfile }
     image: sbc-noc-api:dev
@@ -41,7 +53,7 @@ services:
     restart: unless-stopped
     environment: *node-env
     depends_on:
-      noc-dev-db: { condition: service_healthy }
+      noc-dev-migrate: { condition: service_completed_successfully }
     networks: [internal, shared]
     deploy:
       resources:
@@ -54,7 +66,7 @@ services:
     restart: unless-stopped
     environment: *node-env
     depends_on:
-      noc-dev-db: { condition: service_healthy }
+      noc-dev-migrate: { condition: service_completed_successfully }
     networks: [internal, shared]
     deploy:
       resources:
@@ -85,4 +97,4 @@ networks:
 
 volumes:
   db-data:
-    name: sbc-noc-dev-db-data
+    name: sbc-noc-dev-db16-data

@@ -1,6 +1,6 @@
 import pg from 'pg';
 
-// Schema and migrations arrive in M03 (sbc-noc-schema-design-v1.2).
+// Schema lives in ../migrations (schema v1.1, design v1.2); applied by migrate-cli.
 
 export type DbPool = pg.Pool;
 
@@ -12,3 +12,6 @@ export function createDbPool(connectionString: string): DbPool {
 export async function pingDatabase(pool: DbPool): Promise<void> {
   await pool.query('SELECT 1');
 }
+
+export { loadMigrations, migrate, MIGRATIONS_DIR } from './migrate.js';
+export type { Migration, MigrateResult } from './migrate.js';
