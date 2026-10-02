@@ -64,7 +64,11 @@ services:
     image: sbc-noc-worker:dev
     container_name: sbc-noc-dev-worker
     restart: unless-stopped
-    environment: *node-env
+    environment:
+      <<: *node-env
+      # Read-only Zabbix API user noc-api-read (M12); worker only, not the api.
+      ZABBIX_URL: ${ZABBIX_URL:-}
+      ZABBIX_TOKEN_READ: ${ZABBIX_TOKEN_READ:-}
     depends_on:
       noc-dev-migrate: { condition: service_completed_successfully }
     networks: [internal, shared]

@@ -12,6 +12,8 @@ export interface JobContext {
   db: DbPool;
   /** 1-based attempt number (BullMQ retries). */
   attempt: number;
+  /** sync.runs.id of this attempt. */
+  runId: string;
   /** Opens a row in sync.issues linked to this run. */
   issue(issue: SyncIssue): Promise<void>;
 }

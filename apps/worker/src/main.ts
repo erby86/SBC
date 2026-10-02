@@ -2,7 +2,10 @@ import { createDbPool } from '@sbc-noc/db';
 import { parseEnv, serverEnvSchema } from '@sbc-noc/shared';
 import { Redis } from 'ioredis';
 import { beat } from './heartbeat.js';
-import { jobs } from './jobs/registry-stats.js';
+import { createZabbixClient } from './connectors/zabbix.js';
+import { registryStats } from './jobs/registry-stats.js';
+import type { JobDefinition } from './jobs/types.js';
+import { zabbixMatchJob } from './jobs/zabbix-match.js';
 import { startRuntime } from './runtime/queue.js';
 import { start } from './start.js';
 
@@ -17,6 +20,15 @@ const redis = new Redis(env.REDIS_URL, { keyPrefix: env.REDIS_PREFIX, maxRetries
 redis.on('error', (err: Error) => logger.warn(`redis error: ${err.message}`));
 
 start();
+
+const jobs: JobDefinition[] = [registryStats];
+const zabbixUrl = process.env['ZABBIX_URL'];
+const zabbixToken = process.env['ZABBIX_TOKEN_READ'];
+if (zabbixUrl && zabbixToken) {
+  jobs.push(zabbixMatchJob(createZabbixClient(zabbixUrl, zabbixToken)));
+} else {
+  logger.warn('ZABBIX_URL / ZABBIX_TOKEN_READ not set — zabbix-match disabled');
+}
 const runtime = await startRuntime({
   redisUrl: env.REDIS_URL,
   redisPrefix: env.REDIS_PREFIX,

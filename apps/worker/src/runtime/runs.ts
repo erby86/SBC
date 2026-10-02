@@ -14,7 +14,7 @@ export async function recordRun(
     `INSERT INTO sync.runs (system_code, job, detail) VALUES ($1, $2, $3) RETURNING id`,
     [job.systemCode, job.name, { attempt }],
   );
-  const runId = started.rows[0]?.id;
+  const runId = String(started.rows[0]?.id);
   let issues = 0;
   const issue = async (i: SyncIssue): Promise<void> => {
     issues += 1;
@@ -34,7 +34,7 @@ export async function recordRun(
   };
 
   try {
-    const result = await job.run({ db, attempt, issue });
+    const result = await job.run({ db, attempt, runId, issue });
     await db.query(
       `UPDATE sync.runs SET finished_at = now(), status = 'success', created_n = $2, updated_n = $3,
          error_n = $4, detail = $5 WHERE id = $1`,

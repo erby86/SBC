@@ -19,5 +19,3 @@ export const registryStats: JobDefinition = {
     return { detail: { ...rows[0] } };
   },
 };
-
-export const jobs: JobDefinition[] = [registryStats];
