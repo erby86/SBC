@@ -1,0 +1,119 @@
+# Light checks on every push and PR (ADR-0007, ADR-0016).
+# Job names are used as required status checks on `main` — rename with care.
+name: ci
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+concurrency:
+  group: ci-${{ gitea.ref }}
+  cancel-in-progress: true
+
+env:
+  GITLEAKS_VERSION: 8.30.1
+
+jobs:
+  quality:
+    name: quality
+    # Shared act_runner with SBC Portal: adjust the label to the one the runner advertises.
+    runs-on: ubuntu-latest
+    container:
+      image: node:24-bookworm
+      # Resource cap per ADR-0007 (ignored if the runner disallows container options).
+      options: --cpus=2 --memory=3g
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable pnpm (corepack)
+        run: |
+          corepack enable
+          pnpm --version
+
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Import direction (dependency-cruiser)
+        run: pnpm depcruise
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+  secrets:
+    name: secrets
+    runs-on: ubuntu-latest
+    container:
+      image: node:24-bookworm
+      options: --cpus=1 --memory=1g
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install gitleaks
+        run: |
+          curl -sSfL -o /tmp/gitleaks.tgz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          tar -xzf /tmp/gitleaks.tgz -C /usr/local/bin gitleaks
+          gitleaks version
+
+      - name: Scan changed commits (fails on any secret)
+        env:
+          EVENT_NAME: ${{ gitea.event_name }}
+          PR_BASE: ${{ gitea.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ gitea.event.before }}
+        run: |
+          git config --global --add safe.directory "$PWD"
+          ZERO=0000000000000000000000000000000000000000
+          if [ "$EVENT_NAME" = "pull_request" ] && [ -n "$PR_BASE" ]; then
+            RANGE="$PR_BASE..HEAD"
+          elif [ -n "$PUSH_BEFORE" ] && [ "$PUSH_BEFORE" != "$ZERO" ] && git cat-file -e "$PUSH_BEFORE" 2>/dev/null; then
+            RANGE="$PUSH_BEFORE..HEAD"
+          else
+            RANGE=""   # new branch / unknown base: scan full history
+          fi
+          echo "gitleaks range: ${RANGE:-<full history>}"
+          if [ -n "$RANGE" ]; then
+            gitleaks git . --no-banner --redact --exit-code 1 --log-opts="$RANGE"
+          else
+            gitleaks git . --no-banner --redact --exit-code 1
+          fi
+
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    container:
+      image: node:24-bookworm
+      options: --cpus=1 --memory=1g
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable pnpm (corepack)
+        run: corepack enable
+
+      - name: pnpm audit (fails on high or critical)
+        run: pnpm audit --audit-level=high

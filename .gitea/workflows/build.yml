@@ -1,0 +1,49 @@
+# Heavy jobs only on PRs into main and release tags (ADR-0007).
+name: build
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    tags: ['v*']
+
+concurrency:
+  group: build-${{ gitea.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    container:
+      image: node:24-bookworm
+      options: --cpus=2 --memory=3g
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable pnpm (corepack)
+        run: corepack enable
+
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build all packages
+        run: pnpm build
+
+      # --- Placeholders for later modules -------------------------------------
+      # M03: integration tests against a real PostgreSQL via Testcontainers.
+      # M17: build and push images to git.sbc.lan (tag = version + git sha),
+      #      Trivy image scan (fail on HIGH/CRITICAL) and SBOM (syft/CycloneDX).
+      # M22: Playwright e2e against the staging stack (noc-dev.sbc.lan).
