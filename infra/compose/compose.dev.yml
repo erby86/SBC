@@ -1,0 +1,88 @@
+# sbc-noc dev stack on sbc-ubuntu (M02). Run from the repository root:
+#   docker compose --env-file /opt/sbc-noc/dev.env -f infra/compose/compose.dev.yml up -d --build
+# Env template: infra/compose/dev.env.example (real file lives outside the repo, chmod 600 — ADR-0005).
+name: sbc-noc-dev
+
+# Service names are prefixed (noc-dev-*) because api/worker join the shared network
+# used by other systems; a plain `api` alias could collide with theirs.
+
+x-node-env: &node-env
+  NODE_ENV: production
+  DATABASE_URL: postgres://sbc_noc:${POSTGRES_PASSWORD}@noc-dev-db:5432/sbc_noc
+  REDIS_URL: ${REDIS_URL:?set REDIS_URL in the env file}
+  REDIS_PREFIX: ${REDIS_PREFIX:-noc:dev:}
+
+services:
+  noc-dev-db:
+    image: postgres:18-alpine
+    container_name: sbc-noc-dev-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sbc_noc
+      POSTGRES_USER: sbc_noc
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the env file}
+      TZ: UTC
+    volumes:
+      - db-data:/var/lib/postgresql
+    networks: [internal]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U sbc_noc -d sbc_noc']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits: { cpus: '1', memory: 512M }
+
+  noc-dev-api:
+    build: { context: ../.., dockerfile: apps/api/Dockerfile }
+    image: sbc-noc-api:dev
+    container_name: sbc-noc-dev-api
+    restart: unless-stopped
+    environment: *node-env
+    depends_on:
+      noc-dev-db: { condition: service_healthy }
+    networks: [internal, shared]
+    deploy:
+      resources:
+        limits: { cpus: '1', memory: 512M }
+
+  noc-dev-worker:
+    build: { context: ../.., dockerfile: apps/worker/Dockerfile }
+    image: sbc-noc-worker:dev
+    container_name: sbc-noc-dev-worker
+    restart: unless-stopped
+    environment: *node-env
+    depends_on:
+      noc-dev-db: { condition: service_healthy }
+    networks: [internal, shared]
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 256M }
+
+  noc-dev-web:
+    build: { context: ../.., dockerfile: apps/web/Dockerfile }
+    image: sbc-noc-web:dev
+    container_name: sbc-noc-dev-web
+    restart: unless-stopped
+    ports:
+      - '${WEB_PORT:-5190}:80'
+    depends_on: [noc-dev-api]
+    environment:
+      API_UPSTREAM: http://noc-dev-api:3001
+    networks: [internal]
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 128M }
+
+networks:
+  internal:
+    name: sbc-noc-dev-internal
+  # Existing network that sbc-redis is attached to (Redis only listens on 127.0.0.1 on the host).
+  shared:
+    external: true
+    name: ${SBC_SHARED_NETWORK:?set SBC_SHARED_NETWORK in the env file}
+
+volumes:
+  db-data:
+    name: sbc-noc-dev-db-data

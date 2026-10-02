@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@sbc-noc/db": "workspace:*",
-    "@sbc-noc/shared": "workspace:*"
+    "@sbc-noc/shared": "workspace:*",
+    "ioredis": "^6.0.0"
   }
 }
