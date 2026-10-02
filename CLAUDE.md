@@ -48,9 +48,9 @@ TEST_DATABASE_URL=postgres://.../ฐานว่าง pnpm --filter @sbc-noc/db
 
 ## สถานะโมดูล
 
-| โมดูล                   | สถานะ                                                                           |
-| ----------------------- | ------------------------------------------------------------------------------- |
-| M01 monorepo + CI       | เสร็จ (ขาด milestone/issue ใน Gitea — สคริปต์ `infra/scripts/gitea-issues.mjs`) |
-| M02 sbc-noc-db + backup | กำลังทำ — db + dev stack ใช้งานได้; backup/restore เพิ่มใน PR M03 รอทดลองกู้คืน |
-| M03 schema + migration  | กำลังทำ — PR เปิดอยู่                                                           |
-| ถัดไป                   | M04 นำเข้าข้อมูลตั้งต้น (ต้องมี `infra/seed/*.csv`), M09 worker + คิวงาน        |
+| โมดูล                   | สถานะ                                                                                                     |
+| ----------------------- | --------------------------------------------------------------------------------------------------------- |
+| M01 monorepo + CI       | เสร็จ (ขาด milestone/issue ใน Gitea — สคริปต์ `infra/scripts/gitea-issues.mjs`)                           |
+| M02 sbc-noc-db + backup | กำลังทำ — db + dev stack ใช้งานได้; backup/restore เพิ่มใน PR M03 รอทดลองกู้คืน                           |
+| M03 schema + migration  | กำลังทำ — PR เปิดอยู่                                                                                     |
+| ถัดไป                   | M04 นำเข้าข้อมูลตั้งต้น (`infra/seed/*.csv` พร้อมแล้ว ดูข้อที่ต้องตัดสินใจใน README), M09 worker + คิวงาน |
