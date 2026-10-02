@@ -61,6 +61,8 @@ jobs:
           POSTGRES_USER: noc
           POSTGRES_PASSWORD: noc-ci-only
           POSTGRES_DB: sbc_noc_test
+      redis:
+        image: redis:7-alpine
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -79,7 +81,8 @@ jobs:
           done
           echo "postgres did not start"; exit 1
 
-      - name: Migrations + schema tests on PostgreSQL 16
+      - name: Migrations, schema, seed and worker tests on PostgreSQL 16 + Redis
         env:
           TEST_DATABASE_URL: postgres://noc:noc-ci-only@postgres:5432/sbc_noc_test
-        run: pnpm --filter @sbc-noc/db test
+          TEST_REDIS_URL: redis://redis:6379/0
+        run: pnpm turbo run test --filter=@sbc-noc/db --filter=@sbc-noc/worker
