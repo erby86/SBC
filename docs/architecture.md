@@ -41,12 +41,16 @@ sbc-noc/
 ├─ infra/
 │  ├─ compose/  Docker Compose (M02/M17)
 │  ├─ zabbix/   template / discovery
-│  └─ scripts/  backup, deploy
+│  ├─ scripts/  backup/กู้คืน, สร้าง issue, deploy
+│  └─ seed/     ข้อมูลตั้งต้นจาก Google Sheet (M04)
 ├─ docs/
 │  ├─ architecture.md
+│  ├─ baseline/  baseline-v8, schema-design-v1.2, modules-by-gate-v2, kickoff-plan-v2
+│  ├─ prototype/ ต้นแบบหน้าจอ sb-noc-3d-baseline-v3.html
 │  ├─ adr/
 │  ├─ modules/
 │  └─ runbooks/
+├─ CLAUDE.md    บริบทสำหรับ Claude Code ทุก session
 ├─ tests/e2e/   Playwright (M22)
 └─ .gitea/workflows/  ci.yml, build.yml
 ```

@@ -4,3 +4,9 @@ coverage
 .turbo
 .pnpm-store
 pnpm-lock.yaml
+# Source documents copied verbatim from the handoff folder — never reformat
+docs/baseline
+docs/prototype
+packages/db/reference
+packages/db/migrations
+infra/seed

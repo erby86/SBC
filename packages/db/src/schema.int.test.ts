@@ -1,7 +1,10 @@
 // Integration test against a real PostgreSQL 16. Runs only when TEST_DATABASE_URL is set
 // (CI: build.yml `db-integration` job with a postgres service). The database must be empty.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { createDbPool, type DbPool } from './index.js';
+import { linksInNet, sitesInCore } from './schema/index.js';
 import { loadMigrations, migrate } from './migrate.js';
 
 const url = process.env['TEST_DATABASE_URL'];
@@ -77,5 +80,37 @@ describe.skipIf(!url)('schema v1.1 on PostgreSQL', () => {
       { rolname: 'noc_migrate', rolcanlogin: false },
       { rolname: 'noc_read', rolcanlogin: false },
     ]);
+  });
+  it('rejects a second uplink for the same device (links_one_uplink)', async () => {
+    const roles = await pool.query<{ id: string }>(
+      `INSERT INTO net.devices (code, display_name, role_code)
+       VALUES ('it-up-a', 'A', 'wan'), ('it-up-b', 'B', 'wan'), ('it-down', 'C', 'wan')
+       RETURNING id`,
+    );
+    const [a, b, child] = roles.rows.map((r) => r.id);
+    await pool.query(
+      `INSERT INTO net.links (a_device_id, b_device_id, media_code) VALUES ($1, $2, 'fiber')`,
+      [a, child],
+    );
+    await expect(
+      pool.query(
+        `INSERT INTO net.links (a_device_id, b_device_id, media_code) VALUES ($1, $2, 'fiber')`,
+        [b, child],
+      ),
+    ).rejects.toThrow(/links_one_uplink/);
+
+    // A non-uplink link to the same device is allowed.
+    await pool.query(
+      `INSERT INTO net.links (a_device_id, b_device_id, media_code, is_uplink) VALUES ($1, $2, 'fiber', false)`,
+      [b, child],
+    );
+  });
+
+  it('is queryable through the generated Drizzle schema', async () => {
+    const db = drizzle(pool);
+    const rows = await db.select().from(sitesInCore).where(eq(sitesInCore.code, 'it-test'));
+    expect(rows[0]?.name).toBe('Integration 2');
+    const [count] = await db.select({ n: sql<number>`count(*)::int` }).from(linksInNet);
+    expect(count?.n).toBe(2);
   });
 });
