@@ -23,7 +23,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "migrate": "node dist/migrate-cli.js",
-    "db:pull": "node scripts/pull-schema.mjs"
+    "db:pull": "node scripts/pull-schema.mjs",
+    "seed": "node dist/seed-cli.js"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.3",

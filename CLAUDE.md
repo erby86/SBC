@@ -55,4 +55,5 @@ TEST_DATABASE_URL=postgres://.../ฐานว่าง pnpm --filter @sbc-noc/db
 | M02 sbc-noc-db + backup | เสร็จ 2026-10-02 — RESTORE TEST PASSED, ไม่เปิดพอร์ต, cron backup 02:30                                                      |
 | M03 schema + migration  | เสร็จ 2026-10-02 — 61 ตาราง บน PostgreSQL 16, CI `db-integration` ผ่าน                                                       |
 | งานก่อน M04             | เสร็จ — issue M00–M38 ใน Gitea, access list `sbc-noc-mgmt` ยืนยันแล้ว (วง 192.168.1.x เข้าได้, วงอื่นได้ 403), ปิดพอร์ต 5190 |
-| ถัดไป                   | M04 นำเข้าข้อมูลตั้งต้น, M09 worker + คิวงาน — รอผู้ใช้ยืนยัน                                                                |
+| M04 นำเข้าข้อมูลตั้งต้น | กำลังทำ — โค้ด + test ผ่าน (นำเข้า 2 รอบ, รอบสองเขียน 0 แถว); รอรันบน sbc-ubuntu                                             |
+| ถัดไป                   | M09 worker + คิวงาน, M07 รายงานตรวจความครบ — รอผู้ใช้ยืนยัน                                                                  |

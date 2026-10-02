@@ -1,0 +1,213 @@
+{
+  "_source": "docs/prototype/sb-noc-3d-baseline-v3.html (baseline-v8) — extracted 2026-10-02 for M04",
+  "buildings": [
+    {
+      "code": "sp",
+      "name": "อาคารกีฬา",
+      "x": -11.39,
+      "z": -34.42,
+      "width": 9.5,
+      "depth": 17.6,
+      "rotation": 0.33,
+      "floors": 4
+    },
+    {
+      "code": "i2",
+      "name": "ICET2",
+      "x": 8.7,
+      "z": -33.99,
+      "width": 17.2,
+      "depth": 6.4,
+      "rotation": 0.33,
+      "floors": 7
+    },
+    {
+      "code": "i1",
+      "name": "ICET1",
+      "x": 4.72,
+      "z": -19.6,
+      "width": 19.0,
+      "depth": 11.8,
+      "rotation": 0.33,
+      "floors": 3,
+      "ring": [
+        10.0,
+        5.8
+      ]
+    },
+    {
+      "code": "b1",
+      "name": "อาคาร 1",
+      "x": 2.78,
+      "z": -6.21,
+      "width": 24.0,
+      "depth": 3.2,
+      "rotation": 0.33,
+      "floors": 3
+    },
+    {
+      "code": "b2",
+      "name": "อาคาร 2",
+      "x": 0.33,
+      "z": 2.47,
+      "width": 25.0,
+      "depth": 3.2,
+      "rotation": 0.33,
+      "floors": 3,
+      "note": "ห้อง server หลัก ชั้น 1"
+    },
+    {
+      "code": "s8",
+      "name": "8 เซียน",
+      "x": -14.55,
+      "z": 18.58,
+      "width": 15.0,
+      "depth": 9.5,
+      "rotation": 0.02,
+      "floors": 8
+    },
+    {
+      "code": "ba",
+      "name": "อาคาร A",
+      "x": 2.0,
+      "z": 25.58,
+      "width": 6.5,
+      "depth": 23.5,
+      "rotation": 0.06,
+      "floors": 7
+    },
+    {
+      "code": "bb",
+      "name": "อาคาร B",
+      "x": 12.3,
+      "z": 25.58,
+      "width": 6.5,
+      "depth": 23.5,
+      "rotation": 0.06,
+      "floors": 7
+    }
+  ],
+  "areas": [
+    {
+      "code": "pg",
+      "name": "สนามเด็กเล่น",
+      "x": 1.32,
+      "z": -1.95,
+      "width": 20.0,
+      "depth": 2.8,
+      "rotation": 0.33,
+      "floors": 0,
+      "area": "play"
+    },
+    {
+      "code": "dm",
+      "name": "โดมอเนกประสงค์",
+      "x": -15.05,
+      "z": 39.13,
+      "width": 17.5,
+      "depth": 20.0,
+      "rotation": 0.02,
+      "floors": 2,
+      "area": "hall"
+    },
+    {
+      "code": "pl",
+      "name": "สระว่ายน้ำ",
+      "x": -16.05,
+      "z": 58.43,
+      "width": 10.0,
+      "depth": 7.0,
+      "rotation": 0.05,
+      "floors": 0,
+      "area": "pool"
+    },
+    {
+      "code": "fb",
+      "name": "สนามฟุตบอล",
+      "x": -17.55,
+      "z": 80.23,
+      "width": 14.0,
+      "depth": 25.0,
+      "rotation": 0.05,
+      "floors": 0,
+      "area": "field"
+    }
+  ],
+  "fibers": [
+    {
+      "device": "m-a1",
+      "color": "#ff8a5c",
+      "route": "อาคาร 2 ชั้น 1 → อาคาร A ชั้น 1"
+    },
+    {
+      "device": "m-b1",
+      "color": "#00e5ff",
+      "route": "อาคาร 2 ชั้น 1 → อาคาร 1 ชั้น 2"
+    },
+    {
+      "device": "m-s8",
+      "color": "#ff4fd8",
+      "route": "อาคาร 2 ชั้น 1 → 8 เซียน ชั้น 3"
+    },
+    {
+      "device": "mainB",
+      "color": "#00b3a4",
+      "route": "อาคาร 2 ชั้น 1 → อาคาร B ชั้น 3"
+    },
+    {
+      "device": "m-a4",
+      "color": "#ffd23f",
+      "route": "อาคาร B ชั้น 3 → อาคาร A ชั้น 4"
+    },
+    {
+      "device": "m-i1",
+      "color": "#8b6bff",
+      "route": "อาคาร 2 ชั้น 1 → ICET1 ชั้น 1"
+    },
+    {
+      "device": "m-i2",
+      "color": "#3dff8f",
+      "route": "อาคาร 2 ชั้น 1 → ICET2 ชั้น 1"
+    },
+    {
+      "device": "m-sp3",
+      "color": "#c08457",
+      "route": "อาคาร 2 ชั้น 1 → อาคารกีฬา ชั้น 3"
+    }
+  ],
+  "staff": [
+    "STF-01",
+    "STF-02",
+    "STF-03",
+    "STF-04",
+    "STF-05",
+    "STF-06",
+    "STF-07"
+  ],
+  "wan": [
+    {
+      "device": "wan0",
+      "provider": "NT",
+      "label": "PPPoE 01 · เส้นหลัก",
+      "priority": 1
+    },
+    {
+      "device": "wan1",
+      "provider": "3BB",
+      "label": "PPPoE 02",
+      "priority": 2
+    },
+    {
+      "device": "wan2",
+      "provider": "TRUE",
+      "label": "PPPoE 03",
+      "priority": 3
+    },
+    {
+      "device": "wan3",
+      "provider": "AIS",
+      "label": "PPPoE 04 · สำรองลำดับสุดท้าย",
+      "priority": 4
+    }
+  ]
+}
