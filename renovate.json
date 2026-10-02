@@ -1,7 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "platform": "gitea",
   "timezone": "Asia/Bangkok",
   "schedule": ["before 6am on monday"],
   "labels": ["dependencies"],

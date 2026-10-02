@@ -1,0 +1,34 @@
+# Weekly dependency updates (ADR-0016). Repo rules live in renovate.json;
+# platform/endpoint are global options and must be set here, not in renovate.json.
+# Setup: docs/runbooks/renovate.md
+name: renovate
+
+on:
+  schedule:
+    - cron: '0 22 * * 0' # Monday 05:00 Asia/Bangkok, matches renovate.json schedule
+  workflow_dispatch:
+
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+jobs:
+  renovate:
+    name: renovate
+    runs-on: ubuntu-latest
+    container:
+      image: node:24-bookworm
+      options: --cpus=1 --memory=2g
+    timeout-minutes: 30
+    steps:
+      - name: Run Renovate
+        env:
+          RENOVATE_PLATFORM: gitea
+          RENOVATE_ENDPOINT: http://git.sbc.lan/api/v1
+          RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
+          RENOVATE_REPOSITORIES: sbc/sbc-noc
+          RENOVATE_GIT_AUTHOR: Renovate Bot <renovate-bot@sbc.lan>
+          RENOVATE_ONBOARDING: 'false'
+          RENOVATE_REQUIRE_CONFIG: required
+          LOG_LEVEL: info
+        run: npx --yes renovate@44
