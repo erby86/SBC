@@ -24,9 +24,11 @@
     "test": "vitest run",
     "migrate": "node dist/migrate-cli.js",
     "db:pull": "node scripts/pull-schema.mjs",
-    "seed": "node dist/seed-cli.js"
+    "seed": "node dist/seed-cli.js",
+    "check": "node dist/check-cli.js"
   },
   "dependencies": {
+    "@sbc-noc/shared": "workspace:*",
     "drizzle-orm": "^0.45.3",
     "pg": "^8.23.1"
   },

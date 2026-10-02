@@ -1,4 +1,4 @@
-import { healthResponseSchema } from '@sbc-noc/shared';
+import { healthResponseSchema, registryCheckReportSchema } from '@sbc-noc/shared';
 import { afterAll, describe, expect, it } from 'vitest';
 import { buildApp } from './app.js';
 
@@ -53,6 +53,37 @@ describe('GET /health/ready', () => {
     const res = await app.inject({ method: 'GET', url: '/health/ready' });
 
     expect(res.statusCode).toBe(503);
+    await app.close();
+  });
+});
+
+describe('GET /registry/checks', () => {
+  it('returns the report from the injected checker', async () => {
+    const report = {
+      generatedAt: '2026-10-02T00:00:00.000Z',
+      errors: 1,
+      warnings: 0,
+      checks: [
+        {
+          check: 'no_position',
+          severity: 'error' as const,
+          title: 'x',
+          count: 1,
+          items: [{ code: 'sw-1', name: 'Switch 1', detail: null }],
+        },
+      ],
+    };
+    const app = buildApp({}, { registryChecks: async () => report });
+    const res = await app.inject({ method: 'GET', url: '/registry/checks' });
+    expect(res.statusCode).toBe(200);
+    expect(registryCheckReportSchema.parse(res.json())).toEqual(report);
+    await app.close();
+  });
+
+  it('is not exposed without a checker', async () => {
+    const app = buildApp();
+    const res = await app.inject({ method: 'GET', url: '/registry/checks' });
+    expect(res.statusCode).toBe(404);
     await app.close();
   });
 });

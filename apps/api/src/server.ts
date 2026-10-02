@@ -1,4 +1,4 @@
-import { createDbPool, pingDatabase } from '@sbc-noc/db';
+import { createDbPool, pingDatabase, runRegistryChecks } from '@sbc-noc/db';
 import { parseEnv, serverEnvSchema } from '@sbc-noc/shared';
 import { Redis } from 'ioredis';
 import { z } from 'zod';
@@ -26,6 +26,7 @@ const app = buildApp(
       db: () => pingDatabase(pool),
       redis: () => redis.ping(),
     },
+    registryChecks: () => runRegistryChecks(pool),
   },
 );
 

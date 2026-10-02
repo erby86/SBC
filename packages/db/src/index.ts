@@ -15,3 +15,4 @@ export async function pingDatabase(pool: DbPool): Promise<void> {
 
 export { loadMigrations, migrate, MIGRATIONS_DIR } from './migrate.js';
 export type { Migration, MigrateResult } from './migrate.js';
+export { CHECKS, runRegistryChecks } from './checks.js';

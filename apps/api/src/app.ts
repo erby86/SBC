@@ -1,5 +1,5 @@
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
-import type { HealthResponse } from '@sbc-noc/shared';
+import type { HealthResponse, RegistryCheckReport } from '@sbc-noc/shared';
 import { readVersion } from './version.js';
 
 /** A dependency probe for /health/ready; rejects when the dependency is down. */
@@ -8,6 +8,8 @@ export type ReadinessCheck = () => Promise<unknown>;
 export interface AppDeps {
   checks?: Record<string, ReadinessCheck>;
   checkTimeoutMs?: number;
+  /** M07 registry completeness report (read-only). Route is registered only when provided. */
+  registryChecks?: () => Promise<RegistryCheckReport>;
 }
 
 type CheckStatus = 'ok' | 'error';
@@ -56,6 +58,11 @@ export function buildApp(options: FastifyServerOptions = {}, deps: AppDeps = {})
       .code(ok ? 200 : 503)
       .send({ status: ok ? 'ok' : 'error', version, checks: results });
   });
+
+  const registryChecks = deps.registryChecks;
+  if (registryChecks) {
+    app.get('/registry/checks', async (): Promise<RegistryCheckReport> => registryChecks());
+  }
 
   return app;
 }

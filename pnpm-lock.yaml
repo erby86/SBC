@@ -111,6 +111,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@sbc-noc/shared':
+        specifier: workspace:*
+        version: link:../shared
       drizzle-orm:
         specifier: ^0.45.3
         version: 0.45.3(@types/pg@8.23.1)(pg@8.23.1)

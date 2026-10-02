@@ -1,5 +1,6 @@
 import { BUILDING_CODES, healthResponseSchema } from '@sbc-noc/shared';
 import { useEffect, useState } from 'react';
+import { RegistryChecks } from './RegistryChecks.js';
 
 export const SYSTEM_NAME = 'SBC NOC';
 
@@ -36,6 +37,7 @@ export function App() {
             ? `ออนไลน์ (v${api.version})`
             : 'ออฟไลน์'}
       </p>
+      <RegistryChecks />
     </main>
   );
 }
