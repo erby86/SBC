@@ -45,6 +45,7 @@ TEST_DATABASE_URL=postgres://.../ฐานว่าง pnpm --filter @sbc-noc/db
 - `sbc-redis` อยู่ network `db-net` ต้องใช้รหัสผ่าน; dev ใช้ prefix `noc:dev:`
 - DNS `*.sbc.lan` → 192.168.1.6 บน MikroTik
 - Renovate รันทุกจันทร์ 05:00 ด้วยบัญชี `renovate-bot`
+- Zabbix 7.0.31 `http://zabbix.sbc.lan`; ผู้ใช้ API `noc-api-read` (กลุ่ม `noc-api`, Read เฉพาะ 01-/02-/03- กลุ่มเครือข่าย); token อยู่ใน `dev.env` (`ZABBIX_TOKEN_READ`)
 
 ## สถานะโมดูล
 
@@ -58,4 +59,5 @@ TEST_DATABASE_URL=postgres://.../ฐานว่าง pnpm --filter @sbc-noc/db
 | M04 นำเข้าข้อมูลตั้งต้น | เสร็จ 2026-10-02 — นำเข้าบน dev: 173 LOC (LOC-187, SPORT → LOC-188..191), อุปกรณ์ 50, ไฟเบอร์ FO-* 8 เส้น; CI นำเข้า 2 รอบ รอบสองเขียน 0 แถว |
 | M09 worker + คิวงาน     | กำลังทำ — โค้ด + test ผ่าน (PostgreSQL + Redis จริง); รอรันบน sbc-ubuntu                                                                     |
 | M07 รายงานตรวจความครบ   | โค้ดเสร็จ + ใช้บน dev — error 47 = not_in_zabbix ทั้งหมด (ปิดใน M08); AP ตัวอย่าง `ap-ba-2-1` soft delete แล้ว                               |
-| ถัดไป                   | M12 (NET: ผู้ใช้ API Zabbix) → M08 จับคู่ host + tag; M05, M06 — รอผู้ใช้ยืนยัน                                                              |
+| M12 ผู้ใช้ API Zabbix   | บางส่วน — `noc-api-read` + token ใช้ได้ (อ่านอย่างเดียว, เห็นเฉพาะกลุ่มเครือข่าย); discovery ห้องคอมฯ เลื่อน, ผู้ใช้รับเรื่องไป M24          |
+| ถัดไป                   | M08 จับคู่ host + tag (ต้องตัดสินใจผู้ใช้ `noc-api-sync` สำหรับเขียน tag — ADR-0019)                                                         |
