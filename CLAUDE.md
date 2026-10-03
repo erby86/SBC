@@ -64,5 +64,5 @@ TEST_DATABASE_URL=postgres://.../ฐานว่าง pnpm --filter @sbc-noc/db
 | M12 ผู้ใช้ API Zabbix        | บางส่วน — `noc-api-read` + token ใช้ได้ (อ่านอย่างเดียว, เห็นเฉพาะกลุ่มเครือข่าย); discovery ห้องคอมฯ เลื่อน, ผู้ใช้รับเรื่องไป M24                                              |
 | M08 Zabbix tag + จับคู่ host | dev พิสูจน์แล้ว: จับคู่ 5/8 host; เขียน tag ลง host ทดสอบ `NOC-Test-CCR1036` ถูกต้อง (ADR-0019); tag ครบ 100% บน host จริง → M17                                                 |
 | M06 นำเข้า AP (UniFi)        | UniFi ใช้บน dev แล้ว 2026-10-03 — AP 80: ในทะเบียน 58 (ชื่อ 44 + สวิตช์ประจำชั้น 14), 22 รอตั้งชื่อใน UniFi (Mesh ICET1 12, Canteen, ITB, LRA อาคาร A 8); Omada/LINK ยังไม่เริ่ม |
-| M05 ซิงก์ LOC (SBC ASSET)    | โค้ดเสร็จ — อ่าน CSV ที่เผยแพร่จากแท็บ `NOC_LOC_Export` (`SBC_ASSET_CSV_URL`); รอทดสอบบน dev                                                                                     |
-| ถัดไป                        | ทดสอบ M05 บน dev; M06: ตั้งชื่อ AP 22 ตัวใน UniFi, Omada/LINK · ค้าง: IP .152/.157/.15, discovery ห้องคอมฯ (M12)                                                                 |
+| M05 ซิงก์ LOC (SBC ASSET)    | เสร็จ 2026-10-03 — dev: อ่าน 172 แถวจาก CSV `NOC_LOC_Export`, ตรงกับฐาน (สร้าง 0, ขัดแย้ง 0, หาย 0); ห้องใหม่/ขัดแย้งพิสูจน์ใน test                                              |
+| ถัดไป                        | M06: ตั้งชื่อ AP 22 ตัวใน UniFi, Omada/LINK · ค้าง: IP .152/.157/.15, discovery ห้องคอมฯ (M12)                                                                                   |
