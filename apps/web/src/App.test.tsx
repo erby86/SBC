@@ -83,7 +83,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('NOC screen frame (M18)', () => {
+describe('NOC screen (M18 frame, M19 scene)', () => {
   it('shows buildings from the layout and incidents from the live status', async () => {
     renderAt('/', <App />);
     expect(screen.getByRole('heading', { name: 'SB School NOC' })).toBeDefined();
@@ -111,6 +111,37 @@ describe('NOC screen frame (M18)', () => {
     );
     expect(screen.getByRole('alert').textContent).toContain('ข้อมูลค้าง');
     expect(screen.getByTestId('fresh').textContent).toContain('ข้อมูลค้าง');
+  });
+
+  it('says so when the browser cannot draw 3D (M19)', async () => {
+    renderAt('/', <App />);
+    await waitFor(() => expect(screen.getByTestId('scene').textContent).toContain('WebGL'));
+  });
+
+  it('focuses a building with floor buttons and opens device details from an incident (M19)', async () => {
+    renderAt('/', <App />);
+    await waitFor(() =>
+      expect(screen.getAllByTestId('buildings')[0]?.textContent).toContain('8 เซียน'),
+    );
+    act(() =>
+      FakeWebSocket.last?.onmessage?.({
+        data: JSON.stringify({ type: 'snapshot', version: 1, snapshot: snapshot(false) }),
+      }),
+    );
+    const building = screen.getAllByTestId('buildings')[0]?.querySelector('button');
+    expect(building?.textContent).toContain('1 จุด'); // m-s8 down
+    act(() => building?.click());
+    const floors = screen.getAllByTestId('floors')[0];
+    expect(floors?.querySelectorAll('button')).toHaveLength(9); // ทุกชั้น + 8 floors
+    act(() =>
+      (screen.getAllByTestId('incidents')[0]?.querySelector('.inc') as HTMLElement).click(),
+    );
+    const info = screen.getByTestId('info');
+    expect(info.textContent).toContain('8 เซียน main');
+    expect(info.textContent).toContain('ล่ม');
+    expect(info.textContent).toContain('กระทบ3 อุปกรณ์');
+    act(() => screen.getByRole('button', { name: 'ปิดรายละเอียด' }).click());
+    expect(screen.queryByTestId('info')).toBeNull();
   });
 
   it('has a back office page with the API version', async () => {

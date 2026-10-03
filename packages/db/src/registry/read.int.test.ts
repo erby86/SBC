@@ -70,6 +70,8 @@ describe.skipIf(!url)('registry reads (M14)', () => {
       media: 'fiber',
       cable: 'FO-B2-B1-01',
       color: '#00e5ff',
+      lane: null,
+      waypoints: [],
     });
   });
 

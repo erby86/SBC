@@ -3,6 +3,8 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
+  // three.js (M19) is one lazily loaded chunk of ~630 kB (160 kB gzip); the page itself stays small
+  build: { chunkSizeWarningLimit: 700 },
   server: {
     // `pnpm --filter @sbc-noc/web dev` proxies to a local api (`pnpm --filter @sbc-noc/api dev`).
     proxy: {

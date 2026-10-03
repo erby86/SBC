@@ -114,6 +114,9 @@ export const linkSchema = z.object({
   cableCores: z.array(z.number().int()).nullable(),
   speedMbps: nullableInt,
   color: nullableStr,
+  /** viz.link_routes: parallel lane of the cable run and hand-drawn bends [x, z] (M19). */
+  lane: nullableInt,
+  waypoints: z.array(z.tuple([z.number(), z.number()])),
 });
 
 export const cableSchema = z.object({

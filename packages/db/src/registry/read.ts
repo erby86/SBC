@@ -336,9 +336,11 @@ export async function listLinks(db: Q): Promise<Link[]> {
     cable_cores: number[] | null;
     speed_mbps: number | null;
     color: string | null;
+    lane: number | null;
+    waypoints: unknown;
   }>(
     `SELECT k.code, da.code AS a, db.code AS b, k.media_code, k.is_uplink, c.code AS cable, k.cable_cores,
-            k.speed_mbps, rt.color
+            k.speed_mbps, rt.color, rt.lane, rt.waypoints
      FROM net.links k JOIN net.devices da ON da.id = k.a_device_id JOIN net.devices db ON db.id = k.b_device_id
      LEFT JOIN net.cables c ON c.id = k.cable_id LEFT JOIN viz.link_routes rt ON rt.link_id = k.id
      WHERE k.deleted_at IS NULL AND da.deleted_at IS NULL AND db.deleted_at IS NULL
@@ -355,7 +357,21 @@ export async function listLinks(db: Q): Promise<Link[]> {
     cableCores: r.cable_cores,
     speedMbps: r.speed_mbps,
     color: r.color,
+    lane: r.lane,
+    waypoints: toWaypoints(r.waypoints),
   }));
+}
+
+/** viz.link_routes.waypoints is free jsonb: keep [x, z] pairs or {x, z} objects, drop the rest. */
+export function toWaypoints(v: unknown): [number, number][] {
+  if (!Array.isArray(v)) return [];
+  const out: [number, number][] = [];
+  for (const p of v as unknown[]) {
+    const [x, z] = Array.isArray(p) ? p : [(p as { x?: unknown })?.x, (p as { z?: unknown })?.z];
+    if (typeof x === 'number' && typeof z === 'number' && isFinite(x) && isFinite(z))
+      out.push([x, z]);
+  }
+  return out;
 }
 
 export async function listCables(db: Q): Promise<Cable[]> {

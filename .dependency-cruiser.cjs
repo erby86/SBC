@@ -44,6 +44,13 @@ module.exports = {
       to: { path: '^apps/', pathNot: '^apps/$1/' },
     },
     {
+      name: 'scene-no-react',
+      comment: 'the 3D scene (M19) is plain three.js, independent of React (modules-by-gate-v2)',
+      severity: 'error',
+      from: { path: '^apps/web/src/scene/' },
+      to: { path: '(^|/)node_modules/(react|react-dom|react-router|@tanstack)/' },
+    },
+    {
       name: 'no-circular',
       severity: 'error',
       from: {},
