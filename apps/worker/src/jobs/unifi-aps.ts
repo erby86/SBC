@@ -17,7 +17,7 @@ export const NAME_RULES: { re: RegExp; building?: string }[] = [
   { re: /^8SFL(?<f>\d{1,2})-(?<n>\d+)$/i, building: 's8' }, // 8SFL2-1 = 8 เซียน ชั้น 2 ตัวที่ 1
   { re: /^AF?(?<f>\d{1,2})-(?<n>\d+)$/i, building: 'ba' }, // A6-1, AF2-1201 = อาคาร A
   { re: /^BF?L?(?<f>\d{1,2})-(?<n>\d+)$/i, building: 'bb' }, // BFL3-1, BF5-2 = อาคาร B
-  { re: /^UAP-AC-7AP(?<f>\d{1,2})F$/i, building: 'ba' }, // UAP-AC-7AP1F = อาคาร A (7 ชั้น) ชั้น 1
+  { re: /^UAP-AC-(?<f>\d{1,2})AP(?<n>\d+)F$/i, building: 'ba' }, // UAP-AC-7AP1F = อาคาร A ชั้น 7 ตัวที่ 1
 ];
 
 /**

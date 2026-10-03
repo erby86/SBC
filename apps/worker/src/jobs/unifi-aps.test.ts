@@ -16,7 +16,7 @@ describe('parseApName', () => {
     expect(parseApName('AF2-1201')).toEqual(at('ba', 2, '1201'));
     expect(parseApName('BFL3-5')).toEqual(at('bb', 3, '5'));
     expect(parseApName('BF5-2')).toEqual(at('bb', 5, '2'));
-    expect(parseApName('UAP-AC-7AP4F')).toEqual(at('ba', 4, '1'));
+    expect(parseApName('UAP-AC-7AP4F')).toEqual(at('ba', 7, '4'));
     expect(parseApName('SP-3-1 Canteen')).toEqual(at('sp', 3, '1'));
     expect(parseApName('bb-1-1 ITB')).toEqual(at('bb', 1, '1'));
     expect(parseApName('I1-2-3')).toEqual(at('i1', 2, '3'));
