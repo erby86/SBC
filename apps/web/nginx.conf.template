@@ -13,6 +13,11 @@ server {
     resolver 127.0.0.11 valid=10s ipv6=off;
     set $api_upstream ${API_UPSTREAM};
 
+    # OpenAPI page (M13): its assets are relative to /api/docs/, so add the trailing slash.
+    location = /api/docs {
+        return 301 /api/docs/;
+    }
+
     location /api/ {
         rewrite ^/api/(.*)$ /$1 break;
         proxy_pass $api_upstream;

@@ -8,6 +8,7 @@ const env = parseEnv(
   serverEnvSchema.extend({
     PORT: z.coerce.number().int().positive().default(3001),
     HOST: z.string().default('0.0.0.0'),
+    LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   }),
   process.env,
 );
@@ -19,8 +20,14 @@ const redis = new Redis(env.REDIS_URL, {
   lazyConnect: true,
 });
 
-const app = buildApp(
-  { logger: true },
+// pino JSON logs to stdout (collected by docker / Loki later); never log credentials.
+const app = await buildApp(
+  {
+    logger: {
+      level: env.LOG_LEVEL,
+      redact: ['req.headers.authorization', 'req.headers.cookie', 'res.headers["set-cookie"]'],
+    },
+  },
   {
     checks: {
       db: () => pingDatabase(pool),
