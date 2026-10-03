@@ -22,6 +22,7 @@ const env = parseEnv(
   serverEnvSchema.extend({
     PORT: z.coerce.number().int().positive().default(3001),
     HOST: z.string().default('0.0.0.0'),
+    DEMO_MODE: z.stringbool().default(false),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   }),
   process.env,
@@ -47,6 +48,7 @@ const app = await buildApp(
       db: () => pingDatabase(pool),
       redis: () => redis.ping(),
     },
+    demo: env.DEMO_MODE,
     registryChecks: () => runRegistryChecks(pool),
     registry: {
       layout: () => getLayout(pool),
@@ -74,6 +76,8 @@ async function shutdown(signal: string): Promise<void> {
 
 process.once('SIGTERM', () => void shutdown('SIGTERM'));
 process.once('SIGINT', () => void shutdown('SIGINT'));
+
+if (env.DEMO_MODE) app.log.warn('DEMO_MODE on: /demo/* serves demo scenarios (ADR-0014)');
 
 try {
   await redis.connect().catch((err: unknown) => app.log.warn({ err }, 'redis not reachable yet'));

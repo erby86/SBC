@@ -15,6 +15,7 @@ import {
 } from '@sbc-noc/shared';
 import { z } from 'zod';
 import { registerMetrics } from './metrics.js';
+import { demoRoutes } from './routes/demo.js';
 import { registryRoutes, type RegistryReader } from './routes/registry.js';
 import { readVersion } from './version.js';
 
@@ -28,6 +29,8 @@ export interface AppDeps {
   registryChecks?: () => Promise<RegistryCheckReport>;
   /** M14 registry/layout reads. Routes are registered only when provided. */
   registry?: RegistryReader;
+  /** M38 demo scenarios; only dev/staging set DEMO_MODE=true (ADR-0014). */
+  demo?: boolean;
 }
 
 const readinessSchema = z.object({
@@ -75,6 +78,7 @@ export async function buildApp(
       tags: [
         { name: 'ops', description: 'สถานะของระบบ' },
         { name: 'registry', description: 'ทะเบียนอุปกรณ์และพื้นที่' },
+        { name: 'demo', description: 'โหมดสาธิต — ข้อมูลสมมติ ไม่ใช่สถานะจริง (dev/staging)' },
       ],
     },
     transform: jsonSchemaTransform,
@@ -141,6 +145,7 @@ export async function buildApp(
   }
 
   if (deps.registry) registryRoutes(app, deps.registry);
+  if (deps.demo) demoRoutes(app);
 
   return app;
 }
