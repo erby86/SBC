@@ -3,9 +3,11 @@ import { parseEnv, serverEnvSchema } from '@sbc-noc/shared';
 import { readFileSync } from 'node:fs';
 import { Redis } from 'ioredis';
 import { beat } from './heartbeat.js';
+import { createSbcAssetClient } from './connectors/sbc-asset.js';
 import { createUnifiClient } from './connectors/unifi.js';
 import { createZabbixClient } from './connectors/zabbix.js';
 import { registryStats } from './jobs/registry-stats.js';
+import { assetLocsJob } from './jobs/asset-locs.js';
 import type { JobDefinition } from './jobs/types.js';
 import { unifiApsJob } from './jobs/unifi-aps.js';
 import { zabbixMatchJob } from './jobs/zabbix-match.js';
@@ -73,6 +75,13 @@ if (unifiUrl && unifiUser && unifiPassword && (unifiCaFile || unifiInsecure)) {
   logger.warn(
     'UNIFI_URL / UNIFI_USERNAME / UNIFI_PASSWORD / UNIFI_CA_FILE not set — unifi-aps disabled',
   );
+}
+// M05: SBC ASSET rooms from the published CSV of the NOC_LOC_Export tab (read-only).
+const assetCsvUrl = process.env['SBC_ASSET_CSV_URL'];
+if (assetCsvUrl) {
+  jobs.push(assetLocsJob(createSbcAssetClient(assetCsvUrl)));
+} else {
+  logger.warn('SBC_ASSET_CSV_URL not set — asset-locs disabled');
 }
 const runtime = await startRuntime({
   redisUrl: env.REDIS_URL,

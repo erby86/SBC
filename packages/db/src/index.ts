@@ -18,3 +18,4 @@ export type { Migration, MigrateResult } from './migrate.js';
 export { CHECKS, runRegistryChecks } from './checks.js';
 export { importSeed } from './seed/import.js';
 export { readSeedFiles } from './seed/files.js';
+export { parseCsv } from './seed/csv.js';

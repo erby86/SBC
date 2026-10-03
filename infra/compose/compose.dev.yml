@@ -82,6 +82,8 @@ services:
       # Pinned controller certificate inside /run/noc-certs (mounted read-only below).
       UNIFI_CA_FILE: ${UNIFI_CA_FILE:-}
       UNIFI_TLS_INSECURE: ${UNIFI_TLS_INSECURE:-false}
+      # SBC ASSET published CSV (tab NOC_LOC_Export, M05)
+      SBC_ASSET_CSV_URL: ${SBC_ASSET_CSV_URL:-}
     volumes:
       - ${NOC_CERTS_DIR:-/opt/sbc-noc/certs}:/run/noc-certs:ro
     depends_on:
