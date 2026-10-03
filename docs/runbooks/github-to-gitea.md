@@ -1,7 +1,10 @@
 # ส่งงานจาก GitHub เข้า Gitea และอัปเดต dev
 
-Claude Code (cloud) เข้า Gitea ใน LAN ไม่ได้ จึง push งานไว้ที่ GitHub branch `claude/new-session-cawqf1`
-(repo `erby86/SBC`) แล้วผู้ใช้ดึงเข้า Gitea `sbc/sbc-noc` บน sbc-ubuntu ด้วยขั้นตอนนี้ — ใช้มาตั้งแต่ M01
+Claude Code (cloud) เข้า Gitea ใน LAN ไม่ได้ จึง push งานไว้ที่ GitHub repo `erby86/SBC` แล้วผู้ใช้ดึงเข้า Gitea
+`sbc/sbc-noc` บน sbc-ubuntu ด้วยขั้นตอนนี้ — ใช้มาตั้งแต่ M01
+
+**แต่ละ session ของ Claude ได้ branch ของตัวเอง** (เช่น `claude/new-session-cawqf1`, `claude/claude-md-m19-n9sxn2`)
+— เมื่อจบโมดูล Claude ต้องบอกชื่อ branch ที่ push และให้คำสั่งข้อ 1 ที่ใส่ชื่อนั้นแล้ว (`<branch>` ข้างล่าง)
 
 ## 1. ดึงงานเข้า branch ใหม่ใน Gitea (clone ทำงาน `~/sbc-noc`)
 
@@ -11,7 +14,7 @@ Claude Code (cloud) เข้า Gitea ใน LAN ไม่ได้ จึง p
 cd ~/sbc-noc
 git switch main && git pull
 git switch -c module/Mxx-ชื่อ
-git pull --no-rebase https://github.com/erby86/SBC.git claude/new-session-cawqf1
+git pull --no-rebase https://github.com/erby86/SBC.git <branch>
 git log --oneline -5
 git push -u origin module/Mxx-ชื่อ
 ```
