@@ -1,10 +1,13 @@
 import { createDbPool } from '@sbc-noc/db';
 import { parseEnv, serverEnvSchema } from '@sbc-noc/shared';
+import { readFileSync } from 'node:fs';
 import { Redis } from 'ioredis';
 import { beat } from './heartbeat.js';
+import { createUnifiClient } from './connectors/unifi.js';
 import { createZabbixClient } from './connectors/zabbix.js';
 import { registryStats } from './jobs/registry-stats.js';
 import type { JobDefinition } from './jobs/types.js';
+import { unifiApsJob } from './jobs/unifi-aps.js';
 import { zabbixMatchJob } from './jobs/zabbix-match.js';
 import { zabbixTagsJob } from './jobs/zabbix-tags.js';
 import { startRuntime } from './runtime/queue.js';
@@ -40,6 +43,32 @@ if (zabbixUrl && zabbixSyncToken) {
   jobs.push(zabbixTagsJob(createZabbixClient(zabbixUrl, zabbixSyncToken), tagGroups));
 } else {
   logger.warn('ZABBIX_TOKEN_SYNC not set — zabbix-tags disabled');
+}
+// M06: UniFi controller, read-only View Only user. TLS: pinned certificate file (or insecure for a test).
+const unifiUrl = process.env['UNIFI_URL'];
+const unifiUser = process.env['UNIFI_USERNAME'];
+const unifiPassword = process.env['UNIFI_PASSWORD'];
+const unifiCaFile = process.env['UNIFI_CA_FILE'];
+const unifiInsecure = process.env['UNIFI_TLS_INSECURE'] === 'true';
+if (unifiUrl && unifiUser && unifiPassword && (unifiCaFile || unifiInsecure)) {
+  if (!unifiCaFile) logger.warn('UNIFI_TLS_INSECURE=true — controller certificate not checked');
+  const host = new URL(unifiUrl).hostname;
+  jobs.push(
+    unifiApsJob(
+      createUnifiClient({
+        url: unifiUrl,
+        username: unifiUser,
+        password: unifiPassword,
+        site: process.env['UNIFI_SITE'] || 'default',
+        ...(unifiCaFile ? { ca: readFileSync(unifiCaFile, 'utf8') } : { insecure: true }),
+      }),
+      { name: `UniFi OS Server (${host})`, ip: /^[\d.]+$/.test(host) ? host : null },
+    ),
+  );
+} else {
+  logger.warn(
+    'UNIFI_URL / UNIFI_USERNAME / UNIFI_PASSWORD / UNIFI_CA_FILE not set — unifi-aps disabled',
+  );
 }
 const runtime = await startRuntime({
   redisUrl: env.REDIS_URL,

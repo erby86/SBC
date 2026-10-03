@@ -46,19 +46,21 @@ TEST_DATABASE_URL=postgres://.../ฐานว่าง pnpm --filter @sbc-noc/db
 - DNS `*.sbc.lan` → 192.168.1.6 บน MikroTik
 - Renovate รันทุกจันทร์ 05:00 ด้วยบัญชี `renovate-bot`
 - Zabbix 7.0.31 `http://zabbix.sbc.lan`; ผู้ใช้ API `noc-api-read` (กลุ่ม `noc-api`, Read เฉพาะ 01-/02-/03- กลุ่มเครือข่าย); token อยู่ใน `dev.env` (`ZABBIX_TOKEN_READ`); ผู้ใช้เขียน `noc-api-sync` (role Admin, RW เฉพาะกลุ่ม `99-NOC-Test`, host ทดสอบ `NOC-Test-CCR1036`) token `ZABBIX_TOKEN_SYNC`
+- UniFi OS Server 5.1.42 (Network 10.6.106) บน Ubuntu `https://172.16.0.30:11443` (ใบรับรองออกเอง, 443/8443 ปิด); site ภายใน `02gt1bcf`; ผู้ใช้ View Only แบบ local ใน `dev.env` (`UNIFI_USERNAME`/`UNIFI_PASSWORD`)
 
 ## สถานะโมดูล
 
-| โมดูล                        | สถานะ                                                                                                                                        |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| M00 ทดสอบต้นแบบ              | ผ่าน 29 ก.ย. 2026                                                                                                                            |
-| M01 monorepo + CI            | เสร็จ                                                                                                                                        |
-| M02 sbc-noc-db + backup      | เสร็จ 2026-10-02 — RESTORE TEST PASSED, ไม่เปิดพอร์ต, cron backup 02:30                                                                      |
-| M03 schema + migration       | เสร็จ 2026-10-02 — 61 ตาราง บน PostgreSQL 16, CI `db-integration` ผ่าน                                                                       |
-| งานก่อน M04                  | เสร็จ — issue M00–M38 ใน Gitea, access list `sbc-noc-mgmt` ยืนยันแล้ว (วง 192.168.1.x เข้าได้, วงอื่นได้ 403), ปิดพอร์ต 5190                 |
-| M04 นำเข้าข้อมูลตั้งต้น      | เสร็จ 2026-10-02 — นำเข้าบน dev: 173 LOC (LOC-187, SPORT → LOC-188..191), อุปกรณ์ 50, ไฟเบอร์ FO-* 8 เส้น; CI นำเข้า 2 รอบ รอบสองเขียน 0 แถว |
-| M09 worker + คิวงาน          | เสร็จ 2026-10-02 — dev: `registry-stats` success; CI: รันตามเวลา + ล้มแล้วลองใหม่ผ่าน                                                        |
-| M07 รายงานตรวจความครบ        | โค้ดเสร็จ + ใช้บน dev — error 47 = not_in_zabbix ทั้งหมด (ปิดใน M08); AP ตัวอย่าง `ap-ba-2-1` soft delete แล้ว                               |
-| M12 ผู้ใช้ API Zabbix        | บางส่วน — `noc-api-read` + token ใช้ได้ (อ่านอย่างเดียว, เห็นเฉพาะกลุ่มเครือข่าย); discovery ห้องคอมฯ เลื่อน, ผู้ใช้รับเรื่องไป M24          |
-| M08 Zabbix tag + จับคู่ host | dev พิสูจน์แล้ว: จับคู่ 5/8 host; เขียน tag ลง host ทดสอบ `NOC-Test-CCR1036` ถูกต้อง (ADR-0019); tag ครบ 100% บน host จริง → M17             |
-| ถัดไป                        | M05 ซิงก์ LOC จาก SBC ASSET, M06 AP จาก controller (ตามแผน); NET ทำ M10 ขนาน · ค้าง: IP .152/.157/.15, discovery ห้องคอมฯ (M12)              |
+| โมดูล                        | สถานะ                                                                                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M00 ทดสอบต้นแบบ              | ผ่าน 29 ก.ย. 2026                                                                                                                                       |
+| M01 monorepo + CI            | เสร็จ                                                                                                                                                   |
+| M02 sbc-noc-db + backup      | เสร็จ 2026-10-02 — RESTORE TEST PASSED, ไม่เปิดพอร์ต, cron backup 02:30                                                                                 |
+| M03 schema + migration       | เสร็จ 2026-10-02 — 61 ตาราง บน PostgreSQL 16, CI `db-integration` ผ่าน                                                                                  |
+| งานก่อน M04                  | เสร็จ — issue M00–M38 ใน Gitea, access list `sbc-noc-mgmt` ยืนยันแล้ว (วง 192.168.1.x เข้าได้, วงอื่นได้ 403), ปิดพอร์ต 5190                            |
+| M04 นำเข้าข้อมูลตั้งต้น      | เสร็จ 2026-10-02 — นำเข้าบน dev: 173 LOC (LOC-187, SPORT → LOC-188..191), อุปกรณ์ 50, ไฟเบอร์ FO-* 8 เส้น; CI นำเข้า 2 รอบ รอบสองเขียน 0 แถว            |
+| M09 worker + คิวงาน          | เสร็จ 2026-10-02 — dev: `registry-stats` success; CI: รันตามเวลา + ล้มแล้วลองใหม่ผ่าน                                                                   |
+| M07 รายงานตรวจความครบ        | โค้ดเสร็จ + ใช้บน dev — error 47 = not_in_zabbix ทั้งหมด (ปิดใน M08); AP ตัวอย่าง `ap-ba-2-1` soft delete แล้ว                                          |
+| M12 ผู้ใช้ API Zabbix        | บางส่วน — `noc-api-read` + token ใช้ได้ (อ่านอย่างเดียว, เห็นเฉพาะกลุ่มเครือข่าย); discovery ห้องคอมฯ เลื่อน, ผู้ใช้รับเรื่องไป M24                     |
+| M08 Zabbix tag + จับคู่ host | dev พิสูจน์แล้ว: จับคู่ 5/8 host; เขียน tag ลง host ทดสอบ `NOC-Test-CCR1036` ถูกต้อง (ADR-0019); tag ครบ 100% บน host จริง → M17                        |
+| M06 นำเข้า AP (UniFi)        | โค้ดเสร็จ — controller 172.16.0.30:11443 site `02gt1bcf`, AP 80 ตัว อ่านชั้นจากชื่อได้ ~41; ที่เหลือขึ้น `unplaced_ap`; Omada/LINK ยังไม่เริ่ม          |
+| ถัดไป                        | ทดสอบ M06 บน dev (pin ใบรับรอง UniFi), ตั้งชื่อ AP ใน UniFi, Omada/LINK; M05 ซิงก์ LOC จาก SBC ASSET · ค้าง: IP .152/.157/.15, discovery ห้องคอมฯ (M12) |

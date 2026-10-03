@@ -72,6 +72,16 @@ services:
       # Write user noc-api-sync (ADR-0019); dev can only write group 99-NOC-Test (ADR-0013).
       ZABBIX_TOKEN_SYNC: ${ZABBIX_TOKEN_SYNC:-}
       ZABBIX_TAG_GROUPS: ${ZABBIX_TAG_GROUPS:-99-NOC-Test}
+      # UniFi controller, View Only user (M06). UNIFI_SITE is the internal site name, not "Default".
+      UNIFI_URL: ${UNIFI_URL:-}
+      UNIFI_USERNAME: ${UNIFI_USERNAME:-}
+      UNIFI_PASSWORD: ${UNIFI_PASSWORD:-}
+      UNIFI_SITE: ${UNIFI_SITE:-default}
+      # Pinned controller certificate inside /run/noc-certs (mounted read-only below).
+      UNIFI_CA_FILE: ${UNIFI_CA_FILE:-}
+      UNIFI_TLS_INSECURE: ${UNIFI_TLS_INSECURE:-false}
+    volumes:
+      - ${NOC_CERTS_DIR:-/opt/sbc-noc/certs}:/run/noc-certs:ro
     depends_on:
       noc-dev-migrate: { condition: service_completed_successfully }
     networks: [internal, shared]
