@@ -18,6 +18,18 @@ server {
         return 301 /api/docs/;
     }
 
+    # Live status (M16): WebSocket upgrade, long-lived connection.
+    location = /api/status/ws {
+        rewrite ^ /status/ws break;
+        proxy_pass $api_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 1h;
+        proxy_send_timeout 1h;
+    }
+
     location /api/ {
         rewrite ^/api/(.*)$ /$1 break;
         proxy_pass $api_upstream;

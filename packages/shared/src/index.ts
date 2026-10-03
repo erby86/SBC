@@ -6,3 +6,4 @@ export * from './registry.js';
 export * from './status.js';
 export * from './demo/scenarios.js';
 export * from './demo/topology.js';
+export * from './live.js';

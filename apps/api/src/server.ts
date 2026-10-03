@@ -17,6 +17,7 @@ import { parseEnv, serverEnvSchema, statusSnapshotSchema } from '@sbc-noc/shared
 import { Redis } from 'ioredis';
 import { z } from 'zod';
 import { buildApp } from './app.js';
+import { createLiveHub } from './routes/live.js';
 
 const env = parseEnv(
   serverEnvSchema.extend({
@@ -35,6 +36,32 @@ const redis = new Redis(env.REDIS_URL, {
   lazyConnect: true,
 });
 
+const readSnapshot = async () => {
+  const raw = await redis.get('status:snapshot'); // written by the worker (M15)
+  return raw ? statusSnapshotSchema.parse(JSON.parse(raw)) : null;
+};
+
+// M16: one subscriber connection for the whole api; channels are not prefixed by ioredis.
+const updatesChannel = `${env.REDIS_PREFIX}status:updates`;
+const live = createLiveHub(
+  {
+    read: readSnapshot,
+    subscribe: async (onMessage) => {
+      const sub = new Redis(env.REDIS_URL, { lazyConnect: true });
+      sub.on('error', (err) => console.warn(`redis subscriber: ${err.message}`));
+      sub.on('message', (channel: string, message: string) => {
+        if (channel === updatesChannel) onMessage(message);
+      });
+      await sub.connect();
+      await sub.subscribe(updatesChannel);
+      return async () => {
+        await sub.quit().catch(() => undefined);
+      };
+    },
+  },
+  { warn: (o, m) => console.warn(m, o) },
+);
+
 // pino JSON logs to stdout (collected by docker / Loki later); never log credentials.
 const app = await buildApp(
   {
@@ -49,10 +76,8 @@ const app = await buildApp(
       redis: () => redis.ping(),
     },
     demo: env.DEMO_MODE,
-    status: async () => {
-      const raw = await redis.get('status:snapshot'); // written by the worker (M15)
-      return raw ? statusSnapshotSchema.parse(JSON.parse(raw)) : null;
-    },
+    status: readSnapshot,
+    live,
     registryChecks: () => runRegistryChecks(pool),
     registry: {
       layout: () => getLayout(pool),

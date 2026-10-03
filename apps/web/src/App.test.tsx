@@ -1,7 +1,16 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App.js';
 
+class SilentWebSocket {
+  onmessage = null;
+  onclose = null;
+  close() {}
+}
+
+beforeEach(() => {
+  vi.stubGlobal('WebSocket', SilentWebSocket);
+});
 afterEach(() => {
   vi.unstubAllGlobals();
 });

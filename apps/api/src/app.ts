@@ -18,6 +18,7 @@ import { z } from 'zod';
 import { registerMetrics } from './metrics.js';
 import { demoRoutes } from './routes/demo.js';
 import { statusRoutes } from './routes/status.js';
+import { liveRoutes, type LiveHub } from './routes/live.js';
 import { registryRoutes, type RegistryReader } from './routes/registry.js';
 import { readVersion } from './version.js';
 
@@ -35,6 +36,8 @@ export interface AppDeps {
   demo?: boolean;
   /** M15 latest status snapshot (Redis); route registered only when provided. */
   status?: () => Promise<StatusSnapshot | null>;
+  /** M16 live status hub (WebSocket /status/ws). */
+  live?: LiveHub;
 }
 
 const readinessSchema = z.object({
@@ -152,6 +155,7 @@ export async function buildApp(
   if (deps.registry) registryRoutes(app, deps.registry);
   if (deps.demo) demoRoutes(app);
   if (deps.status) statusRoutes(app, deps.status);
+  if (deps.live) await liveRoutes(app, deps.live);
 
   return app;
 }
