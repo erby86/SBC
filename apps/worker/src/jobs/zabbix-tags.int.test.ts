@@ -28,6 +28,8 @@ function memoryZabbix(hosts: ZabbixTaggedHost[]): ZabbixClient & { writes: numbe
       const h = store.get(hostid);
       if (h) h.tags = tags;
     },
+    problems: async () => [],
+    hostsInMaintenance: async () => [],
   };
 }
 

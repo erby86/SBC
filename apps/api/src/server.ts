@@ -13,7 +13,7 @@ import {
   runRegistryChecks,
   search,
 } from '@sbc-noc/db';
-import { parseEnv, serverEnvSchema } from '@sbc-noc/shared';
+import { parseEnv, serverEnvSchema, statusSnapshotSchema } from '@sbc-noc/shared';
 import { Redis } from 'ioredis';
 import { z } from 'zod';
 import { buildApp } from './app.js';
@@ -49,6 +49,10 @@ const app = await buildApp(
       redis: () => redis.ping(),
     },
     demo: env.DEMO_MODE,
+    status: async () => {
+      const raw = await redis.get('status:snapshot'); // written by the worker (M15)
+      return raw ? statusSnapshotSchema.parse(JSON.parse(raw)) : null;
+    },
     registryChecks: () => runRegistryChecks(pool),
     registry: {
       layout: () => getLayout(pool),

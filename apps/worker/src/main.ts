@@ -15,6 +15,7 @@ import { unifiApsJob } from './jobs/unifi-aps.js';
 import { zabbixMatchJob } from './jobs/zabbix-match.js';
 import { zabbixTagsJob } from './jobs/zabbix-tags.js';
 import { startRuntime } from './runtime/queue.js';
+import { createStatusEngine, DEFAULT_POLL_MS } from './status/engine.js';
 import { start } from './start.js';
 
 const HEARTBEAT_MS = 30_000;
@@ -136,9 +137,41 @@ async function tick(): Promise<void> {
 await tick();
 const timer = setInterval(() => void tick(), HEARTBEAT_MS);
 
+// M15: status engine on its own timer (every 30 s would flood sync.runs as a queue job).
+let statusTimer: NodeJS.Timeout | undefined;
+if (zabbixUrl && zabbixToken) {
+  const engine = createStatusEngine({
+    db,
+    zabbix: createZabbixClient(zabbixUrl, zabbixToken),
+    // Keys get the client's keyPrefix; pub/sub channels do not, so prefix the channel here.
+    store: {
+      set: (k, v) => redis.set(k, v),
+      publish: (c, m) => redis.publish(`${env.REDIS_PREFIX}${c}`, m),
+    },
+    logger,
+  });
+  const pollMs = Number(process.env['STATUS_POLL_MS'] ?? DEFAULT_POLL_MS);
+  let running = false;
+  const poll = async () => {
+    if (running) return; // a slow Zabbix must not stack polls
+    running = true;
+    try {
+      await engine.tick();
+    } finally {
+      running = false;
+    }
+  };
+  await poll();
+  statusTimer = setInterval(() => void poll(), pollMs);
+  logger.info(`status engine every ${pollMs} ms`);
+} else {
+  logger.warn('ZABBIX_URL / ZABBIX_TOKEN_READ not set — status engine disabled');
+}
+
 async function shutdown(signal: string): Promise<void> {
   logger.info(`sbc-noc worker stopping (${signal})`);
   clearInterval(timer);
+  if (statusTimer) clearInterval(statusTimer);
   await runtime.close().catch(() => undefined);
   await Promise.allSettled([redis.quit(), db.end()]);
   process.exit(0);

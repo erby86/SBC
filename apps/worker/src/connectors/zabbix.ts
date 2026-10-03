@@ -15,12 +15,30 @@ export interface ZabbixTaggedHost extends ZabbixHost {
   tags: ZabbixTag[];
 }
 
+/** An open problem (problem.get) with the hosts of its trigger. */
+export interface ZabbixProblem {
+  eventid: string;
+  name: string;
+  /** 0 not classified … 5 disaster. */
+  severity: number;
+  /** Unix seconds when the problem started. */
+  clock: number;
+  hostids: string[];
+  acknowledged: boolean;
+  /** Latest acknowledge with a message, if any. */
+  ack: { userid: string; clock: number; message: string } | null;
+}
+
 export interface ZabbixClient {
   hosts(): Promise<ZabbixHost[]>;
   /** Hosts with their tags; optionally only those in the named host groups. */
   hostsWithTags(groupNames?: string[]): Promise<ZabbixTaggedHost[]>;
   /** Replaces the full tag list of a host (Zabbix semantics of host.update tags). */
   setHostTags(hostid: string, tags: ZabbixTag[]): Promise<void>;
+  /** Open problems on monitored hosts (M15). */
+  problems(): Promise<ZabbixProblem[]>;
+  /** Host ids currently in a maintenance period, with the maintenance name when readable. */
+  hostsInMaintenance(): Promise<{ hostid: string; name: string }[]>;
 }
 
 export function createZabbixClient(
@@ -89,6 +107,78 @@ export function createZabbixClient(
     },
     async setHostTags(hostid, tags) {
       await call('host.update', { hostid, tags });
+    },
+    async problems() {
+      const rows = await call<
+        {
+          eventid: string;
+          objectid: string;
+          name: string;
+          severity: string;
+          clock: string;
+          acknowledged: string;
+          acknowledges?: { userid: string; clock: string; message: string; action: string }[];
+        }[]
+      >('problem.get', {
+        output: ['eventid', 'objectid', 'name', 'severity', 'clock', 'acknowledged'],
+        source: 0,
+        object: 0,
+        suppressed: false,
+        selectAcknowledges: ['userid', 'clock', 'message', 'action'],
+      });
+      if (rows.length === 0) return [];
+      const triggers = await call<{ triggerid: string; hosts: { hostid: string }[] }[]>(
+        'trigger.get',
+        {
+          output: ['triggerid'],
+          triggerids: [...new Set(rows.map((r) => r.objectid))],
+          selectHosts: ['hostid'],
+          monitored: true,
+        },
+      );
+      const hostsOf = new Map(triggers.map((t) => [t.triggerid, t.hosts.map((h) => h.hostid)]));
+      return rows
+        .filter((r) => hostsOf.has(r.objectid))
+        .map((r) => {
+          const withMessage = (r.acknowledges ?? []).find((a) => a.message.trim() !== '');
+          return {
+            eventid: r.eventid,
+            name: r.name,
+            severity: Number(r.severity),
+            clock: Number(r.clock),
+            hostids: hostsOf.get(r.objectid) ?? [],
+            acknowledged: r.acknowledged === '1',
+            ack: withMessage
+              ? {
+                  userid: withMessage.userid,
+                  clock: Number(withMessage.clock),
+                  message: withMessage.message,
+                }
+              : null,
+          };
+        });
+    },
+    async hostsInMaintenance() {
+      const rows = await call<{ hostid: string; maintenanceid: string }[]>('host.get', {
+        output: ['hostid', 'maintenanceid'],
+        filter: { maintenance_status: 1 },
+      });
+      if (rows.length === 0) return [];
+      // Reading maintenance names needs extra rights; fall back to a generic label.
+      const names = new Map<string, string>();
+      try {
+        const m = await call<{ maintenanceid: string; name: string }[]>('maintenance.get', {
+          output: ['maintenanceid', 'name'],
+          maintenanceids: [...new Set(rows.map((r) => r.maintenanceid))],
+        });
+        for (const x of m) names.set(x.maintenanceid, x.name);
+      } catch {
+        // keep the generic label
+      }
+      return rows.map((r) => ({
+        hostid: r.hostid,
+        name: names.get(r.maintenanceid) ?? 'Zabbix maintenance',
+      }));
     },
   };
 }

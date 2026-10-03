@@ -12,10 +12,12 @@ import {
   healthResponseSchema,
   registryCheckReportSchema,
   type RegistryCheckReport,
+  type StatusSnapshot,
 } from '@sbc-noc/shared';
 import { z } from 'zod';
 import { registerMetrics } from './metrics.js';
 import { demoRoutes } from './routes/demo.js';
+import { statusRoutes } from './routes/status.js';
 import { registryRoutes, type RegistryReader } from './routes/registry.js';
 import { readVersion } from './version.js';
 
@@ -31,6 +33,8 @@ export interface AppDeps {
   registry?: RegistryReader;
   /** M38 demo scenarios; only dev/staging set DEMO_MODE=true (ADR-0014). */
   demo?: boolean;
+  /** M15 latest status snapshot (Redis); route registered only when provided. */
+  status?: () => Promise<StatusSnapshot | null>;
 }
 
 const readinessSchema = z.object({
@@ -78,6 +82,7 @@ export async function buildApp(
       tags: [
         { name: 'ops', description: 'สถานะของระบบ' },
         { name: 'registry', description: 'ทะเบียนอุปกรณ์และพื้นที่' },
+        { name: 'status', description: 'สถานะเครือข่ายจาก Zabbix (คำนวณทุก 30 วินาที)' },
         { name: 'demo', description: 'โหมดสาธิต — ข้อมูลสมมติ ไม่ใช่สถานะจริง (dev/staging)' },
       ],
     },
@@ -146,6 +151,7 @@ export async function buildApp(
 
   if (deps.registry) registryRoutes(app, deps.registry);
   if (deps.demo) demoRoutes(app);
+  if (deps.status) statusRoutes(app, deps.status);
 
   return app;
 }
