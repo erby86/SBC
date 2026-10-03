@@ -17,7 +17,13 @@ import { unifiApsJob } from './unifi-aps.js';
 const url = process.env['TEST_DATABASE_URL'];
 const SEED_DIR = fileURLToPath(new URL('../../../../infra/seed/', import.meta.url));
 
-const ap = (name: string, mac: string, ip: string, model = 'U7LR'): UnifiDevice => ({
+const ap = (
+  name: string,
+  mac: string,
+  ip: string,
+  model = 'U7LR',
+  uplink: [string, number] | null = null,
+): UnifiDevice => ({
   mac,
   name,
   model,
@@ -25,6 +31,8 @@ const ap = (name: string, mac: string, ip: string, model = 'U7LR'): UnifiDevice 
   ip,
   version: '8.0.1',
   state: 1,
+  uplinkMac: uplink?.[0] ?? null,
+  uplinkPort: uplink?.[1] ?? null,
 });
 
 describe.skipIf(!url)('unifi-aps job', () => {
@@ -68,13 +76,14 @@ describe.skipIf(!url)('unifi-aps job', () => {
       ap('A2-1', '78:8a:20:d3:00:01', '172.16.0.210'), // code ap-ba-2-1 is taken by the deleted sample
       ap('BFL3-1', '78:8a:20:00:00:31', '172.16.0.131'),
       ap('AC Mesh', '78:8a:20:00:00:99', '172.16.0.199', 'U7MSH'),
-      { ...ap('switch', '00:00:00:00:00:01', '172.16.0.2'), type: 'usw' },
+      ap('AC LR', '78:8a:20:50:1c:d5', '172.16.0.176', 'U7LR', ['00:00:00:00:00:04', 4]),
+      { ...ap('US16BFL-4', '00:00:00:00:00:04', '172.16.0.24', 'US16P150'), type: 'usw' },
     ];
     const result = await recordRun(db, job, 1);
-    expect(result.created).toBe(4);
+    expect(result.created).toBe(5);
     expect(result.detail).toMatchObject({
-      controller_aps: 5,
-      placed: 4,
+      controller_aps: 6,
+      placed: 5,
       unplaced: 1,
       ip_conflicts: 0,
     });
@@ -118,6 +127,14 @@ describe.skipIf(!url)('unifi-aps job', () => {
         model: 'U7LR',
       },
       {
+        code: 'ap-bb-4-p4',
+        display_name: 'AP อาคาร B ชั้น 4 #p4',
+        building: 'bb',
+        level: 4,
+        managed_by: 'ctl-unifi',
+        model: 'U7LR',
+      },
+      {
         code: 'ap-s8-2-1',
         display_name: 'AP 8 เซียน ชั้น 2 #1',
         building: 's8',
@@ -127,7 +144,12 @@ describe.skipIf(!url)('unifi-aps job', () => {
       },
     ]);
     const refs = await db.query(`SELECT 1 FROM core.external_refs WHERE system_code = 'unifi'`);
-    expect(refs.rowCount).toBe(4);
+    expect(refs.rowCount).toBe(5);
+    const uplink = await db.query(`SELECT attributes FROM net.devices WHERE code = 'ap-bb-4-p4'`);
+    expect(uplink.rows[0]?.attributes).toMatchObject({
+      floor_from: 'uplink',
+      unifi_uplink: { device: 'US16BFL-4', port: 4 },
+    });
     expect(await openIssues()).toEqual([{ kind: 'unplaced_ap', external_id: '78:8a:20:00:00:99' }]);
   });
 

@@ -9,28 +9,63 @@ import type { JobDefinition } from './types.js';
 
 export const CONTROLLER_CODE = 'ctl-unifi';
 
-/** AP name → building code + floor + number on the floor. First match wins. */
-export const NAME_RULES: { re: RegExp; building: string }[] = [
-  { re: /^8SFL(\d{1,2})-(\d+)$/i, building: 's8' }, // 8SFL2-1   = 8 เซียน ชั้น 2 ตัวที่ 1
-  { re: /^AF?(\d{1,2})-(\d+)$/i, building: 'ba' }, // A6-1, AF2-1201 = อาคาร A
-  { re: /^BF?L?(\d{1,2})-(\d+)$/i, building: 'bb' }, // BFL3-1, BF5-2 = อาคาร B
+/** AP name → building + floor (+ number on the floor). Named groups b (building), f, n. First match wins. */
+export const NAME_RULES: { re: RegExp; building?: string }[] = [
+  // Uniform name for any building, free text allowed after it: "SP-3-1 Canteen", "BB-1-1 ITB"
+  { re: /^(?<b>sp|i2|i1|b1|b2|s8|ba|bb)-(?<f>\d{1,2})-(?<n>\d+)(?:\s.*)?$/i },
+  { re: /^8SFL(?<f>\d{1,2})-(?<n>\d+)$/i, building: 's8' }, // 8SFL2-1 = 8 เซียน ชั้น 2 ตัวที่ 1
+  { re: /^AF?(?<f>\d{1,2})-(?<n>\d+)$/i, building: 'ba' }, // A6-1, AF2-1201 = อาคาร A
+  { re: /^BF?L?(?<f>\d{1,2})-(?<n>\d+)$/i, building: 'bb' }, // BFL3-1, BF5-2 = อาคาร B
+  { re: /^UAP-AC-7AP(?<f>\d{1,2})F$/i, building: 'ba' }, // UAP-AC-7AP1F = อาคาร A (7 ชั้น) ชั้น 1
+];
+
+/**
+ * Switches that serve only their own floor: an AP with no usable name takes the switch's floor.
+ * Not the building main switches (e.g. US24AFL-4 = m-a4), whose cables run to several floors.
+ */
+export const FLOOR_SWITCH_RULES: { re: RegExp; building: string }[] = [
+  { re: /^US\d+BFL-(?<f>\d{1,2})$/i, building: 'bb' }, // US16BFL-4 = อาคาร B ชั้น 4
 ];
 
 export interface ApPlace {
   building: string;
   floor: number;
   no: string;
+  from: 'name' | 'uplink';
 }
 
-export function parseApName(name: string): ApPlace | null {
-  for (const { re, building } of NAME_RULES) {
-    const m = re.exec(name.trim());
-    if (m) return { building, floor: Number(m[1]), no: String(Number(m[2])) };
+function match(
+  rules: { re: RegExp; building?: string }[],
+  name: string,
+): { building: string; floor: number; n?: string | undefined } | null {
+  for (const { re, building } of rules) {
+    const g = re.exec(name.trim())?.groups;
+    const b = building ?? g?.['b']?.toLowerCase();
+    if (g && b) return { building: b, floor: Number(g['f']), n: g['n'] };
   }
   return null;
 }
 
-export function apCode(p: ApPlace): string {
+export function parseApName(name: string): ApPlace | null {
+  const m = match(NAME_RULES, name);
+  return m && { building: m.building, floor: m.floor, no: String(Number(m.n ?? 1)), from: 'name' };
+}
+
+/** Name first, then the floor switch the AP is cabled to (number = switch port). */
+export function placeAp(
+  ap: Pick<UnifiDevice, 'name' | 'uplinkMac' | 'uplinkPort'>,
+  nameByMac: Map<string, string>,
+): ApPlace | null {
+  const byName = parseApName(ap.name);
+  if (byName) return byName;
+  const sw = ap.uplinkMac ? nameByMac.get(ap.uplinkMac) : undefined;
+  const m = sw ? match(FLOOR_SWITCH_RULES, sw) : null;
+  return (
+    m && { building: m.building, floor: m.floor, no: `p${ap.uplinkPort ?? 0}`, from: 'uplink' }
+  );
+}
+
+export function apCode(p: Pick<ApPlace, 'building' | 'floor' | 'no'>): string {
   return `ap-${p.building}-${p.floor}-${p.no}`;
 }
 
@@ -50,7 +85,9 @@ export function unifiApsJob(
     schedule: { every: 60 * 60_000 },
     attempts: 3,
     async run({ db, runId }) {
-      const aps = (await unifi.devices()).filter((d) => d.type === 'uap');
+      const all = await unifi.devices();
+      const aps = all.filter((d) => d.type === 'uap');
+      const nameByMac = new Map(all.map((d) => [d.mac, d.name || d.model]));
 
       const c = await db.connect();
       let created = 0;
@@ -151,7 +188,10 @@ export function unifiApsJob(
         const seen: string[] = [];
         for (const ap of aps) {
           seen.push(ap.mac);
-          const place = parseApName(ap.name);
+          const place = placeAp(ap, nameByMac);
+          const uplink = ap.uplinkMac
+            ? { device: nameByMac.get(ap.uplinkMac) ?? ap.uplinkMac, port: ap.uplinkPort }
+            : null;
           const floor = place ? floors.get(`${place.building}/${place.floor}`) : undefined;
           let deviceId = refs.get(ap.mac) ?? byMac.get(ap.mac) ?? null;
           const model = await modelId(ap.model);
@@ -161,9 +201,11 @@ export function unifiApsJob(
               `UPDATE net.devices SET hostname = $2, mgmt_ip = $3, mac = $4, firmware_version = $5,
                  model_id = coalesce($6, model_id), managed_by_device_id = $7,
                  floor_id = CASE WHEN location_id IS NULL AND floor_id IS NULL THEN $8 ELSE floor_id END,
+                 attributes = jsonb_set(attributes, '{unifi_uplink}', $9::jsonb),
                  updated_at = now(), row_version = row_version + 1
-               WHERE id = $1 AND (hostname, mgmt_ip, mac, firmware_version, model_id, managed_by_device_id)
-                 IS DISTINCT FROM ($2, $3::inet, $4::macaddr, $5, coalesce($6, model_id), $7)`,
+               WHERE id = $1 AND (hostname, mgmt_ip, mac, firmware_version, model_id, managed_by_device_id,
+                                  attributes->'unifi_uplink')
+                 IS DISTINCT FROM ($2, $3::inet, $4::macaddr, $5, coalesce($6, model_id), $7, $9::jsonb)`,
               [
                 deviceId,
                 ap.name,
@@ -173,6 +215,7 @@ export function unifiApsJob(
                 model,
                 controllerId,
                 floor?.id ?? null,
+                JSON.stringify(uplink),
               ],
             );
             updated += res.rowCount ?? 0;
@@ -197,7 +240,7 @@ export function unifiApsJob(
                 ipFor(ap, null),
                 ap.mac,
                 ap.version,
-                { source: 'unifi', floor_from: 'name' },
+                { source: 'unifi', floor_from: place.from, unifi_uplink: uplink },
               ],
             );
             deviceId = ins.rows[0]?.id as string;

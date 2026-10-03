@@ -12,6 +12,9 @@ export interface UnifiDevice {
   version: string | null;
   /** 1 = connected; anything else is offline/adopting/upgrading. */
   state: number;
+  /** Device this one hangs off (switch port, or the parent AP for mesh). */
+  uplinkMac: string | null;
+  uplinkPort: number | null;
 }
 
 export interface UnifiClient {
@@ -86,6 +89,7 @@ interface RawDevice {
   ip?: string;
   version?: string;
   state?: number;
+  uplink?: { uplink_mac?: string; uplink_remote_port?: number };
 }
 
 export function createUnifiClient(opts: UnifiOptions, http?: HttpRequest): UnifiClient {
@@ -130,6 +134,8 @@ export function createUnifiClient(opts: UnifiOptions, http?: HttpRequest): Unifi
           ip: d.ip || null,
           version: d.version || null,
           state: d.state ?? 0,
+          uplinkMac: d.uplink?.uplink_mac?.toLowerCase() || null,
+          uplinkPort: d.uplink?.uplink_remote_port ?? null,
         }));
     },
   };
