@@ -9,7 +9,7 @@ M12 กำหนดผู้ใช้ API อ่านอย่างเดี�
 
 ## การตัดสินใจ
 
-- ผู้ใช้ที่ 3 `noc-api-sync` (role `noc-api-sync`, กลุ่ม `noc-api-sync`, frontend Disabled) API allow list: `host.get`, `hostgroup.get`, `host.update` (M11 จะเพิ่ม `trigger.get` + dependency methods)
+- ผู้ใช้ที่ 3 `noc-api-sync` (role `noc-api-sync` ประเภท **Admin** — Zabbix ให้เรียก `host.update` ได้เฉพาะ Admin ขึ้นไป; UI เปิดแค่ Dashboards, actions ปิดทั้งหมด; กลุ่ม `noc-api-sync`, frontend Disabled) API allow list: `host.get`, `hostgroup.get`, `host.update` (M11 จะเพิ่ม `trigger.get` + dependency methods)
 - dev/staging: กลุ่มผู้ใช้ได้ **Read-write เฉพาะกลุ่ม host `99-NOC-Test`** (host ทดสอบ ไม่มี template ไม่แจ้งเตือน) — token เก็บเป็น `ZABBIX_TOKEN_SYNC` ใน `dev.env`
 - prod (M17): token แยก, Read-write ที่กลุ่มเครือข่าย `01-`/`02-`/`03-`
 - งาน `zabbix-tags` เขียนเฉพาะ tag 5 ตัวที่ NOC ดูแล คง tag อื่นของ host ไว้ และไม่เขียนถ้าค่าเท่าเดิม; ขอบเขต host ที่เขียนได้ถูกบังคับด้วยสิทธิ์ใน Zabbix ไม่ใช่โค้ด
