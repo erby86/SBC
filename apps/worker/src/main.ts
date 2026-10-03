@@ -6,6 +6,7 @@ import { createZabbixClient } from './connectors/zabbix.js';
 import { registryStats } from './jobs/registry-stats.js';
 import type { JobDefinition } from './jobs/types.js';
 import { zabbixMatchJob } from './jobs/zabbix-match.js';
+import { zabbixTagsJob } from './jobs/zabbix-tags.js';
 import { startRuntime } from './runtime/queue.js';
 import { start } from './start.js';
 
@@ -28,6 +29,17 @@ if (zabbixUrl && zabbixToken) {
   jobs.push(zabbixMatchJob(createZabbixClient(zabbixUrl, zabbixToken)));
 } else {
   logger.warn('ZABBIX_URL / ZABBIX_TOKEN_READ not set — zabbix-match disabled');
+}
+// ADR-0019: separate write token; which hosts it can change is limited by Zabbix permissions.
+const zabbixSyncToken = process.env['ZABBIX_TOKEN_SYNC'];
+const tagGroups = (process.env['ZABBIX_TAG_GROUPS'] ?? '')
+  .split(',')
+  .map((g) => g.trim())
+  .filter(Boolean);
+if (zabbixUrl && zabbixSyncToken) {
+  jobs.push(zabbixTagsJob(createZabbixClient(zabbixUrl, zabbixSyncToken), tagGroups));
+} else {
+  logger.warn('ZABBIX_TOKEN_SYNC not set — zabbix-tags disabled');
 }
 const runtime = await startRuntime({
   redisUrl: env.REDIS_URL,

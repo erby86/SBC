@@ -38,11 +38,15 @@ describe.skipIf(!url)('zabbix-match job', () => {
   const dbName = `sbc_noc_zbx_${Date.now()}`;
   let admin: DbPool;
   let db: DbPool;
-  const fake: ZabbixClient = { hosts: async () => HOSTS };
+  const fake: ZabbixClient = {
+    hosts: async () => HOSTS,
+    hostsWithTags: async () => HOSTS.map((h) => ({ ...h, tags: [] })),
+    setHostTags: async () => undefined,
+  };
 
   beforeAll(async () => {
     admin = createDbPool(url ?? '');
-    await admin.query(`CREATE DATABASE ${dbName}`);
+    await admin.query(`CREATE DATABASE ${dbName} TEMPLATE template0`);
     const target = new URL(url ?? '');
     target.pathname = `/${dbName}`;
     db = createDbPool(target.toString());

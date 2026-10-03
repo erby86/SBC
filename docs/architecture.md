@@ -100,3 +100,4 @@ sbc-noc/
 - [ADR-0016: ความปลอดภัยใน CI](adr/0016-ci-security.md)
 - [ADR-0017: เวลา](adr/0017-time.md)
 - [ADR-0018: migration ฐานข้อมูล](adr/0018-db-migrations.md)
+- [ADR-0019: ผู้ใช้ Zabbix สำหรับงานซิงก์](adr/0019-zabbix-sync-user.md)

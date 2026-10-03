@@ -19,7 +19,7 @@ describe.skipIf(!url)('M04 seed import', () => {
 
   beforeAll(async () => {
     admin = createDbPool(url ?? '');
-    await admin.query(`CREATE DATABASE ${dbName}`);
+    await admin.query(`CREATE DATABASE ${dbName} TEMPLATE template0`);
     const target = new URL(url ?? '');
     target.pathname = `/${dbName}`;
     pool = createDbPool(target.toString());

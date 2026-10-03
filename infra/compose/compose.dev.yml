@@ -69,6 +69,9 @@ services:
       # Read-only Zabbix API user noc-api-read (M12); worker only, not the api.
       ZABBIX_URL: ${ZABBIX_URL:-}
       ZABBIX_TOKEN_READ: ${ZABBIX_TOKEN_READ:-}
+      # Write user noc-api-sync (ADR-0019); dev can only write group 99-NOC-Test (ADR-0013).
+      ZABBIX_TOKEN_SYNC: ${ZABBIX_TOKEN_SYNC:-}
+      ZABBIX_TAG_GROUPS: ${ZABBIX_TAG_GROUPS:-99-NOC-Test}
     depends_on:
       noc-dev-migrate: { condition: service_completed_successfully }
     networks: [internal, shared]

@@ -46,7 +46,7 @@ describe.skipIf(!dbUrl || !redisUrl)('worker runtime (BullMQ + sync.runs)', () =
 
   beforeAll(async () => {
     admin = createDbPool(dbUrl ?? '');
-    await admin.query(`CREATE DATABASE ${dbName}`);
+    await admin.query(`CREATE DATABASE ${dbName} TEMPLATE template0`);
     const target = new URL(dbUrl ?? '');
     target.pathname = `/${dbName}`;
     db = createDbPool(target.toString());

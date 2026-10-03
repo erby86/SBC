@@ -1,5 +1,5 @@
 // Integration test against a real PostgreSQL 16. Runs only when TEST_DATABASE_URL is set
-// (CI: build.yml `db-integration` job with a postgres service). The database must be empty.
+// (CI: build.yml `db-integration` job with a postgres service). Creates and drops its own database.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -10,15 +10,23 @@ import { loadMigrations, migrate } from './migrate.js';
 const url = process.env['TEST_DATABASE_URL'];
 
 describe.skipIf(!url)('schema v1.1 on PostgreSQL', () => {
+  const dbName = `sbc_noc_schema_${Date.now()}`;
+  let admin: DbPool;
   let pool: DbPool;
 
   beforeAll(async () => {
-    pool = createDbPool(url ?? '');
+    admin = createDbPool(url ?? '');
+    await admin.query(`CREATE DATABASE ${dbName} TEMPLATE template0`);
+    const target = new URL(url ?? '');
+    target.pathname = `/${dbName}`;
+    pool = createDbPool(target.toString());
     await migrate(pool, await loadMigrations());
-  });
+  }, 60_000);
 
   afterAll(async () => {
-    await pool.end();
+    await pool?.end();
+    await admin?.query(`DROP DATABASE IF EXISTS ${dbName}`);
+    await admin?.end();
   });
 
   it('creates every table of design v1.2 section 2', async () => {

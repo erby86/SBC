@@ -6,8 +6,21 @@ export interface ZabbixHost {
   ips: string[];
 }
 
+export interface ZabbixTag {
+  tag: string;
+  value: string;
+}
+
+export interface ZabbixTaggedHost extends ZabbixHost {
+  tags: ZabbixTag[];
+}
+
 export interface ZabbixClient {
   hosts(): Promise<ZabbixHost[]>;
+  /** Hosts with their tags; optionally only those in the named host groups. */
+  hostsWithTags(groupNames?: string[]): Promise<ZabbixTaggedHost[]>;
+  /** Replaces the full tag list of a host (Zabbix semantics of host.update tags). */
+  setHostTags(hostid: string, tags: ZabbixTag[]): Promise<void>;
 }
 
 export function createZabbixClient(
@@ -41,6 +54,41 @@ export function createZabbixClient(
         name: h.name,
         ips: [...new Set(h.interfaces.map((i) => i.ip).filter(Boolean))],
       }));
+    },
+    async hostsWithTags(groupNames) {
+      let groupids: string[] | undefined;
+      if (groupNames?.length) {
+        const groups = await call<{ groupid: string; name: string }[]>('hostgroup.get', {
+          output: ['groupid', 'name'],
+          filter: { name: groupNames },
+        });
+        groupids = groups.map((g) => g.groupid);
+        if (groupids.length === 0) return [];
+      }
+      const rows = await call<
+        {
+          hostid: string;
+          host: string;
+          name: string;
+          interfaces: { ip: string }[];
+          tags: ZabbixTag[];
+        }[]
+      >('host.get', {
+        output: ['hostid', 'host', 'name'],
+        selectInterfaces: ['ip'],
+        selectTags: ['tag', 'value'],
+        ...(groupids ? { groupids } : {}),
+      });
+      return rows.map((h) => ({
+        hostid: h.hostid,
+        host: h.host,
+        name: h.name,
+        ips: [...new Set(h.interfaces.map((i) => i.ip).filter(Boolean))],
+        tags: h.tags.map((t) => ({ tag: t.tag, value: t.value })),
+      }));
+    },
+    async setHostTags(hostid, tags) {
+      await call('host.update', { hostid, tags });
     },
   };
 }
