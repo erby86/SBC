@@ -144,6 +144,19 @@ describe('NOC screen (M18 frame, M19 scene)', () => {
     expect(screen.queryByTestId('info')).toBeNull();
   });
 
+  it('switches between dark and light and remembers the choice', () => {
+    renderAt('/', <App />);
+    const btn = screen.getByTestId('theme-toggle');
+    act(() => btn.click());
+    const first = document.documentElement.dataset['theme'];
+    expect(['dark', 'light']).toContain(first);
+    expect(localStorage.getItem('noc-theme')).toBe(first);
+    act(() => btn.click());
+    expect(document.documentElement.dataset['theme']).toBe(first === 'dark' ? 'light' : 'dark');
+    localStorage.removeItem('noc-theme');
+    delete document.documentElement.dataset['theme'];
+  });
+
   it('has a back office page with the API version', async () => {
     renderAt('/admin', <App />);
     await waitFor(() => expect(screen.getByTestId('api-status').textContent).toContain('v0.2.0'));

@@ -12,6 +12,7 @@ import { defaultWsUrl, useLiveStatus, type LiveMode } from '../data/live.js';
 import { buildSceneModel, deviceKind, type SceneModel } from '../scene/model.js';
 import type { NocScene, Selection } from '../scene/NocScene.js';
 import { Scene3D, saveEco, savedEco, useHint } from './Scene3D.js';
+import { useTheme } from './theme.js';
 
 type RightTab = 'inc' | 'hist' | 'unl';
 type SheetTab = 'inc' | 'bld' | 'hist' | 'find';
@@ -44,6 +45,7 @@ function TopBar({
   view: ViewControls;
   onBigNum: () => void;
 }) {
+  const theme = useTheme();
   const open = snap?.incidents.filter((i) => !i.ack).length ?? 0;
   const c = snap?.counts;
   return (
@@ -119,6 +121,14 @@ function TopBar({
         </button>
         <button className="wide" disabled title="มาใน M20">
           โหมดทีวี
+        </button>
+        <button
+          onClick={theme.toggle}
+          aria-label={theme.theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'}
+          title={theme.theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'}
+          data-testid="theme-toggle"
+        >
+          {theme.theme === 'dark' ? '☀ สว่าง' : '☾ มืด'}
         </button>
         <button
           className="wide"
