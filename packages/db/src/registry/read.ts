@@ -11,6 +11,7 @@ import type {
   Link,
   Location,
   SearchHit,
+  Waypoint,
 } from '@sbc-noc/shared';
 import type pg from 'pg';
 
@@ -362,14 +363,24 @@ export async function listLinks(db: Q): Promise<Link[]> {
   }));
 }
 
-/** viz.link_routes.waypoints is free jsonb: keep [x, z] pairs or {x, z} objects, drop the rest. */
-export function toWaypoints(v: unknown): [number, number][] {
+/**
+ * viz.link_routes.waypoints is free jsonb: keep [x, z] / [x, y, z] arrays or {x, y?, z} objects,
+ * drop the rest. y is the cable height at that bend (prototype routes, M19).
+ */
+export function toWaypoints(v: unknown): Waypoint[] {
   if (!Array.isArray(v)) return [];
-  const out: [number, number][] = [];
+  const num = (n: unknown): n is number => typeof n === 'number' && isFinite(n);
+  const out: Waypoint[] = [];
   for (const p of v as unknown[]) {
-    const [x, z] = Array.isArray(p) ? p : [(p as { x?: unknown })?.x, (p as { z?: unknown })?.z];
-    if (typeof x === 'number' && typeof z === 'number' && isFinite(x) && isFinite(z))
-      out.push([x, z]);
+    let x: unknown, y: unknown, z: unknown;
+    if (Array.isArray(p)) {
+      if (p.length === 2) [x, z] = p as unknown[];
+      else if (p.length === 3) [x, y, z] = p as unknown[];
+    } else if (p && typeof p === 'object') {
+      ({ x, y, z } = p as { x?: unknown; y?: unknown; z?: unknown });
+    }
+    if (!num(x) || !num(z)) continue;
+    out.push(num(y) ? [x, y, z] : [x, z]);
   }
   return out;
 }

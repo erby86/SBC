@@ -508,11 +508,17 @@ export function buildSceneModel(layout: Layout): SceneModel {
       const sb = a.building ? B.get(a.building) : undefined;
       const tb = b.building ? B.get(b.building) : undefined;
       if (l.waypoints.length) {
+        // bends from the registry ([x, z] at the lane height, or [x, y, z] as drawn in the prototype)
+        const bends = l.waypoints.map((w) =>
+          w.length === 3 ? { x: w[0], y: w[1], z: w[2] } : { x: w[0], y, z: w[1] },
+        );
+        const first = bends[0] as Vec3;
+        const last = bends[bends.length - 1] as Vec3;
         points = dedupe([
           a.pos,
-          { ...a.pos, y },
-          ...l.waypoints.map(([x, z]) => ({ x, y, z })),
-          { ...b.pos, y },
+          { ...a.pos, y: first.y },
+          ...bends,
+          { ...b.pos, y: last.y },
           b.pos,
         ]);
       } else if (sb && tb && sb !== tb) {

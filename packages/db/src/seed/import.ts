@@ -3,6 +3,7 @@
 // with the same files writes nothing (no row_version bump, no audit entries).
 import type pg from 'pg';
 import type { SeedFiles } from './files.js';
+import { applyPrototypeRoutes } from './routes.js';
 import {
   buildingForm,
   deviceStatus,
@@ -427,6 +428,10 @@ export async function importSeed(pool: pg.Pool, seed: SeedFiles): Promise<SeedRe
       );
       written.n += res.rowCount ?? 0;
     }
+
+    // ---- 3D: device positions and cable bends of the prototype (M19, fill-only) ----
+    const routes = await applyPrototypeRoutes(c, seed.routes);
+    written.n += routes.placements + routes.routes;
 
     const report = await countRows(c, seed);
     await c.query('COMMIT');

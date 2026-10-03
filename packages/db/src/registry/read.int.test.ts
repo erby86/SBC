@@ -71,7 +71,14 @@ describe.skipIf(!url)('registry reads (M14)', () => {
       cable: 'FO-B2-B1-01',
       color: '#00e5ff',
       lane: null,
-      waypoints: [],
+    });
+    // cable bends of the prototype (M19), [x, y, z]
+    expect(fiber?.waypoints.length).toBeGreaterThan(0);
+    expect(fiber?.waypoints.every((w) => w.length === 3)).toBe(true);
+    expect(layout.devices.find((d) => d.code === 'c2116')?.placement).toMatchObject({
+      mode: 'manual',
+      u: 0.26,
+      v: 0,
     });
   });
 

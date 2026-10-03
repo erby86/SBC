@@ -1,4 +1,4 @@
-import type { Device, Layout } from '@sbc-noc/shared';
+import type { Device, Layout, Waypoint } from '@sbc-noc/shared';
 import { describe, expect, it } from 'vitest';
 import {
   buildSceneModel,
@@ -63,7 +63,7 @@ const link = (a: string, b: string, media: string, color: string | null = null) 
   speedMbps: null,
   color,
   lane: null,
-  waypoints: [] as [number, number][],
+  waypoints: [] as Waypoint[],
 });
 
 // b2 (server room) south, b1 in the middle, i1 (ring) north: like the school, without rotation
@@ -256,6 +256,30 @@ describe('buildSceneModel — cable runs', () => {
     });
     const pts = m.links[0]?.points ?? [];
     expect(pts.some((p) => p.x === 30 && p.z === 10)).toBe(true);
+  });
+
+  it('keeps the cable height of [x, y, z] bends (prototype routes)', () => {
+    const m = buildSceneModel({
+      ...layout,
+      links: [
+        {
+          ...link('c1036', 'm-i1', 'fiber'),
+          waypoints: [
+            [30, 0.95, 10],
+            [30, 0.95, -15],
+          ],
+        },
+      ],
+    });
+    const pts = m.links[0]?.points ?? [];
+    const c = dev('c1036').pos;
+    const i1 = dev('m-i1').pos;
+    expect(pts[1]).toEqual({ x: c.x, y: 0.95, z: c.z });
+    expect(pts.slice(2, 4)).toEqual([
+      { x: 30, y: 0.95, z: 10 },
+      { x: 30, y: 0.95, z: -15 },
+    ]);
+    expect(pts[4]).toEqual({ x: i1.x, y: 0.95, z: i1.z });
   });
 });
 

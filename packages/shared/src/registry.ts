@@ -114,9 +114,11 @@ export const linkSchema = z.object({
   cableCores: z.array(z.number().int()).nullable(),
   speedMbps: nullableInt,
   color: nullableStr,
-  /** viz.link_routes: parallel lane of the cable run and hand-drawn bends [x, z] (M19). */
+  /** viz.link_routes: parallel lane of the cable run and its bends [x, z] or [x, y, z] (M19). */
   lane: nullableInt,
-  waypoints: z.array(z.tuple([z.number(), z.number()])),
+  waypoints: z.array(
+    z.union([z.tuple([z.number(), z.number()]), z.tuple([z.number(), z.number(), z.number()])]),
+  ),
 });
 
 export const cableSchema = z.object({
@@ -160,6 +162,7 @@ export type Location = z.infer<typeof locationSchema>;
 export type Device = z.infer<typeof deviceSchema>;
 export type DeviceDetail = z.infer<typeof deviceDetailSchema>;
 export type Link = z.infer<typeof linkSchema>;
+export type Waypoint = Link['waypoints'][number];
 export type Cable = z.infer<typeof cableSchema>;
 export type Layout = z.infer<typeof layoutSchema>;
 export type SearchHit = z.infer<typeof searchHitSchema>;

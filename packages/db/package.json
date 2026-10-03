@@ -25,6 +25,7 @@
     "migrate": "node dist/migrate-cli.js",
     "db:pull": "node scripts/pull-schema.mjs",
     "seed": "node dist/seed-cli.js",
+    "routes": "node dist/routes-cli.js",
     "check": "node dist/check-cli.js"
   },
   "dependencies": {
