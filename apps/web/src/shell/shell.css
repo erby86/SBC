@@ -411,3 +411,157 @@
   font-size: 1rem;
   margin: 0 0 0.5rem;
 }
+.admin {
+  max-width: 72rem;
+}
+.admin-nav {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+.admin-nav a {
+  padding: 0.3rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  text-decoration: none;
+  color: var(--ink);
+  background: var(--panel);
+}
+.admin-nav a.active {
+  border-color: var(--main);
+  box-shadow: inset 0 0 0 1px var(--main);
+}
+.editor-name {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+}
+.warnbox {
+  margin: 0;
+  padding: 0.4rem 0.7rem;
+  border: 1px dashed var(--warn);
+  border-radius: 0.4rem;
+  font-size: 0.9rem;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.6rem;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+.toolbar h2 {
+  margin: 0 auto 0 0;
+}
+.table-wrap {
+  overflow-x: auto;
+}
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.tbl th,
+.tbl td {
+  text-align: left;
+  padding: 0.3rem 0.45rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.tbl th {
+  color: var(--ink-2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tbl small {
+  display: block;
+}
+.grid-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.6rem 0.9rem;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.88rem;
+}
+.field.check {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+}
+.flabel {
+  color: var(--ink-2);
+}
+.field.bad input,
+.field.bad select {
+  border-color: var(--down);
+}
+.fhint {
+  color: var(--ink-2);
+  font-size: 0.78rem;
+}
+.ferr {
+  color: var(--down);
+  font-size: 0.8rem;
+}
+.ok-msg {
+  color: var(--main);
+  font-size: 0.85rem;
+}
+.actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.actions button[type='submit'] {
+  border-color: var(--main);
+}
+button.danger {
+  border-color: var(--down);
+  color: var(--down);
+}
+button.linkish {
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: var(--wan);
+  padding: 0;
+  text-decoration: underline;
+}
+.inline-editor {
+  margin: 0.6rem 0;
+  padding: 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+}
+.history {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  grid-column: 1 / -1;
+}
+.history h3 {
+  font-size: 0.95rem;
+  margin: 0 0 0.3rem;
+}
+.history ol {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+.history ul {
+  margin: 0.1rem 0 0.4rem;
+  color: var(--ink-2);
+}
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+body:has(.admin) {
+  overflow: auto;
+}

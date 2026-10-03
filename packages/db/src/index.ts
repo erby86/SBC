@@ -33,3 +33,17 @@ export {
   search,
 } from './registry/read.js';
 export type { DeviceFilter, LocationFilter } from './registry/read.js';
+export {
+  createDevice,
+  createLocation,
+  deleteDevice,
+  getDeviceEdit,
+  getEditOptions,
+  getHistory,
+  getLocationEdit,
+  listUnplacedAps,
+  placeUnplacedAp,
+  RegistryEditError,
+  updateDevice,
+  updateLocation,
+} from './registry/write.js';

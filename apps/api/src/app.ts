@@ -19,6 +19,7 @@ import { registerMetrics } from './metrics.js';
 import { demoRoutes } from './routes/demo.js';
 import { statusRoutes } from './routes/status.js';
 import { liveRoutes, type LiveHub } from './routes/live.js';
+import { registryEditRoutes, type RegistryEditor } from './routes/registry-edit.js';
 import { registryRoutes, type RegistryReader } from './routes/registry.js';
 import { readVersion } from './version.js';
 
@@ -38,6 +39,8 @@ export interface AppDeps {
   status?: () => Promise<StatusSnapshot | null>;
   /** M16 live status hub (WebSocket /status/ws). */
   live?: LiveHub;
+  /** M21 registry editor; only with REGISTRY_EDIT=true (dev until login, ADR-0020). */
+  registryEdit?: RegistryEditor;
 }
 
 const readinessSchema = z.object({
@@ -85,6 +88,7 @@ export async function buildApp(
       tags: [
         { name: 'ops', description: 'สถานะของระบบ' },
         { name: 'registry', description: 'ทะเบียนอุปกรณ์และพื้นที่' },
+        { name: 'registry-edit', description: 'แก้ทะเบียน (เฉพาะ dev จนกว่าจะมีการเข้าสู่ระบบ)' },
         { name: 'status', description: 'สถานะเครือข่ายจาก Zabbix (คำนวณทุก 30 วินาที)' },
         { name: 'demo', description: 'โหมดสาธิต — ข้อมูลสมมติ ไม่ใช่สถานะจริง (dev/staging)' },
       ],
@@ -156,6 +160,7 @@ export async function buildApp(
   if (deps.demo) demoRoutes(app);
   if (deps.status) statusRoutes(app, deps.status);
   if (deps.live) await liveRoutes(app, deps.live);
+  if (deps.registryEdit) registryEditRoutes(app, deps.registryEdit);
 
   return app;
 }

@@ -55,6 +55,8 @@ services:
       <<: *node-env
       # Demo scenarios at /api/demo/* (M38, ADR-0014) — dev only; prod leaves it false.
       DEMO_MODE: ${DEMO_MODE:-true}
+      # Registry editor without login (M21, ADR-0020) — dev only until M23.
+      REGISTRY_EDIT: ${REGISTRY_EDIT:-true}
     depends_on:
       noc-dev-migrate: { condition: service_completed_successfully }
     networks: [internal, shared]

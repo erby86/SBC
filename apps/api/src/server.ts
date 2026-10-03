@@ -1,4 +1,15 @@
 import {
+  createDevice,
+  createLocation,
+  deleteDevice,
+  getDeviceEdit,
+  getEditOptions,
+  getHistory,
+  getLocationEdit,
+  listUnplacedAps,
+  placeUnplacedAp,
+  updateDevice,
+  updateLocation,
   createDbPool,
   getBuilding,
   getDevice,
@@ -24,6 +35,7 @@ const env = parseEnv(
     PORT: z.coerce.number().int().positive().default(3001),
     HOST: z.string().default('0.0.0.0'),
     DEMO_MODE: z.stringbool().default(false),
+    REGISTRY_EDIT: z.stringbool().default(false),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   }),
   process.env,
@@ -77,6 +89,24 @@ const app = await buildApp(
     },
     demo: env.DEMO_MODE,
     status: readSnapshot,
+    ...(env.REGISTRY_EDIT
+      ? {
+          registryEdit: {
+            options: () => getEditOptions(pool),
+            device: (code) => getDeviceEdit(pool, code),
+            updateDevice: (code, patch, actor) => updateDevice(pool, code, patch, actor),
+            createDevice: (input, actor) => createDevice(pool, input, actor),
+            deleteDevice: (code, rv, actor) => deleteDevice(pool, code, rv, actor),
+            location: (loc) => getLocationEdit(pool, loc),
+            updateLocation: (loc, patch, actor) => updateLocation(pool, loc, patch, actor),
+            createLocation: (input, actor) => createLocation(pool, input, actor),
+            unplaced: () => listUnplacedAps(pool),
+            placeAp: (system, mac, where, actor) =>
+              placeUnplacedAp(pool, system, mac, where, actor),
+            history: (kind, code) => getHistory(pool, kind, code),
+          },
+        }
+      : {}),
     live,
     registryChecks: () => runRegistryChecks(pool),
     registry: {
@@ -106,6 +136,8 @@ async function shutdown(signal: string): Promise<void> {
 process.once('SIGTERM', () => void shutdown('SIGTERM'));
 process.once('SIGINT', () => void shutdown('SIGINT'));
 
+if (env.REGISTRY_EDIT)
+  app.log.warn('REGISTRY_EDIT on: registry editor without login (ADR-0020, dev only)');
 if (env.DEMO_MODE) app.log.warn('DEMO_MODE on: /demo/* serves demo scenarios (ADR-0014)');
 
 try {
