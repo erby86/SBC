@@ -62,7 +62,11 @@ if (unifiUrl && unifiUser && unifiPassword && (unifiCaFile || unifiInsecure)) {
         site: process.env['UNIFI_SITE'] || 'default',
         ...(unifiCaFile ? { ca: readFileSync(unifiCaFile, 'utf8') } : { insecure: true }),
       }),
-      { name: `UniFi OS Server (${host})`, ip: /^[\d.]+$/.test(host) ? host : null },
+      {
+        name: `UniFi OS Server (${host})`,
+        ip: /^[\d.]+$/.test(host) ? host : null,
+        code: process.env['UNIFI_CONTROLLER_CODE'] ?? '',
+      },
     ),
   );
 } else {

@@ -185,6 +185,25 @@ describe.skipIf(!url)('unifi-aps job', () => {
     expect(await openIssues()).toEqual([]);
   });
 
+  it('fails instead of reporting every AP gone when the controller answers empty', async () => {
+    const saved = devices;
+    devices = [];
+    await expect(recordRun(db, job, 1)).rejects.toThrow('controller lists no APs');
+    devices = saved;
+    expect(await openIssues()).toEqual([]);
+  });
+
+  it('moves managed_by to another controller code (UDM Pro Max)', async () => {
+    const udm = unifiApsJob(fake, { name: 'UDM Pro Max', ip: null, code: 'udm' });
+    await recordRun(db, udm, 1);
+    const r = await db.query<{ code: string; n: string }>(
+      `SELECT m.code, count(*) AS n FROM net.devices d JOIN net.devices m ON m.id = d.managed_by_device_id
+       WHERE d.role_code = 'ap' AND d.deleted_at IS NULL GROUP BY m.code`,
+    );
+    expect(r.rows).toEqual([{ code: 'udm', n: '6' }]);
+    await recordRun(db, job, 1); // back to ctl-unifi for the next test
+  });
+
   it('reports APs that left the controller', async () => {
     devices = devices.filter((d) => d.name !== 'A6-1');
     await recordRun(db, job, 1);

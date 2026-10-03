@@ -7,7 +7,8 @@
 import type { UnifiClient, UnifiDevice } from '../connectors/unifi.js';
 import type { JobDefinition } from './types.js';
 
-export const CONTROLLER_CODE = 'ctl-unifi';
+/** Registry code of the controller APs are managed_by. Moving to the UDM Pro Max: set it to `udm`. */
+export const DEFAULT_CONTROLLER_CODE = 'ctl-unifi';
 
 /** AP name → building + floor (+ number on the floor). Named groups b (building), f, n. First match wins. */
 export const NAME_RULES: { re: RegExp; building?: string }[] = [
@@ -77,7 +78,7 @@ interface IssueRow {
 
 export function unifiApsJob(
   unifi: UnifiClient,
-  controller: { name: string; ip: string | null },
+  controller: { name: string; ip: string | null; code?: string },
 ): JobDefinition {
   return {
     name: 'unifi-aps',
@@ -87,6 +88,7 @@ export function unifiApsJob(
     async run({ db, runId }) {
       const all = await unifi.devices();
       const aps = all.filter((d) => d.type === 'uap');
+      const controllerCode = controller.code || DEFAULT_CONTROLLER_CODE;
       const nameByMac = new Map(all.map((d) => [d.mac, d.name || d.model]));
 
       const c = await db.connect();
@@ -102,7 +104,7 @@ export function unifiApsJob(
         const ctl =
           (
             await c.query<{ id: string }>(`SELECT id FROM net.devices WHERE code = $1`, [
-              CONTROLLER_CODE,
+              controllerCode,
             ])
           ).rows[0] ??
           (
@@ -112,7 +114,7 @@ export function unifiApsJob(
                        (SELECT $3::inet WHERE $3::inet IS NOT NULL AND NOT EXISTS (
                           SELECT 1 FROM net.devices WHERE mgmt_ip = $3::inet AND deleted_at IS NULL)))
                RETURNING id`,
-              [CONTROLLER_CODE, controller.name, controller.ip],
+              [controllerCode, controller.name, controller.ip],
             )
           ).rows[0];
         const controllerId = ctl?.id as string;
@@ -137,6 +139,13 @@ export function unifiApsJob(
           )
         ).rows) {
           refs.set(r.external_id, r.entity_id);
+        }
+        // An empty answer after a controller move (wrong UNIFI_SITE, new site) must not mark every
+        // AP as gone: fail the run instead so it shows up in sync.runs.
+        if (aps.length === 0 && refs.size > 0) {
+          throw new Error(
+            `unifi: controller lists no APs but ${refs.size} are registered — check UNIFI_URL / UNIFI_SITE`,
+          );
         }
         const byMac = new Map<string, string>();
         const byIp = new Map<string, string>();

@@ -77,6 +77,8 @@ services:
       UNIFI_USERNAME: ${UNIFI_USERNAME:-}
       UNIFI_PASSWORD: ${UNIFI_PASSWORD:-}
       UNIFI_SITE: ${UNIFI_SITE:-default}
+      # Registry code of the controller (ctl-unifi now; udm after the move to the UDM Pro Max).
+      UNIFI_CONTROLLER_CODE: ${UNIFI_CONTROLLER_CODE:-}
       # Pinned controller certificate inside /run/noc-certs (mounted read-only below).
       UNIFI_CA_FILE: ${UNIFI_CA_FILE:-}
       UNIFI_TLS_INSECURE: ${UNIFI_TLS_INSECURE:-false}
