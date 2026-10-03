@@ -1,4 +1,18 @@
-import { createDbPool, pingDatabase, runRegistryChecks } from '@sbc-noc/db';
+import {
+  createDbPool,
+  getBuilding,
+  getDevice,
+  getLayout,
+  getLocation,
+  listBuildings,
+  listCables,
+  listDevices,
+  listLinks,
+  listLocations,
+  pingDatabase,
+  runRegistryChecks,
+  search,
+} from '@sbc-noc/db';
 import { parseEnv, serverEnvSchema } from '@sbc-noc/shared';
 import { Redis } from 'ioredis';
 import { z } from 'zod';
@@ -34,6 +48,18 @@ const app = await buildApp(
       redis: () => redis.ping(),
     },
     registryChecks: () => runRegistryChecks(pool),
+    registry: {
+      layout: () => getLayout(pool),
+      buildings: () => listBuildings(pool),
+      building: (code) => getBuilding(pool, code),
+      locations: (f) => listLocations(pool, f),
+      location: (code) => getLocation(pool, code),
+      devices: (f) => listDevices(pool, f),
+      device: (code) => getDevice(pool, code),
+      links: () => listLinks(pool),
+      cables: () => listCables(pool),
+      search: (q, limit) => search(pool, q, limit),
+    },
   },
 );
 

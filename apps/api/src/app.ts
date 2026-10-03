@@ -1,3 +1,4 @@
+import fastifyEtag from '@fastify/etag';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
@@ -14,6 +15,7 @@ import {
 } from '@sbc-noc/shared';
 import { z } from 'zod';
 import { registerMetrics } from './metrics.js';
+import { registryRoutes, type RegistryReader } from './routes/registry.js';
 import { readVersion } from './version.js';
 
 /** A dependency probe for /health/ready; rejects when the dependency is down. */
@@ -24,6 +26,8 @@ export interface AppDeps {
   checkTimeoutMs?: number;
   /** M07 registry completeness report (read-only). Route is registered only when provided. */
   registryChecks?: () => Promise<RegistryCheckReport>;
+  /** M14 registry/layout reads. Routes are registered only when provided. */
+  registry?: RegistryReader;
 }
 
 const readinessSchema = z.object({
@@ -77,6 +81,12 @@ export async function buildApp(
   });
   await app.register(fastifySwaggerUi, { routePrefix: '/docs' });
   registerMetrics(app);
+  // Weak ETag from the body hash; clients revalidate every time (no stale registry data).
+  await app.register(fastifyEtag, { weak: true });
+  app.addHook('onSend', async (req, reply) => {
+    if (req.method === 'GET' && req.url.startsWith('/registry/'))
+      reply.header('Cache-Control', 'no-cache');
+  });
 
   // Liveness: the process is up. Never touches dependencies.
   app.get(
@@ -129,6 +139,8 @@ export async function buildApp(
       async () => registryChecks(),
     );
   }
+
+  if (deps.registry) registryRoutes(app, deps.registry);
 
   return app;
 }

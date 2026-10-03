@@ -19,3 +19,17 @@ export { CHECKS, runRegistryChecks } from './checks.js';
 export { importSeed } from './seed/import.js';
 export { readSeedFiles } from './seed/files.js';
 export { parseCsv } from './seed/csv.js';
+export {
+  getBuilding,
+  getDevice,
+  getLayout,
+  getLocation,
+  listAreas,
+  listBuildings,
+  listCables,
+  listDevices,
+  listLinks,
+  listLocations,
+  search,
+} from './registry/read.js';
+export type { DeviceFilter, LocationFilter } from './registry/read.js';
