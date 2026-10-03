@@ -16,6 +16,7 @@ sbc-noc — ระบบ NOC ผังเครือข่าย 3 มิติ
 
 - ทำทีละโมดูลตาม `docs/baseline/modules-by-gate-v2.md` ตรวจขอบเขตและเงื่อนไข "เสร็จเมื่อ" ของโมดูลก่อนเริ่มเสมอ
 - จบโมดูล: รายงานผลตามเงื่อนไขเสร็จ อัปเดต `docs/modules/Mxx.md` และไฟล์นี้ แล้ว**รอผู้ใช้ยืนยันก่อนเริ่มโมดูลถัดไป**
+- ส่งงาน: Claude Code push ที่ GitHub `erby86/SBC` branch `claude/new-session-cawqf1` → ผู้ใช้ดึงเข้า Gitea + PR + อัปเดต dev ตาม `docs/runbooks/github-to-gitea.md` (ให้คำสั่งชุดนั้นเมื่อจบโมดูล)
 - branch: `module/Mxx-ชื่อ`; commit แบบ Conventional Commits (`CONTRIBUTING.md`); main ป้องกันไว้ ต้องผ่าน PR + CI
 - สื่อสารกับผู้ใช้เป็นภาษาไทย; โค้ด ชื่อไฟล์ commit เป็นภาษาอังกฤษ
 - ผู้ใช้ (STF-01) ทำทุกบทบาท ให้คำสั่งบนเซิร์ฟเวอร์ทีละขั้น คัดวางได้ทั้งก้อน และบอกผลที่ควรเห็น
