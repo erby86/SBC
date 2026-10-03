@@ -1,3 +1,4 @@
+// M16 live status: WebSocket /api/status/ws, falling back to GET /api/status every 30 s.
 import {
   applyDelta,
   DEVICE_STATE_TH,
@@ -9,19 +10,24 @@ import { useEffect, useRef, useState } from 'react';
 
 export const POLL_MS = 30_000;
 
-type Mode = 'connecting' | 'live' | 'poll';
+export type LiveMode = 'connecting' | 'live' | 'poll';
 interface Change {
   at: string;
   text: string;
 }
 
+/** `ws://<host>/api/status/ws` (or wss on https). */
+export function defaultWsUrl(): string {
+  return `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/status/ws`;
+}
+
 /**
- * M16 test page: live status over WebSocket (/api/status/ws). When the socket is unavailable it
+ * M16: live status over WebSocket (/api/status/ws). When the socket is unavailable it
  * falls back to GET /api/status every 30 s and keeps retrying the socket.
  */
 export function useLiveStatus(wsUrl: string) {
   const [snapshot, setSnapshot] = useState<StatusSnapshot | null>(null);
-  const [mode, setMode] = useState<Mode>('connecting');
+  const [mode, setMode] = useState<LiveMode>('connecting');
   const [changes, setChanges] = useState<Change[]>([]);
   const current = useRef<StatusSnapshot | null>(null);
 
@@ -89,55 +95,4 @@ export function useLiveStatus(wsUrl: string) {
   }, [wsUrl]);
 
   return { snapshot, mode, changes };
-}
-
-const MODE_TH: Record<Mode, string> = {
-  connecting: 'กำลังเชื่อมต่อ…',
-  live: 'สด (WebSocket)',
-  poll: 'ดึงทุก 30 วินาที (WebSocket ใช้ไม่ได้)',
-};
-
-export function LiveStatus({ wsUrl }: { wsUrl: string }) {
-  const { snapshot, mode, changes } = useLiveStatus(wsUrl);
-  return (
-    <section aria-labelledby="live-title">
-      <h2 id="live-title">สถานะเครือข่าย (ทดสอบ M16)</h2>
-      <p data-testid="live-mode">การเชื่อมต่อ: {MODE_TH[mode]}</p>
-      {!snapshot ? (
-        <p>ยังไม่มีสถานะ</p>
-      ) : (
-        <>
-          <p data-testid="live-fresh">
-            {snapshot.stale ? '⏸ ข้อมูลค้าง — ' : ''}อัปเดตจาก Zabbix ล่าสุด{' '}
-            {new Date(snapshot.lastUpdate).toLocaleTimeString('th-TH')}
-          </p>
-          <p data-testid="live-counts">
-            ปกติ {snapshot.counts.ok} · เตือน {snapshot.counts.warn} · ล่ม {snapshot.counts.down} ·
-            ขาดจากต้นทาง {snapshot.counts.cut} · บำรุงรักษา {snapshot.counts.maint}
-          </p>
-          <ul data-testid="live-incidents">
-            {snapshot.incidents.map((i) => (
-              <li key={i.device}>
-                {i.severity === 'down' ? '✕' : '▲'} {i.device}: {i.message}
-                {i.impacted ? ` (กระทบ ${i.impacted})` : ''}
-                {i.ack ? ` — รับเรื่องแล้ว (${i.ack.by})` : ''}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-      {changes.length > 0 && (
-        <details open>
-          <summary>การเปลี่ยนแปลงล่าสุด</summary>
-          <ul data-testid="live-changes">
-            {changes.map((c, n) => (
-              <li key={n}>
-                {c.at} {c.text}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
-    </section>
-  );
 }
