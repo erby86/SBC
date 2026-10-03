@@ -82,6 +82,15 @@ services:
       # Pinned controller certificate inside /run/noc-certs (mounted read-only below).
       UNIFI_CA_FILE: ${UNIFI_CA_FILE:-}
       UNIFI_TLS_INSECURE: ${UNIFI_TLS_INSECURE:-false}
+      # Omada controller, Open API app sbc-noc-read (Client mode, Viewer) — M06
+      OMADA_URL: ${OMADA_URL:-}
+      OMADA_ID: ${OMADA_ID:-}
+      OMADA_CLIENT_ID: ${OMADA_CLIENT_ID:-}
+      OMADA_CLIENT_SECRET: ${OMADA_CLIENT_SECRET:-}
+      OMADA_SITE: ${OMADA_SITE:-}
+      OMADA_CA_FILE: ${OMADA_CA_FILE:-}
+      OMADA_TLS_INSECURE: ${OMADA_TLS_INSECURE:-false}
+      OMADA_CONTROLLER_CODE: ${OMADA_CONTROLLER_CODE:-}
       # SBC ASSET published CSV (tab NOC_LOC_Export, M05)
       SBC_ASSET_CSV_URL: ${SBC_ASSET_CSV_URL:-}
     volumes:

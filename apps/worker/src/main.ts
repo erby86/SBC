@@ -3,11 +3,13 @@ import { parseEnv, serverEnvSchema } from '@sbc-noc/shared';
 import { readFileSync } from 'node:fs';
 import { Redis } from 'ioredis';
 import { beat } from './heartbeat.js';
+import { createOmadaClient } from './connectors/omada.js';
 import { createSbcAssetClient } from './connectors/sbc-asset.js';
 import { createUnifiClient } from './connectors/unifi.js';
 import { createZabbixClient } from './connectors/zabbix.js';
 import { registryStats } from './jobs/registry-stats.js';
 import { assetLocsJob } from './jobs/asset-locs.js';
+import { omadaApsJob } from './jobs/omada-aps.js';
 import type { JobDefinition } from './jobs/types.js';
 import { unifiApsJob } from './jobs/unifi-aps.js';
 import { zabbixMatchJob } from './jobs/zabbix-match.js';
@@ -74,6 +76,38 @@ if (unifiUrl && unifiUser && unifiPassword && (unifiCaFile || unifiInsecure)) {
 } else {
   logger.warn(
     'UNIFI_URL / UNIFI_USERNAME / UNIFI_PASSWORD / UNIFI_CA_FILE not set — unifi-aps disabled',
+  );
+}
+// M06: Omada controller via Open API (app in Client mode, Viewer role).
+const omadaUrl = process.env['OMADA_URL'];
+const omadaId = process.env['OMADA_ID'];
+const omadaClientId = process.env['OMADA_CLIENT_ID'];
+const omadaSecret = process.env['OMADA_CLIENT_SECRET'];
+const omadaCaFile = process.env['OMADA_CA_FILE'];
+const omadaInsecure = process.env['OMADA_TLS_INSECURE'] === 'true';
+if (omadaUrl && omadaId && omadaClientId && omadaSecret && (omadaCaFile || omadaInsecure)) {
+  if (!omadaCaFile) logger.warn('OMADA_TLS_INSECURE=true — controller certificate not checked');
+  const host = new URL(omadaUrl).hostname;
+  jobs.push(
+    omadaApsJob(
+      createOmadaClient({
+        url: omadaUrl,
+        omadacId: omadaId,
+        clientId: omadaClientId,
+        clientSecret: omadaSecret,
+        site: process.env['OMADA_SITE'] ?? '',
+        ...(omadaCaFile ? { ca: readFileSync(omadaCaFile, 'utf8') } : { insecure: true }),
+      }),
+      {
+        name: `Omada Controller (${host})`,
+        ip: /^[\d.]+$/.test(host) ? host : null,
+        code: process.env['OMADA_CONTROLLER_CODE'] ?? '',
+      },
+    ),
+  );
+} else {
+  logger.warn(
+    'OMADA_URL / OMADA_ID / OMADA_CLIENT_ID / OMADA_CLIENT_SECRET / OMADA_CA_FILE not set — omada-aps disabled',
   );
 }
 // M05: SBC ASSET rooms from the published CSV of the NOC_LOC_Export tab (read-only).

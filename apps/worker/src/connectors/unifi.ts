@@ -1,7 +1,9 @@
 // Minimal UniFi OS (Network application) client, read-only: log in with a local View Only user
 // and list devices of one site. The controller uses a self-signed certificate, so TLS trust is
 // configured explicitly: pin the controller certificate (`ca`) or, for a first test only, `insecure`.
-import { request as httpsRequest } from 'node:https';
+import { httpsTransport, type HttpRequest } from './https.js';
+
+export type { HttpRequest, HttpResponse } from './https.js';
 
 export interface UnifiDevice {
   mac: string;
@@ -30,55 +32,6 @@ export interface UnifiOptions {
   ca?: string;
   /** Skip certificate verification entirely. Dev diagnostics only. */
   insecure?: boolean;
-}
-
-export interface HttpResponse {
-  status: number;
-  setCookie: string[];
-  body: string;
-}
-
-export type HttpRequest = (
-  url: string,
-  init: { method: 'GET' | 'POST'; headers: Record<string, string>; body?: string },
-) => Promise<HttpResponse>;
-
-export function httpsTransport(tls: { ca?: string; insecure?: boolean }): HttpRequest {
-  if (!tls.ca && !tls.insecure) {
-    throw new Error('unifi: set UNIFI_CA_FILE (pinned certificate) or UNIFI_TLS_INSECURE=true');
-  }
-  return (url, init) =>
-    new Promise((resolve, reject) => {
-      const req = httpsRequest(
-        url,
-        {
-          method: init.method,
-          headers: init.headers,
-          timeout: 15_000,
-          ...(tls.ca
-            ? // The self-signed certificate is issued for the controller's own name, not the IP we
-              // dial. Trust is the pinned `ca`; skip only the hostname comparison.
-              { ca: tls.ca, allowPartialTrustChain: true, checkServerIdentity: () => undefined }
-            : { rejectUnauthorized: false }),
-        },
-        (res) => {
-          const chunks: Buffer[] = [];
-          res.on('data', (c: Buffer) => chunks.push(c));
-          res.on('end', () =>
-            resolve({
-              status: res.statusCode ?? 0,
-              setCookie: res.headers['set-cookie'] ?? [],
-              body: Buffer.concat(chunks).toString('utf8'),
-            }),
-          );
-          res.on('error', reject);
-        },
-      );
-      req.on('timeout', () => req.destroy(new Error('unifi: request timed out')));
-      req.on('error', reject);
-      if (init.body) req.write(init.body);
-      req.end();
-    });
 }
 
 interface RawDevice {
