@@ -1,0 +1,54 @@
+// Grafana Alloy (M17): container logs of sbc-noc-* → Loki. Labels: app, env, container, service.
+// Only containers whose name starts with sbc-noc- are read (prod sbc-noc-*, staging sbc-noc-dev-*).
+
+discovery.docker "noc" {
+  host = "unix:///var/run/docker.sock"
+  filter {
+    name   = "name"
+    values = ["sbc-noc-"] // substring match; the keep rule below anchors it
+  }
+}
+
+discovery.relabel "noc" {
+  targets = discovery.docker.noc.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/sbc-noc-.*"
+    action        = "keep"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/sbc-noc-dev-.*"
+    target_label  = "env"
+    replacement   = "staging"
+  }
+  rule {
+    source_labels = ["env"]
+    regex         = ""
+    target_label  = "env"
+    replacement   = "prod"
+  }
+}
+
+loki.source.docker "noc" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.noc.output
+  labels     = { app = "sbc-noc" }
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = sys.env("LOKI_URL")
+  }
+}

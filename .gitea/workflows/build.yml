@@ -42,10 +42,47 @@ jobs:
       - name: Build all packages
         run: pnpm build
 
-      # --- Placeholders for later modules -------------------------------------
-      # M17: build and push images to git.sbc.lan (tag = version + git sha),
-      #      Trivy image scan (fail on HIGH/CRITICAL) and SBOM (syft/CycloneDX).
+      # Images are built, scanned and tagged on sbc-ubuntu by infra/scripts/deploy.sh (M17, ADR-0022);
+      # the `scan` job below checks the same dependencies and Dockerfiles without Docker.
       # M22: Playwright e2e runs in its own job below (local stack in the job).
+
+  # M17 / ADR-0016: Trivy on the lockfile and Dockerfiles, CycloneDX SBOM as an artifact.
+  scan:
+    name: scan
+    runs-on: ubuntu-latest
+    container:
+      image: node:24-bookworm
+      options: --cpus=1 --memory=1g
+    timeout-minutes: 15
+    env:
+      TRIVY_VERSION: 0.67.2
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Trivy (release binary, checksum verified)
+        run: |
+          base="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}"
+          file="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          curl -sSfL -o "/tmp/$file" "$base/$file"
+          curl -sSfL -o /tmp/trivy-checksums.txt "$base/trivy_${TRIVY_VERSION}_checksums.txt"
+          (cd /tmp && grep " $file\$" trivy-checksums.txt | sha256sum -c -)
+          tar -xzf "/tmp/$file" -C /usr/local/bin trivy
+          trivy --version
+
+      - name: Vulnerabilities (lockfile) and Dockerfile misconfigurations — fail on HIGH/CRITICAL
+        run: >
+          trivy fs --scanners vuln,misconfig --severity HIGH,CRITICAL --ignore-unfixed
+          --exit-code 1 --skip-dirs tests/e2e/node_modules .
+
+      - name: SBOM (CycloneDX)
+        run: trivy fs --format cyclonedx --output sbom.cdx.json .
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v3
+        with:
+          name: sbom
+          path: sbom.cdx.json
+          retention-days: 90
 
   db-integration:
     name: db-integration

@@ -1,3 +1,4 @@
+import './zod-config.js'; // first: before any module builds or parses a schema
 import '@fontsource/ibm-plex-sans-thai/thai-400.css';
 import '@fontsource/ibm-plex-sans-thai/thai-500.css';
 import '@fontsource/ibm-plex-sans-thai/thai-600.css';

@@ -1,0 +1,172 @@
+# sbc-noc prod stack on sbc-ubuntu (M17) — http://noc.sbc.lan through Nginx Proxy Manager.
+# Do not run by hand: infra/scripts/deploy.sh builds the images (tag = version-sha, ADR-0015),
+# scans them with Trivy, backs up the database, migrates, then starts this file with NOC_TAG set.
+#   infra/scripts/deploy.sh prod            # new release from the current checkout
+#   infra/scripts/deploy.sh prod --rollback 0.1.0-ab12cd3
+# Env: /opt/sbc-noc/prod.env (chmod 600, template infra/compose/prod.env.example — ADR-0005).
+name: sbc-noc-prod
+
+# Service names are prefixed (noc-*) because api/worker/web join networks shared with other
+# systems. No service publishes a port (baseline §8, G3): the web is reachable only via NPM.
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: '10m', max-file: '5' }
+
+x-node-env: &node-env
+  NODE_ENV: production
+  # Least privilege (M02 roles): api/worker log in as noc_app (table DML only, no DDL).
+  DATABASE_URL: postgres://noc_app:${NOC_APP_PASSWORD:?set NOC_APP_PASSWORD in the env file}@noc-db:5432/sbc_noc
+  REDIS_URL: ${REDIS_URL:?set REDIS_URL in the env file}
+  REDIS_PREFIX: ${REDIS_PREFIX:-noc:}
+
+services:
+  noc-db:
+    image: postgres:16-alpine
+    container_name: sbc-noc-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sbc_noc
+      POSTGRES_USER: sbc_noc
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the env file}
+      TZ: UTC
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U sbc_noc -d sbc_noc']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *logging
+    deploy:
+      resources:
+        limits: { cpus: '1', memory: 768M }
+
+  # One-shot, run by deploy.sh after the backup (ADR-0015). Owner role sbc_noc: migrations need DDL.
+  noc-migrate:
+    image: ${NOC_IMAGE_PREFIX:-}sbc-noc-api:${NOC_TAG:?}
+    pull_policy: never
+    container_name: sbc-noc-migrate
+    command: ['node', 'node_modules/@sbc-noc/db/dist/migrate-cli.js']
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://sbc_noc:${POSTGRES_PASSWORD:?}@noc-db:5432/sbc_noc
+    depends_on:
+      noc-db: { condition: service_healthy }
+    networks: [internal]
+    restart: 'no'
+    profiles: [migrate]
+    logging: *logging
+
+  noc-api:
+    image: ${NOC_IMAGE_PREFIX:-}sbc-noc-api:${NOC_TAG:?}
+    pull_policy: never
+    container_name: sbc-noc-api
+    restart: unless-stopped
+    environment:
+      <<: *node-env
+      # prod: no demo scenarios (ADR-0014), no editor without login until M23 (ADR-0020).
+      DEMO_MODE: 'false'
+      REGISTRY_EDIT: 'false'
+      LINK_ZABBIX_URL: ${LINK_ZABBIX_URL:-}
+      LINK_GRAFANA_URL: ${LINK_GRAFANA_URL:-}
+      LINK_GLPI_URL: ${LINK_GLPI_URL:-}
+    depends_on:
+      noc-db: { condition: service_healthy }
+    networks: [internal, shared]
+    logging: *logging
+    deploy:
+      resources:
+        limits: { cpus: '1', memory: 512M }
+
+  noc-worker:
+    image: ${NOC_IMAGE_PREFIX:-}sbc-noc-worker:${NOC_TAG:?}
+    pull_policy: never
+    container_name: sbc-noc-worker
+    restart: unless-stopped
+    environment:
+      <<: *node-env
+      ZABBIX_URL: ${ZABBIX_URL:-}
+      ZABBIX_TOKEN_READ: ${ZABBIX_TOKEN_READ:-}
+      # prod sync token (ADR-0019): RW on the network groups only; ZABBIX_TAG_GROUPS lists them.
+      ZABBIX_TOKEN_SYNC: ${ZABBIX_TOKEN_SYNC:-}
+      ZABBIX_TAG_GROUPS: ${ZABBIX_TAG_GROUPS:-}
+      UNIFI_URL: ${UNIFI_URL:-}
+      UNIFI_USERNAME: ${UNIFI_USERNAME:-}
+      UNIFI_PASSWORD: ${UNIFI_PASSWORD:-}
+      UNIFI_SITE: ${UNIFI_SITE:-default}
+      UNIFI_CONTROLLER_CODE: ${UNIFI_CONTROLLER_CODE:-}
+      UNIFI_CA_FILE: ${UNIFI_CA_FILE:-}
+      OMADA_URL: ${OMADA_URL:-}
+      OMADA_ID: ${OMADA_ID:-}
+      OMADA_CLIENT_ID: ${OMADA_CLIENT_ID:-}
+      OMADA_CLIENT_SECRET: ${OMADA_CLIENT_SECRET:-}
+      OMADA_SITE: ${OMADA_SITE:-}
+      OMADA_CA_FILE: ${OMADA_CA_FILE:-}
+      OMADA_CONTROLLER_CODE: ${OMADA_CONTROLLER_CODE:-}
+      SBC_ASSET_CSV_URL: ${SBC_ASSET_CSV_URL:-}
+    volumes:
+      - ${NOC_CERTS_DIR:-/opt/sbc-noc/certs}:/run/noc-certs:ro
+    depends_on:
+      noc-db: { condition: service_healthy }
+    networks: [internal, shared]
+    logging: *logging
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 256M }
+
+  noc-web:
+    image: ${NOC_IMAGE_PREFIX:-}sbc-noc-web:${NOC_TAG:?}
+    pull_policy: never
+    container_name: sbc-noc-web
+    restart: unless-stopped
+    depends_on: [noc-api]
+    environment:
+      API_UPSTREAM: http://noc-api:3001
+    # NPM forwards noc.sbc.lan → sbc-noc-web:80 on the proxy network (access list sbc-noc-mgmt).
+    networks: [internal, proxy]
+    logging: *logging
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 128M }
+
+  # Ships the logs of every sbc-noc-* container (prod and staging) to the existing Loki (G3).
+  # Docker socket is read-only and only used for discovery/log reading; the config filters
+  # to sbc-noc-* names, so no other system's logs leave the host through this container.
+  noc-alloy:
+    image: grafana/alloy:v1.10.0
+    container_name: sbc-noc-alloy
+    restart: unless-stopped
+    command: ['run', '--storage.path=/var/lib/alloy/data', '/etc/alloy/config.alloy']
+    environment:
+      LOKI_URL: ${LOKI_URL:?set LOKI_URL in the env file (e.g. http://loki:3100/loki/api/v1/push)}
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy-data:/var/lib/alloy/data
+    networks: [loki]
+    logging: *logging
+    deploy:
+      resources:
+        limits: { cpus: '0.25', memory: 192M }
+
+networks:
+  internal:
+    name: sbc-noc-internal
+  shared:
+    external: true
+    name: ${SBC_SHARED_NETWORK:?set SBC_SHARED_NETWORK in the env file}
+  proxy:
+    external: true
+    name: ${SBC_PROXY_NETWORK:?set SBC_PROXY_NETWORK in the env file}
+  # Existing network from which Loki is reachable (its own network, or the one it publishes on).
+  loki:
+    external: true
+    name: ${SBC_LOKI_NETWORK:?set SBC_LOKI_NETWORK in the env file}
+
+volumes:
+  db-data:
+    name: sbc-noc-db16-data
+  alloy-data:
+    name: sbc-noc-alloy-data

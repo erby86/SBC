@@ -7,6 +7,12 @@ export const isPhone = (info: TestInfo) => info.project.name.startsWith('phone')
 /** Opens a NOC page without the first-visit tour and waits for the layout and the 3D scene. */
 export async function openNoc(page: Page, url: string): Promise<void> {
   await page.addInitScript(() => {
+    // CSP (M17): remember anything the policy blocked; checkScreen fails on it.
+    const w = window as unknown as { cspViolations: string[] };
+    w.cspViolations = [];
+    document.addEventListener('securitypolicyviolation', (e) => {
+      w.cspViolations.push(`${e.effectiveDirective} ${e.blockedURI}`);
+    });
     try {
       localStorage.setItem('noc-tour', '1');
     } catch {
@@ -31,4 +37,8 @@ export async function checkScreen(page: Page, info: TestInfo, name: string): Pro
   await page.screenshot({ path: file });
   await info.attach(name, { path: file, contentType: 'image/png' });
   expect(hits, `text past an edge on ${info.project.name} ${name}`).toEqual([]);
+  const csp = await page.evaluate(
+    () => (window as unknown as { cspViolations?: string[] }).cspViolations ?? [],
+  );
+  expect(csp, `blocked by Content-Security-Policy on ${name}`).toEqual([]);
 }
