@@ -6,6 +6,8 @@
 // InstancedMesh, fibre tubes with moving data and light tails, alert beams/rings/halos, bloom,
 // building focus + floor cut, fly-to, top view, mini map, labels that avoid each other, badges
 // over problem devices, eco mode (auto when the frame rate drops below 24).
+//
+// Buildings are drawn as wireframes (WIRE): outlines and floor lines carry the shape.
 import type { StatusSnapshot } from '@sbc-noc/shared';
 import { STATE_ICON, type LayerKey, type UiState } from '@sbc-noc/ui';
 import * as THREE from 'three';
@@ -48,6 +50,8 @@ export interface SceneOptions {
 const HOME = { pos: new THREE.Vector3(-62, 70, 95), tgt: new THREE.Vector3(0, 2, 18) };
 const AUTO_ECO_FPS = 24;
 const EMISSIVE = 0.35;
+/** Wireframe buildings: bright outlines and floor lines, near-clear slabs and glass. */
+const WIRE = { edge: 0.95, floor: 0.5, slab: 0.06, fill: 0.03, mull: 0.12, shadow: 0.5 };
 
 type Mat = THREE.MeshLambertMaterial;
 
@@ -107,7 +111,9 @@ interface BuildingView {
   group: THREE.Group;
   slabMat: Mat;
   edgeMat: THREE.LineBasicMaterial;
-  slabs: { mesh: THREE.Mesh; floor: number }[];
+  /** Floor slab (near-invisible fill) and its outline, which carries the wireframe look. */
+  slabs: { mesh: THREE.Mesh; line: THREE.LineSegments; floor: number }[];
+  floorMat: THREE.LineBasicMaterial;
   edges: THREE.LineSegments;
   inner: THREE.LineSegments | null;
   floorBox: THREE.LineSegments;
@@ -546,11 +552,20 @@ export class NocScene {
       const H = m.floorHeight;
       const h = m.floors * H;
       const slabMat = this.theme(
-        new THREE.MeshLambertMaterial({ color: C.slab, transparent: true, opacity: 0.55 }),
+        new THREE.MeshLambertMaterial({
+          color: C.slab,
+          transparent: true,
+          opacity: WIRE.slab,
+          depthWrite: false,
+        }),
         'slab',
       );
       const edgeMat = this.theme(
-        new THREE.LineBasicMaterial({ color: C.edge, transparent: true, opacity: 0.8 }),
+        new THREE.LineBasicMaterial({ color: C.edge, transparent: true, opacity: WIRE.edge }),
+        'edge',
+      );
+      const floorMat = this.theme(
+        new THREE.LineBasicMaterial({ color: C.edge, transparent: true, opacity: WIRE.floor }),
         'edge',
       );
       const edges = new THREE.LineSegments(
@@ -583,7 +598,13 @@ export class NocScene {
           const s = new THREE.Mesh(new THREE.BoxGeometry(w, 0.08, d), slabMat);
           s.position.set(x, f * H, z);
           g.add(s);
-          slabs.push({ mesh: s, floor: f });
+          const line = new THREE.LineSegments(
+            new THREE.EdgesGeometry(new THREE.PlaneGeometry(w, d).rotateX(-Math.PI / 2)),
+            floorMat,
+          );
+          line.position.set(x, f * H + 0.05, z);
+          g.add(line);
+          slabs.push({ mesh: s, line, floor: f });
         }
       }
       let inner: THREE.LineSegments | null = null;
@@ -598,7 +619,12 @@ export class NocScene {
       // ground shadow, glass skin and mullions
       const sh = new THREE.Mesh(
         new THREE.PlaneGeometry(m.width * 1.45, m.depth * 1.45),
-        new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }),
+        new THREE.MeshBasicMaterial({
+          map: shadowTex,
+          transparent: true,
+          opacity: WIRE.shadow,
+          depthWrite: false,
+        }),
       );
       sh.rotation.x = -Math.PI / 2;
       sh.position.y = 0.012;
@@ -612,7 +638,7 @@ export class NocScene {
           new THREE.MeshBasicMaterial({
             color: C.slab,
             transparent: true,
-            opacity: 0.07,
+            opacity: WIRE.fill,
             depthWrite: false,
           }),
           'slab',
@@ -634,7 +660,7 @@ export class NocScene {
           }
         }
         mullMat = this.theme(
-          new THREE.LineBasicMaterial({ color: C.edge, transparent: true, opacity: 0.16 }),
+          new THREE.LineBasicMaterial({ color: C.edge, transparent: true, opacity: WIRE.mull }),
           'edge',
         );
         mull = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), mullMat);
@@ -645,6 +671,7 @@ export class NocScene {
         group: g,
         slabMat,
         edgeMat,
+        floorMat,
         slabs,
         edges,
         inner,
@@ -1261,16 +1288,17 @@ export class NocScene {
     for (const b of this.blds.values()) {
       const dim = !!focus && b.m.code !== focus;
       const cut = b.m.code === focus && !!fs;
-      b.slabMat.opacity = dim ? 0.08 : 0.55;
-      b.edgeMat.opacity = dim ? 0.18 : 0.8;
-      for (const s of b.slabs) s.mesh.visible = !cut || s.floor <= (fs ?? 0) - 1;
+      b.slabMat.opacity = dim ? WIRE.slab / 3 : WIRE.slab;
+      b.edgeMat.opacity = dim ? 0.18 : WIRE.edge;
+      b.floorMat.opacity = dim ? 0.1 : WIRE.floor;
+      for (const s of b.slabs) s.mesh.visible = s.line.visible = !cut || s.floor <= (fs ?? 0) - 1;
       b.edges.visible = !cut;
       if (b.inner) b.inner.visible = !cut;
       b.floorBox.visible = cut;
       if (cut) b.floorBox.position.y = ((fs ?? 1) - 1) * b.m.floorHeight + b.m.floorHeight / 2;
       if (b.fillMat && b.mullMat && b.fill && b.mull) {
-        b.fillMat.opacity = dim ? 0.015 : 0.07;
-        b.mullMat.opacity = dim ? 0.04 : 0.16;
+        b.fillMat.opacity = dim ? WIRE.fill / 4 : WIRE.fill;
+        b.mullMat.opacity = dim ? 0.04 : WIRE.mull;
         b.fill.visible = b.mull.visible = !cut;
       }
       b.label.classList.toggle('dim', dim);
@@ -1473,6 +1501,39 @@ export class NocScene {
     const Hh = this.opts.container.clientHeight;
     const v = this.tmp.v;
     const placed: [number, number, number, number][] = [];
+    const overlaps = (r: [number, number, number, number]) =>
+      placed.some(
+        (p) =>
+          r[0] < p[0] + p[2] + 4 &&
+          r[0] + r[2] + 4 > p[0] &&
+          r[1] < p[1] + p[3] + 2 &&
+          r[1] + r[3] + 2 > p[1],
+      );
+    // problem badges first: they never hide; one that would cover another moves up a row
+    const bs = [...this.badges].flatMap(([code, el]) => {
+      const d = this.devs.get(code);
+      if (!d) return [];
+      v.set(d.m.pos.x, d.m.pos.y + 1.3, d.m.pos.z).project(this.camera);
+      if (v.z > 1 || !d.visible) {
+        el.style.display = 'none';
+        return [];
+      }
+      el.style.display = 'block';
+      const down = el.classList.contains('down') ? 0 : 1;
+      return [{ el, sx: ((v.x + 1) / 2) * W, sy: ((1 - v.y) / 2) * Hh, down }];
+    });
+    bs.sort((a, b) => a.down - b.down || a.sy - b.sy);
+    for (const b of bs) {
+      const bw = b.el.offsetWidth || 90;
+      const bh = b.el.offsetHeight || 20;
+      const x = Math.max(bw / 2 + 4, Math.min(W - bw / 2 - 4, b.sx));
+      let y = Math.max(bh + 4, Math.min(Hh - 4, b.sy));
+      for (let k = 0; k < 4 && overlaps([x - bw / 2, y - bh, bw, bh]); k++) y -= bh + 3;
+      y = Math.max(bh + 4, y);
+      placed.push([x - bw / 2, y - bh, bw, bh]);
+      b.el.style.left = `${x}px`;
+      b.el.style.top = `${y}px`;
+    }
     const items = this.labelsList.map((l) => {
       v.copy(l.pos).project(this.camera);
       return { l, sx: ((v.x + 1) / 2) * W, sy: ((1 - v.y) / 2) * Hh, off: v.z > 1, p: l.prio() };
@@ -1488,13 +1549,7 @@ export class NocScene {
         w,
         h,
       ];
-      const hit = placed.some(
-        (p) =>
-          rect[0] < p[0] + p[2] + 4 &&
-          rect[0] + rect[2] + 4 > p[0] &&
-          rect[1] < p[1] + p[3] + 2 &&
-          rect[1] + rect[3] + 2 > p[1],
-      );
+      const hit = overlaps(rect);
       const show = !o.off && !hit;
       el.style.visibility = show ? 'visible' : 'hidden';
       if (show) {
@@ -1502,15 +1557,6 @@ export class NocScene {
         el.style.left = `${Math.max(w / 2 + 4, Math.min(W - w / 2 - 4, o.sx))}px`;
         el.style.top = `${Math.max(o.l.below ? 4 : h + 4, Math.min(Hh - 4, o.sy))}px`;
       }
-    }
-    for (const [code, el] of this.badges) {
-      const d = this.devs.get(code);
-      if (!d) continue;
-      v.set(d.m.pos.x, d.m.pos.y + 1.3, d.m.pos.z).project(this.camera);
-      el.style.display = v.z > 1 || !d.visible ? 'none' : 'block';
-      const bw = el.offsetWidth || 90;
-      el.style.left = `${Math.max(bw / 2 + 4, Math.min(W - bw / 2 - 4, ((v.x + 1) / 2) * W))}px`;
-      el.style.top = `${Math.max(24, Math.min(Hh - 4, ((1 - v.y) / 2) * Hh))}px`;
     }
   }
 

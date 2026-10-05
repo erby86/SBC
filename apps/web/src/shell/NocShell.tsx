@@ -31,6 +31,7 @@ import { defaultWsUrl, useLiveStatus, type LiveMode } from '../data/live.js';
 import { buildSceneModel, deviceKind, type SceneModel } from '../scene/model.js';
 import type { NocScene, Selection } from '../scene/NocScene.js';
 import { useIncidentFeed, useNow } from './events.js';
+import { useTabStatus } from './tab.js';
 import { Feed, HealthRing } from './feed.js';
 import { Help, Tour, tourSeen } from './Help.js';
 import { Icon } from './icons.js';
@@ -699,6 +700,7 @@ export function NocShell() {
   const unlCount = unlocatedCount(unlocated, unplaced);
   const feed = useIncidentFeed(snap, isDemo ? `demo:${demoName}` : 'live');
   const now = useNow();
+  useTabStatus(snap, feed.events, isDemo);
   const demoLabel = isDemo ? (demo.data?.label ?? demoList.data?.label ?? 'ข้อมูลสาธิต') : null;
 
   useEffect(() => {
