@@ -226,6 +226,48 @@ describe('history and unlocated hosts (M20)', () => {
     ]);
   });
 
+  it('keeps problems still open that started before the 24 h window', () => {
+    const h = historyFromZabbix(
+      [
+        {
+          eventid: '9',
+          name: 'High latency',
+          severity: 2,
+          clock: 5000,
+          endClock: null,
+          hosts: [{ hostid: '10085', name: 'CCR1036' }],
+        },
+      ],
+      map,
+      NOW,
+      24,
+      [
+        {
+          eventid: '9',
+          name: 'High latency',
+          severity: 2,
+          clock: 5000,
+          hostids: ['10085'],
+          acknowledged: false,
+          ack: null,
+        },
+        {
+          eventid: '1',
+          name: 'Unavailable by ICMP ping',
+          severity: 4,
+          clock: 100,
+          hostids: ['10085'],
+          acknowledged: false,
+          ack: null,
+        },
+      ],
+    );
+    expect(h.events.map((e) => [e.device, e.host, e.severity, e.start, e.end])).toEqual([
+      ['c1036', 'CCR1036', 'warn', t(5000), null],
+      ['c1036', 'CCR1036', 'down', t(100), null],
+    ]);
+  });
+
   it('lists hosts outside the registry with their worst problem, down first', () => {
     const host = (hostid: string, name: string) => ({
       hostid,

@@ -97,16 +97,39 @@ export function inputFromZabbix(
   return { lastUpdate: now.toISOString(), signals, acks, maintenance: maint, labOnline: {} };
 }
 
-/** Problem events → history rows (warn/down only), newest first; hosts outside the registry keep their name. */
+/**
+ * Problem events → history rows (warn/down only), newest first; hosts outside the registry keep
+ * their name. `open` adds problems still going that started before the window (event.get
+ * time_from only returns events that started inside it).
+ */
 export function historyFromZabbix(
   events: ZabbixProblemEvent[],
   deviceOfHost: Map<string, string>,
   now: Date,
   hours = HISTORY_HOURS,
+  open: ZabbixProblem[] = [],
 ): StatusHistory {
   const iso = (sec: number) => new Date(sec * 1000).toISOString();
   const rows: HistoryEvent[] = [];
-  for (const e of events) {
+  const seen = new Set(events.map((e) => e.eventid));
+  const hostName = new Map(events.flatMap((e) => e.hosts.map((h) => [h.hostid, h.name] as const)));
+  const all: ZabbixProblemEvent[] = [
+    ...events,
+    ...open
+      .filter((p) => !seen.has(p.eventid))
+      .map((p) => ({
+        eventid: p.eventid,
+        name: p.name,
+        severity: p.severity,
+        clock: p.clock,
+        endClock: null,
+        hosts: p.hostids.map((hostid) => ({
+          hostid,
+          name: hostName.get(hostid) ?? deviceOfHost.get(hostid) ?? `host ${hostid}`,
+        })),
+      })),
+  ];
+  for (const e of all) {
     const severity = stateOfSeverity(e.severity);
     if (!severity) continue;
     for (const h of e.hosts.length ? e.hosts : [{ hostid: '', name: '?' }]) {
@@ -220,7 +243,13 @@ export function createStatusEngine(deps: {
     if (z.problemEvents) {
       try {
         const from = Math.floor(now.getTime() / 1000) - HISTORY_HOURS * 3600;
-        const h = historyFromZabbix(await z.problemEvents(from), deviceOfHost, now);
+        const h = historyFromZabbix(
+          await z.problemEvents(from),
+          deviceOfHost,
+          now,
+          HISTORY_HOURS,
+          problems,
+        );
         await deps.store.set(HISTORY_KEY, JSON.stringify(h));
       } catch (err) {
         warn('history not readable (role needs event.get)', err);
