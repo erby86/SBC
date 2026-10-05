@@ -1,6 +1,12 @@
 // Data access of the web client (M18): TanStack Query over the api, parsed with the shared
 // zod schemas so a wrong payload fails loudly instead of drawing nonsense.
-import { healthResponseSchema, layoutSchema, type Layout } from '@sbc-noc/shared';
+import {
+  healthResponseSchema,
+  layoutSchema,
+  outLinksSchema,
+  type Layout,
+  type OutLinks,
+} from '@sbc-noc/shared';
 import { useQuery } from '@tanstack/react-query';
 
 async function getJson<T>(url: string, parse: (v: unknown) => T): Promise<T> {
@@ -25,4 +31,17 @@ export function useHealth() {
     queryFn: () => getJson('/api/health', (v) => healthResponseSchema.parse(v)),
     staleTime: 60_000,
   });
+}
+
+const NO_LINKS: OutLinks = { zabbix: null, grafana: null, glpi: null };
+
+/** URL templates of the Zabbix/Grafana/GLPI buttons (M22); no buttons when the api cannot say. */
+export function useOutLinks(): OutLinks {
+  const q = useQuery<OutLinks>({
+    queryKey: ['out-links'],
+    queryFn: () => getJson('/api/config/links', (v) => outLinksSchema.parse(v)),
+    staleTime: Infinity,
+    retry: 1,
+  });
+  return q.data ?? NO_LINKS;
 }

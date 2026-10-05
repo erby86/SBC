@@ -39,6 +39,7 @@ const device = (
   lifecycle: 'active',
   dataStatus: 'unverified',
   zabbixHostId: null,
+  assetTag: null,
   placement: null,
 });
 

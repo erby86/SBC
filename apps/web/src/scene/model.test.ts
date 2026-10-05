@@ -48,6 +48,7 @@ const device = (code: string, over: Partial<Device>): Device => ({
   lifecycle: 'active',
   dataStatus: 'unverified',
   zabbixHostId: null,
+  assetTag: null,
   placement: null,
   ...over,
 });

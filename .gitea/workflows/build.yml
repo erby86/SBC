@@ -45,7 +45,7 @@ jobs:
       # --- Placeholders for later modules -------------------------------------
       # M17: build and push images to git.sbc.lan (tag = version + git sha),
       #      Trivy image scan (fail on HIGH/CRITICAL) and SBOM (syft/CycloneDX).
-      # M22: Playwright e2e against the staging stack (noc-dev.sbc.lan).
+      # M22: Playwright e2e runs in its own job below (local stack in the job).
 
   db-integration:
     name: db-integration
@@ -86,3 +86,85 @@ jobs:
           TEST_DATABASE_URL: postgres://noc:noc-ci-only@postgres:5432/sbc_noc_test
           TEST_REDIS_URL: redis://redis:6379/0
         run: pnpm turbo run test --filter=@sbc-noc/db --filter=@sbc-noc/worker
+
+  # M22: screens at 1920/1366/phone on a stack inside the job (PostgreSQL 16 + seed, Redis, api with
+  # DEMO_MODE, web preview). Fails when any text runs past an edge. Screenshots → artifact `e2e-shots`.
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    container:
+      # Keep the tag equal to @playwright/test in tests/e2e/package.json (browsers are in the image).
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --cpus=2 --memory=3g
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: noc
+          POSTGRES_PASSWORD: noc-ci-only
+          POSTGRES_DB: sbc_noc_e2e
+      redis:
+        image: redis:7-alpine
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+      DATABASE_URL: postgres://noc:noc-ci-only@postgres:5432/sbc_noc_e2e
+      REDIS_URL: redis://redis:6379/0
+      REDIS_PREFIX: 'noc:e2e:'
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable pnpm (corepack)
+        run: corepack enable
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm turbo run build --filter=@sbc-noc/api... --filter=@sbc-noc/web...
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in $(seq 1 30); do
+            node -e "const s=require('net').connect(5432,'postgres');s.on('connect',()=>process.exit(0));s.on('error',()=>process.exit(1))" && exit 0
+            sleep 2
+          done
+          echo "postgres did not start"; exit 1
+
+      - name: Migrate and seed (M03, M04, M19 positions)
+        working-directory: packages/db
+        run: |
+          node dist/migrate-cli.js
+          node dist/seed-cli.js ../../infra/seed
+          node dist/routes-cli.js ../../infra/seed
+
+      - name: Start api (demo mode, no Zabbix)
+        working-directory: apps/api
+        env:
+          DEMO_MODE: 'true'
+          LOG_LEVEL: warn
+        run: |
+          nohup node dist/server.js > /tmp/api.log 2>&1 &
+          for i in $(seq 1 30); do
+            node -e "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" && exit 0
+            sleep 1
+          done
+          cat /tmp/api.log; exit 1
+
+      - name: Playwright (1920 / 1366 / phone)
+        run: pnpm --filter @sbc-noc/e2e e2e
+
+      - name: api log
+        if: failure()
+        run: cat /tmp/api.log
+
+      - name: Upload screenshots and report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-shots
+          path: |
+            tests/e2e/shots/
+            tests/e2e/report/
+          retention-days: 14

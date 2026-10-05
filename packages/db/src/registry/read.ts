@@ -265,6 +265,7 @@ function toDevice(r: DeviceRow): Device {
     lifecycle: r.lifecycle,
     dataStatus: r.data_status,
     zabbixHostId: r.zabbix_hostid,
+    assetTag: r.asset_tag,
     placement:
       r.p_mode === null ? null : { mode: r.p_mode, u: r.p_u, v: r.p_v, heightOffset: r.p_h ?? 0 },
   };
@@ -310,7 +311,6 @@ export async function getDevice(db: Q, code: string): Promise<DeviceDetail | nul
     firmware: r.firmware_version,
     rack: r.rack,
     powerSource: r.power_source,
-    assetTag: r.asset_tag,
     warrantyUntil: r.warranty_until,
     eolDate: r.eol_date,
     verifiedAt: iso(r.verified_at),

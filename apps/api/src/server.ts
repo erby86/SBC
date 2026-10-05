@@ -25,6 +25,7 @@ import {
   search,
 } from '@sbc-noc/db';
 import {
+  linkTemplateSchema,
   parseEnv,
   serverEnvSchema,
   statusHistorySchema,
@@ -42,6 +43,10 @@ const env = parseEnv(
     HOST: z.string().default('0.0.0.0'),
     DEMO_MODE: z.stringbool().default(false),
     REGISTRY_EDIT: z.stringbool().default(false),
+    // M22 out-links (templates, see packages/shared/src/links.ts); empty = no button
+    LINK_ZABBIX_URL: linkTemplateSchema.optional(),
+    LINK_GRAFANA_URL: linkTemplateSchema.optional(),
+    LINK_GLPI_URL: linkTemplateSchema.optional(),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   }),
   process.env,
@@ -102,6 +107,11 @@ const app = await buildApp(
       redis: () => redis.ping(),
     },
     demo: env.DEMO_MODE,
+    links: {
+      zabbix: env.LINK_ZABBIX_URL || null,
+      grafana: env.LINK_GRAFANA_URL || null,
+      glpi: env.LINK_GLPI_URL || null,
+    },
     status: readSnapshot,
     statusExtras: {
       history: readJson('status:history', (v) => statusHistorySchema.parse(v)),

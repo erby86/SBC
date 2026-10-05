@@ -8,3 +8,4 @@ export * from './demo/scenarios.js';
 export * from './demo/topology.js';
 export * from './live.js';
 export * from './registry-edit.js';
+export * from './links.js';

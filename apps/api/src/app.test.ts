@@ -106,7 +106,12 @@ describe('OpenAPI and metrics (M13)', () => {
     }>();
     expect(doc.openapi).toMatch(/^3\./);
     expect(doc.servers).toEqual([{ url: '/api' }]);
-    expect(Object.keys(doc.paths).sort()).toEqual(['/health', '/health/ready', '/registry/checks']);
+    expect(Object.keys(doc.paths).sort()).toEqual([
+      '/config/links',
+      '/health',
+      '/health/ready',
+      '/registry/checks',
+    ]);
     expect(JSON.stringify(doc.paths['/health'])).toContain('"version"');
     const ui = await app.inject({ method: 'GET', url: '/docs/' });
     expect(ui.statusCode).toBe(200);
@@ -131,6 +136,30 @@ describe('OpenAPI and metrics (M13)', () => {
     const app = await buildApp({}, { registryChecks: async () => ({ wrong: true }) as never });
     const res = await app.inject({ method: 'GET', url: '/registry/checks' });
     expect(res.statusCode).toBe(500);
+    await app.close();
+  });
+});
+
+describe('GET /config/links', () => {
+  it('returns null templates when none are set', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/config/links' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ zabbix: null, grafana: null, glpi: null });
+    await app.close();
+  });
+
+  it('returns the configured templates', async () => {
+    const links = {
+      zabbix: 'http://zabbix.sbc.lan/zabbix.php?action=problem.view&hostids[]={zabbixHostId}',
+      grafana: null,
+      glpi: 'http://glpi.sbc.lan/front/search.php?globalsearch={assetTag}',
+    };
+    const app = await buildApp({}, { links });
+    const res = await app.inject({ method: 'GET', url: '/config/links' });
+
+    expect(res.json()).toEqual(links);
     await app.close();
   });
 });

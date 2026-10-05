@@ -10,7 +10,9 @@ import {
 } from 'fastify-type-provider-zod';
 import {
   healthResponseSchema,
+  outLinksSchema,
   registryCheckReportSchema,
+  type OutLinks,
   type RegistryCheckReport,
   type StatusSnapshot,
 } from '@sbc-noc/shared';
@@ -43,6 +45,8 @@ export interface AppDeps {
   live?: LiveHub;
   /** M21 registry editor; only with REGISTRY_EDIT=true (dev until login, ADR-0020). */
   registryEdit?: RegistryEditor;
+  /** M22 URL templates of the Zabbix/Grafana/GLPI buttons (LINK_*_URL); null = no button. */
+  links?: OutLinks;
 }
 
 const readinessSchema = z.object({
@@ -157,6 +161,20 @@ export async function buildApp(
       async () => registryChecks(),
     );
   }
+
+  // M22: no secrets here — only the public URL templates of the out-links.
+  const links = deps.links ?? { zabbix: null, grafana: null, glpi: null };
+  app.get(
+    '/config/links',
+    {
+      schema: {
+        tags: ['ops'],
+        summary: 'แม่แบบลิงก์ออกไป Zabbix / Grafana / GLPI',
+        response: { 200: outLinksSchema },
+      },
+    },
+    async () => links,
+  );
 
   if (deps.registry) registryRoutes(app, deps.registry);
   if (deps.demo) demoRoutes(app);

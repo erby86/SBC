@@ -56,6 +56,7 @@ const layout: Layout = {
       lifecycle: 'active',
       dataStatus: 'unverified',
       zabbixHostId: null,
+      assetTag: null,
       placement: null,
     },
   ],
@@ -167,6 +168,58 @@ describe('NOC screen (M18 frame, M19 scene)', () => {
     expect(info.textContent).toContain('กระทบ3 อุปกรณ์');
     act(() => screen.getByRole('button', { name: 'ปิดรายละเอียด' }).click());
     expect(screen.queryByTestId('info')).toBeNull();
+  });
+
+  it('links the selected device to Zabbix and GLPI with its own values (M22)', async () => {
+    extra['/api/config/links'] = {
+      zabbix:
+        'http://zabbix.sbc.lan/zabbix.php?action=problem.view&hostids[]={zabbixHostId}' +
+        ' || http://zabbix.sbc.lan/zabbix.php?action=host.view&filter_name={name}',
+      grafana: 'http://grafana.sbc.lan/d/noc?var-host={hostname}', // no hostname: no button
+      glpi: 'http://glpi.sbc.lan/front/search.php?globalsearch={code}',
+    };
+    renderAt('/', <App />);
+    await waitFor(() =>
+      expect(screen.getAllByTestId('buildings')[0]?.textContent).toContain('8 เซียน'),
+    );
+    act(() =>
+      FakeWebSocket.last?.onmessage?.({
+        data: JSON.stringify({ type: 'snapshot', version: 1, snapshot: snapshot(false) }),
+      }),
+    );
+    act(() =>
+      (screen.getAllByTestId('incidents')[0]?.querySelector('.inc') as HTMLElement).click(),
+    );
+    const links = await screen.findByTestId('out-links');
+    const hrefs = [...links.querySelectorAll('a')].map((a) => [a.textContent, a.href]);
+    expect(hrefs).toEqual([
+      [
+        'เปิดใน Zabbix ↗',
+        'http://zabbix.sbc.lan/zabbix.php?action=host.view&filter_name=8%20%E0%B9%80%E0%B8%8B%E0%B8%B5%E0%B8%A2%E0%B8%99%20main',
+      ],
+      ['ครุภัณฑ์ (GLPI) ↗', 'http://glpi.sbc.lan/front/search.php?globalsearch=m-s8'],
+    ]);
+    expect(links.querySelector('a')?.getAttribute('rel')).toBe('noopener noreferrer');
+  });
+
+  it('shows no link buttons when the api has no templates', async () => {
+    renderAt('/', <App />);
+    await waitFor(() =>
+      expect(screen.getAllByTestId('buildings')[0]?.textContent).toContain('8 เซียน'),
+    );
+    act(() =>
+      FakeWebSocket.last?.onmessage?.({
+        data: JSON.stringify({ type: 'snapshot', version: 1, snapshot: snapshot(false) }),
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.getAllByTestId('incidents')[0]?.querySelector('.inc')).not.toBeNull(),
+    );
+    act(() =>
+      (screen.getAllByTestId('incidents')[0]?.querySelector('.inc') as HTMLElement).click(),
+    );
+    expect(screen.getByTestId('info').textContent).toContain('8 เซียน main');
+    expect(screen.queryByTestId('out-links')).toBeNull();
   });
 
   it('switches between dark and light and remembers the choice', () => {

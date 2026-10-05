@@ -21,6 +21,7 @@ const device: Device = {
   lifecycle: 'active',
   dataStatus: 'unverified',
   zabbixHostId: '10084',
+  assetTag: null,
   placement: null,
 };
 let layout: Layout = {

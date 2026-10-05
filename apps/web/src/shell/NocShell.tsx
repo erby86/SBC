@@ -11,11 +11,14 @@ import {
   type StatusHistory,
   type StatusSnapshot,
   type UnlocatedList,
+  fillLinkTemplate,
+  type LinkValues,
+  type OutLinkSystem,
 } from '@sbc-noc/shared';
 import { LAYERS, STATE_ICON, type LayerKey, type UiState } from '@sbc-noc/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
-import { useLayout } from '../data/api.js';
+import { useLayout, useOutLinks } from '../data/api.js';
 import {
   demoLabOnline,
   demoParam,
@@ -351,6 +354,37 @@ const MEDIA_TH: Record<string, string> = {
   patch: 'สาย patch',
 };
 
+const OUT_LINK_TEXT: Record<OutLinkSystem, { text: string; title: string }> = {
+  zabbix: { text: 'เปิดใน Zabbix', title: 'ปัญหาและข้อมูลของ host ใน Zabbix' },
+  grafana: { text: 'กราฟ (Grafana)', title: 'กราฟ ping / traffic ย้อนหลัง' },
+  glpi: { text: 'ครุภัณฑ์ (GLPI)', title: 'ข้อมูลครุภัณฑ์และ ticket ใน GLPI' },
+};
+
+/** M22: buttons to Zabbix/Grafana/GLPI; a system without a template or a value shows nothing. */
+function OutLinkButtons({ values }: { values: LinkValues }) {
+  const links = useOutLinks();
+  const items = (Object.keys(OUT_LINK_TEXT) as OutLinkSystem[])
+    .map((sys) => ({ sys, url: fillLinkTemplate(links[sys], values) }))
+    .filter((x): x is { sys: OutLinkSystem; url: string } => x.url !== null);
+  if (!items.length) return null;
+  return (
+    <div className="links" data-testid="out-links">
+      {items.map(({ sys, url }) => (
+        <a
+          key={sys}
+          className="btnlink"
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={OUT_LINK_TEXT[sys].title}
+        >
+          {OUT_LINK_TEXT[sys].text} ↗
+        </a>
+      ))}
+    </div>
+  );
+}
+
 /** Details of the clicked device or lab (prototype #info). */
 function InfoPanel({
   sel,
@@ -370,6 +404,7 @@ function InfoPanel({
   let title: string;
   let sub: string;
   let rows: [string, React.ReactNode][];
+  let linkValues: LinkValues;
   if (sel.kind === 'device') {
     // details come from the registry, so a device that is not drawn (no shape) still shows
     const d = layout.devices.find((x) => x.code === sel.code);
@@ -380,6 +415,16 @@ function InfoPanel({
     const maint = snap?.maintenance.find((m) => m.device === d.code);
     const up = d.uplink ? layout.devices.find((x) => x.code === d.uplink) : undefined;
     const down = layout.devices.filter((x) => x.uplink === d.code).length;
+    linkValues = {
+      code: d.code,
+      name: d.name,
+      hostname: d.hostname,
+      ip: d.ip,
+      loc: d.locCode,
+      building: d.building,
+      zabbixHostId: d.zabbixHostId,
+      assetTag: d.assetTag,
+    };
     title = d.name;
     sub = `${(kind && KIND_TH[kind]) ?? d.role}${d.building ? ` · ${names.where(d.code)}` : ''}`;
     rows = [
@@ -423,6 +468,7 @@ function InfoPanel({
     const lab = model.labs.find((l) => l.locCode === sel.locCode);
     if (!lab) return null;
     const on = snap?.labOnline[lab.locCode];
+    linkValues = { code: lab.locCode, name: lab.name, loc: lab.locCode, building: lab.building };
     title = lab.name;
     sub = `${names.buildingName(lab.building)} ชั้น ${lab.floor} · ${lab.locCode}`;
     rows = [
@@ -449,14 +495,7 @@ function InfoPanel({
           </div>
         ))}
       </dl>
-      <div className="links">
-        <button disabled title="เชื่อมใน M22">
-          เปิดใน Zabbix
-        </button>
-        <button disabled title="เชื่อมใน M22">
-          กราฟ (Grafana)
-        </button>
-      </div>
+      <OutLinkButtons values={linkValues} />
     </section>
   );
 }
