@@ -30,7 +30,10 @@ import {
 import { defaultWsUrl, useLiveStatus, type LiveMode } from '../data/live.js';
 import { buildSceneModel, deviceKind, type SceneModel } from '../scene/model.js';
 import type { NocScene, Selection } from '../scene/NocScene.js';
+import { useIncidentFeed, useNow } from './events.js';
+import { Feed, HealthRing } from './feed.js';
 import { Help, Tour, tourSeen } from './Help.js';
+import { Icon } from './icons.js';
 import {
   fmtAgo,
   History,
@@ -109,6 +112,7 @@ function TopBar({
   view,
   demo,
   search,
+  theme,
   onBigNum,
   onGo,
 }: {
@@ -118,57 +122,81 @@ function TopBar({
   view: ViewControls;
   demo: React.ReactNode;
   search: React.ReactNode;
+  theme: ReturnType<typeof useTheme>;
   onBigNum: () => void;
   onGo: (code: string) => void;
 }) {
-  const theme = useTheme();
   const open = snap?.incidents.filter((i) => !i.ack).length ?? 0;
   const wans = (layout?.devices ?? []).filter((d) => deviceKind(d) === 'wan');
+  const cats = snap ? categoryChips(layout, snap) : [];
+  const health = {
+    on: cats.reduce((n, c) => n + c.on, 0),
+    total: cats.reduce((n, c) => n + c.total, 0),
+    worst: cats.some((c) => c.worst === 'down')
+      ? ('down' as const)
+      : cats.some((c) => c.worst === 'warn')
+        ? ('warn' as const)
+        : ('ok' as const),
+  };
   return (
     <header id="top" className="panel">
       {demo}
-      <h1>SB School NOC</h1>
-      <button
-        id="bigNum"
-        className={open ? 'hot' : ''}
-        title="เหตุที่ยังไม่มีคนรับเรื่อง"
-        data-testid="open-incidents"
-        onClick={onBigNum}
-      >
-        <b>{open}</b>
-        <span>ยังไม่มีคนรับ</span>
-      </button>
-      {search}
-      <div className="chips" aria-live="polite" data-testid="state-chips">
-        {snap &&
-          categoryChips(layout, snap).map((c) => (
-            <span key={c.label} className="chip" title={c.tip}>
+      <h1 className="brand">
+        <span className="logo">
+          <Icon name="logo" />
+        </span>
+        <span className="bt">
+          <small>SB School</small> NOC
+        </span>
+      </h1>
+      <div className="stat">
+        {snap && <HealthRing {...health} />}
+        <button
+          id="bigNum"
+          className={open ? 'hot' : ''}
+          title="เหตุที่ยังไม่มีคนรับเรื่อง"
+          data-testid="open-incidents"
+          onClick={onBigNum}
+        >
+          <b key={open}>{open}</b>
+          <span>ยังไม่มีคนรับ</span>
+        </button>
+      </div>
+      <div className="sfield">
+        <Icon name="search" className="sicon" />
+        {search}
+      </div>
+      <div className="status">
+        <div className="chips" aria-live="polite" data-testid="state-chips">
+          {cats.map((c) => (
+            <span key={`${c.label}${c.on}`} className={`chip st-${c.worst}`} title={c.tip}>
               <span className={`i ${c.worst}`}>{STATE_ICON[c.worst]}</span>
-              {c.label} {c.on}/{c.total}
+              {c.label} <b>{c.on}</b>/{c.total}
             </span>
           ))}
-      </div>
-      {snap && wans.length > 0 && (
-        <div className="chips" id="wanChips" aria-label="สถานะอินเทอร์เน็ต">
-          {wans.map((d) => {
-            const st = stateOfDevice(snap, d.code);
-            const inc = snap.incidents.find((i) => i.device === d.code);
-            return (
-              <button
-                key={d.code}
-                className="chip wanchip"
-                title={`อินเทอร์เน็ต ${d.name} · ${DEVICE_STATE_TH[st]}${inc ? ` · ${inc.message}` : ''}`}
-                onClick={() => onGo(d.code)}
-              >
-                <span className={`i ${st}`}>{STATE_ICON[st]}</span>
-                {d.name}
-              </button>
-            );
-          })}
         </div>
-      )}
+        {snap && wans.length > 0 && (
+          <div className="chips" id="wanChips" aria-label="สถานะอินเทอร์เน็ต">
+            {wans.map((d) => {
+              const st = stateOfDevice(snap, d.code);
+              const inc = snap.incidents.find((i) => i.device === d.code);
+              return (
+                <button
+                  key={d.code}
+                  className={`chip wanchip st-${st}`}
+                  title={`อินเทอร์เน็ต ${d.name} · ${DEVICE_STATE_TH[st]}${inc ? ` · ${inc.message}` : ''}`}
+                  onClick={() => onGo(d.code)}
+                >
+                  <span className={`i ${st}`}>{STATE_ICON[st]}</span>
+                  {d.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
       <span
-        className={`chip${snap?.stale ? ' stale' : ''}`}
+        className={`chip fresh ${!snap ? 'f-wait' : snap.stale ? 'stale' : `f-${mode}`}`}
         id="fresh"
         data-testid="fresh"
         title={
@@ -179,6 +207,7 @@ function TopBar({
               : 'ดึงข้อมูลทุก 30 วินาที · ถ้าค้างเกิน 2 นาทีจะขึ้นเตือน'
         }
       >
+        <i className="dot" aria-hidden="true" />
         {!snap
           ? 'รอข้อมูล…'
           : snap.stale
@@ -191,50 +220,67 @@ function TopBar({
           {Math.round(view.fps)} fps
         </span>
       )}
-      <div className="topbtns">
-        <button
-          className="wide"
-          aria-pressed={view.top}
-          disabled={!view.ready}
-          onClick={view.onTop}
-          title="มองจากด้านบน"
-        >
-          มุมบน
-        </button>
-        <button disabled={!view.ready} onClick={view.onHome} title="กลับไปมุมมองทั้งโรงเรียน">
-          ทั้งโรงเรียน
-        </button>
-        <button
-          className="wide"
-          aria-pressed={view.tv}
-          onClick={view.onTv}
-          title="เต็มจอ วนแจ้งเตือนที่ยังไม่มีคนรับจุดละ 10 วินาที เสียงเตือนเมื่อมีเหตุล่มใหม่"
-          data-testid="tv"
-        >
-          โหมดทีวี
-        </button>
-        <button onClick={view.onHelp} aria-label="วิธีใช้" title="วิธีใช้ (กด ?)">
-          ?
-        </button>
-        <button
-          onClick={theme.toggle}
-          aria-label={theme.theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'}
-          title={theme.theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'}
-          data-testid="theme-toggle"
-        >
-          {theme.theme === 'dark' ? '☀ สว่าง' : '☾ มืด'}
-        </button>
-        <button
-          className="wide"
-          aria-pressed={view.eco}
-          disabled={!view.ready}
-          onClick={view.onEco}
-          title="ปิดแสงเรืองและหางแสง สำหรับเครื่องที่กราฟิกไม่แรง"
-        >
-          โหมดประหยัด
-        </button>
-        <Link to="/admin" className="btnlink">
-          จัดการ
+      <div className="topbtns" role="toolbar" aria-label="มุมมองและการแสดงผล">
+        <div className="seg">
+          <button
+            className="ib wide"
+            aria-pressed={view.top}
+            disabled={!view.ready}
+            onClick={view.onTop}
+            aria-label="มุมบน"
+            title="มองจากด้านบน (T)"
+          >
+            <Icon name="top" />
+          </button>
+          <button
+            className="ib"
+            disabled={!view.ready}
+            onClick={view.onHome}
+            aria-label="ทั้งโรงเรียน"
+            title="กลับไปมุมมองทั้งโรงเรียน (H)"
+          >
+            <Icon name="home" />
+          </button>
+        </div>
+        <div className="seg wide">
+          <button
+            className="ib"
+            aria-pressed={view.tv}
+            onClick={view.onTv}
+            aria-label="โหมดทีวี"
+            title="โหมดทีวี: เต็มจอ วนแจ้งเตือนที่ยังไม่มีคนรับจุดละ 10 วินาที เสียงเตือนเมื่อมีเหตุล่มใหม่"
+            data-testid="tv"
+          >
+            <Icon name="tv" />
+          </button>
+          <button
+            className="ib"
+            aria-pressed={view.eco}
+            disabled={!view.ready}
+            onClick={view.onEco}
+            aria-label="โหมดประหยัด"
+            title="โหมดประหยัด: ปิดแสงเรืองและหางแสง สำหรับเครื่องที่กราฟิกไม่แรง (E)"
+          >
+            <Icon name="leaf" />
+          </button>
+        </div>
+        <div className="seg">
+          <button
+            className="ib"
+            onClick={theme.toggle}
+            aria-label={theme.theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'}
+            title={`${theme.theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'} (L)`}
+            data-testid="theme-toggle"
+          >
+            <Icon name={theme.theme === 'dark' ? 'sun' : 'moon'} />
+          </button>
+          <button className="ib" onClick={view.onHelp} aria-label="วิธีใช้" title="วิธีใช้ (?)">
+            <Icon name="help" />
+          </button>
+        </div>
+        <Link to="/admin" className="btnlink adminlink" title="จัดการทะเบียน">
+          <Icon name="gear" />
+          <span>จัดการ</span>
         </Link>
       </div>
     </header>
@@ -650,6 +696,8 @@ export function NocShell() {
   const fibers = useMemo(() => fiberRows(model, layout.data), [model, layout.data]);
   const incCount = snap?.incidents.length ?? 0;
   const unlCount = unlocatedCount(unlocated, unplaced);
+  const feed = useIncidentFeed(snap, isDemo ? `demo:${demoName}` : 'live');
+  const now = useNow();
   const demoLabel = isDemo ? (demo.data?.label ?? demoList.data?.label ?? 'ข้อมูลสาธิต') : null;
 
   useEffect(() => {
@@ -766,6 +814,60 @@ export function NocShell() {
     return () => clearTimeout(t);
   }, [tv.on]);
 
+  /** Unacked incidents first (worst first, as listed), then the acked ones; wraps around. */
+  const nextIncident = () => {
+    const list = snap?.incidents ?? [];
+    const order = [...list.filter((i) => !i.ack), ...list.filter((i) => i.ack)]
+      .map((i) => i.device)
+      .filter((d) => names.has(d));
+    if (!order.length) {
+      setToast('ไม่มีเหตุที่มีตำแหน่งในผัง');
+      return;
+    }
+    const cur = sel?.kind === 'device' ? order.indexOf(sel.code) : -1;
+    const code = order[(cur + 1) % order.length] as string;
+    go(code);
+    setToast(`เหตุ ${((cur + 1) % order.length) + 1}/${order.length} · ${names.name(code)}`);
+  };
+
+  // single-key shortcuts (e.code: the same physical keys with the Thai layout)
+  const hotkey = useRef<(code: string) => boolean>(() => false);
+  hotkey.current = (code) => {
+    const digit = /^Digit([1-9])$/.exec(code);
+    if (digit) {
+      const b = layout.data?.buildings[Number(digit[1]) - 1];
+      if (!b) return false;
+      focus(building === b.code ? null : b.code);
+      setToast(building === b.code ? 'ดูทั้งโรงเรียน' : `อาคาร ${b.name}`);
+      return true;
+    }
+    switch (code) {
+      case 'KeyN':
+        nextIncident();
+        return true;
+      case 'KeyT':
+        view.onTop();
+        return true;
+      case 'KeyH':
+      case 'Digit0':
+        view.onHome();
+        return true;
+      case 'KeyE':
+        view.onEco();
+        setToast(eco ? 'ปิดโหมดประหยัด' : 'เปิดโหมดประหยัด');
+        return true;
+      case 'KeyL':
+        theme.toggle();
+        return true;
+      case 'KeyF':
+        if (document.fullscreenElement) void document.exitFullscreen?.();
+        else void document.documentElement.requestFullscreen?.().catch(() => undefined);
+        return true;
+      default:
+        return false;
+    }
+  };
+
   // keyboard: / or Ctrl+K search, ? help, Esc closes the top-most thing
   const esc = useRef<() => void>(() => undefined);
   esc.current = () => {
@@ -797,12 +899,15 @@ export function NocShell() {
       } else if (question) {
         e.preventDefault();
         setHelp(true);
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && hotkey.current(e.code)) {
+        e.preventDefault();
       }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, []);
 
+  const theme = useTheme();
   const view: ViewControls = {
     ready: !!scene,
     top,
@@ -852,7 +957,10 @@ export function NocShell() {
       names={names}
       current={sel?.kind === 'device' ? sel.code : null}
       demo={demoLabel}
+      now={now}
+      isFresh={(d) => feed.isFresh(d, now)}
       onGo={onGo}
+      onNext={nextIncident}
     />
   );
   const historyPanel = (
@@ -871,7 +979,12 @@ export function NocShell() {
   return (
     <div
       id="app"
-      className={[snap?.stale ? 'stale' : '', tv.on ? 'tv' : '', isDemo ? 'demo' : '']
+      className={[
+        snap?.stale ? 'stale' : '',
+        tv.on ? 'tv' : '',
+        isDemo ? 'demo' : '',
+        eco ? 'calm' : '',
+      ]
         .filter(Boolean)
         .join(' ')}
     >
@@ -926,6 +1039,7 @@ export function NocShell() {
             setSheetTab('inc');
             setSheetMin(false);
           }}
+          theme={theme}
           onGo={go}
         />
 
@@ -1008,10 +1122,11 @@ export function NocShell() {
           )}
           {hint.show && scene && !tv.on && <p id="hint">{hint.text}</p>}
           {toast && (
-            <div id="toast" role="status">
+            <div id="toast" role="status" key={toast}>
               {toast}
             </div>
           )}
+          <Feed events={feed.events} names={names} onGo={go} onDismiss={feed.dismiss} />
           {sel && layout.data && model && (
             <InfoPanel
               sel={sel}

@@ -63,16 +63,27 @@ export function Incidents({
   names,
   current,
   demo,
+  now = Date.now(),
+  isFresh = () => false,
   onGo,
+  onNext,
 }: {
   snap: StatusSnapshot | null;
   layout: Layout | undefined;
   names: Names;
   current: string | null;
   demo: string | null;
+  /** Clock for "12 นาที" (ticks between snapshots). */
+  now?: number;
+  /** Incident seen for the first time a moment ago (highlighted). */
+  isFresh?: (device: string) => boolean;
   onGo: (code: string) => void;
+  /** Go to the next incident nobody has taken (key N). */
+  onNext?: () => void;
 }) {
   if (!snap) return <p className="empty">รอข้อมูลสถานะ…</p>;
+  const downs = snap.incidents.filter((i) => i.severity === 'down').length;
+  const warns = snap.incidents.length - downs;
   const children = new Map<string, string[]>();
   for (const d of layout?.devices ?? [])
     if (d.uplink) children.set(d.uplink, [...(children.get(d.uplink) ?? []), d.code]);
@@ -80,13 +91,40 @@ export function Incidents({
   return (
     <div data-testid="incidents">
       {demo && <p className="demonote">{demo}</p>}
+      {snap.incidents.length > 0 && (
+        <div className="incsum">
+          {downs > 0 && (
+            <span className="pill down">
+              {STATE_ICON.down} ล่ม {downs}
+            </span>
+          )}
+          {warns > 0 && (
+            <span className="pill warn">
+              {STATE_ICON.warn} เตือน {warns}
+            </span>
+          )}
+          {onNext && (
+            <button
+              className="next"
+              onClick={onNext}
+              aria-label="ไปเหตุถัดไป"
+              title="ไปเหตุถัดไปที่ยังไม่มีคนรับ (กด N)"
+            >
+              เหตุถัดไป <kbd>N</kbd>
+            </button>
+          )}
+        </div>
+      )}
       {snap.incidents.length === 0 ? (
-        <p className="empty">ไม่มีแจ้งเตือน ทุกระบบปกติ</p>
+        <div className="allok" data-testid="all-ok">
+          <span className="okdot" aria-hidden="true" />
+          <p className="empty">ไม่มีแจ้งเตือน ทุกระบบปกติ</p>
+        </div>
       ) : (
         snap.incidents.map((i) => (
           <article
             key={i.device}
-            className={`inc ${i.severity}${current === i.device ? ' cur' : ''}`}
+            className={`inc ${i.severity}${current === i.device ? ' cur' : ''}${isFresh(i.device) ? ' fresh' : ''}${i.ack ? ' acked' : ''}`}
             tabIndex={0}
             aria-label={`${DEVICE_STATE_TH[i.severity]} ${names.name(i.device)} ${names.where(i.device)}`}
             title="ไปที่อุปกรณ์ในภาพ 3D"
@@ -105,14 +143,15 @@ export function Incidents({
             </p>
             <div className="meta">
               <span title={`เริ่มเมื่อ ${fullTime(i.since)}`}>
-                {DEVICE_STATE_TH[i.severity]} {fmtAgo(i.since)}
+                {DEVICE_STATE_TH[i.severity]} {fmtAgo(i.since, now)}
               </span>
-              {i.impacted > 0 && <span>กระทบ {i.impacted} อุปกรณ์</span>}
+              {i.impacted > 0 && <span className="impact">กระทบ {i.impacted} อุปกรณ์</span>}
+              {isFresh(i.device) && <span className="newtag">ใหม่</span>}
             </div>
             {i.ack && (
               <div className="ack">
                 ✓ รับเรื่องโดย {i.ack.by}
-                {i.ack.note ? ` · ${i.ack.note}` : ''} ({fmtAgo(i.ack.at)}ที่แล้ว)
+                {i.ack.note ? ` · ${i.ack.note}` : ''} ({fmtAgo(i.ack.at, now)}ที่แล้ว)
               </div>
             )}
           </article>

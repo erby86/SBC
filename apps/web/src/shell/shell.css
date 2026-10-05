@@ -26,16 +26,72 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem 0.8rem;
-  padding: 0.4rem 0.7rem;
+  gap: 0.45rem 0.9rem;
+  padding: 0.45rem 0.6rem 0.45rem 0.75rem;
+  position: relative;
+}
+/* thin status-coloured line along the top edge of the bar */
+#top::before {
+  content: '';
+  position: absolute;
+  left: 0.9rem;
+  right: 0.9rem;
+  top: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--main), transparent);
+  opacity: 0.7;
+}
+#app:has(#bigNum.hot) #top::before {
+  background: linear-gradient(90deg, transparent, var(--down), transparent);
 }
 #top > * {
   min-width: 0;
 }
-#top h1 {
-  font-size: 1.1rem;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin: 0;
+  font-family: var(--font-display);
   font-weight: 600;
+  line-height: 1;
+}
+.brand .logo {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0.6rem;
+  color: var(--main);
+  background: color-mix(in srgb, var(--main) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--main) 45%, transparent);
+}
+.brand .logo .icon {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+.brand .bt {
+  display: flex;
+  flex-direction: column;
+  font-size: 1.35rem;
+  letter-spacing: 0.06em;
+}
+.brand small {
+  font-size: max(12px, 0.68rem);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  margin-bottom: 0.1rem;
+}
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.15rem 0.6rem 0.15rem 0.2rem;
+  border-left: 1px solid var(--line);
+  padding-left: 0.85rem;
 }
 #bigNum {
   display: flex;
@@ -47,13 +103,14 @@
   padding: 0 0.2rem;
 }
 #bigNum b {
-  font-size: 1.8rem;
+  font-family: var(--font-display);
+  font-size: 1.9rem;
   line-height: 1;
   font-weight: 600;
-  color: var(--main);
+  color: var(--ok-ink);
 }
 #bigNum.hot b {
-  color: var(--down);
+  color: var(--down-ink);
 }
 #bigNum span {
   font-size: max(12px, 0.75rem);
@@ -63,26 +120,129 @@
   line-height: 1.2;
   text-align: left;
 }
+.sfield {
+  position: relative;
+  flex: 1 1 11rem;
+  max-width: 20rem;
+  min-width: 8rem;
+}
+.sfield .sicon {
+  position: absolute;
+  left: 0.6rem;
+  top: 50%;
+  width: 1rem;
+  height: 1rem;
+  transform: translateY(-50%);
+  color: var(--ink-2);
+  pointer-events: none;
+  z-index: 1;
+}
 .sbox {
   position: relative;
   flex: 1 1 11rem;
   max-width: 18rem;
   min-width: 8rem;
 }
+.sfield .sbox {
+  max-width: none;
+}
 .sbox input {
   width: 100%;
+}
+#search {
+  padding: 0.4rem 0.7rem 0.4rem 2rem;
+  border-radius: 0.6rem;
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+  transition:
+    border-color 0.2s,
+    background-color 0.2s;
+}
+#search:focus {
+  border-color: var(--wan);
+  background: color-mix(in srgb, var(--wan) 8%, transparent);
+  outline: none;
+}
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.6rem;
+}
+#top .chip b {
+  font-weight: 700;
+}
+#wanChips {
+  padding-left: 0.6rem;
+  border-left: 1px solid var(--line);
+}
+.fresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.fresh .dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ink-2);
+  flex: none;
+}
+.fresh.f-live .dot {
+  background: var(--main);
+  animation: breathe 2.4s ease-in-out infinite;
+}
+.fresh.f-demo .dot {
+  background: var(--warn);
 }
 #fresh.stale {
   color: var(--down-ink);
   border-color: var(--down);
 }
+#fresh.stale .dot {
+  background: var(--down);
+}
 .topbtns {
   margin-left: auto;
   display: flex;
-  gap: 0.35rem;
+  align-items: center;
+  gap: 0.4rem;
   flex-wrap: wrap;
   justify-content: flex-end;
   max-width: 100%;
+}
+.seg {
+  display: flex;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+}
+.ib {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.05rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--ink-2);
+}
+.ib .icon {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+.ib:not(:disabled):hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
+}
+.ib[aria-pressed='true'] {
+  color: var(--main);
+  box-shadow: none;
+  background: color-mix(in srgb, var(--main) 18%, transparent);
 }
 .btnlink {
   display: inline-block;
@@ -95,6 +255,19 @@
   color: var(--ink);
   text-decoration: none;
   white-space: nowrap;
+}
+.btnlink.adminlink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 2.35rem;
+  padding: 0 0.8rem;
+  border-radius: 0.65rem;
+}
+.btnlink.adminlink .icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  color: var(--ink-2);
 }
 
 #leftcol {
@@ -397,8 +570,7 @@
 .floors button {
   padding: 0.1rem 0.5rem;
 }
-.floors button[aria-pressed='true'],
-.topbtns button[aria-pressed='true'] {
+.floors button[aria-pressed='true'] {
   border-color: var(--main);
   box-shadow: inset 0 0 0 1px var(--main);
 }
@@ -595,7 +767,8 @@ details.fibers summary {
   #ui {
     grid-template-columns: minmax(9rem, 12rem) minmax(0, 1fr) minmax(15rem, 19rem);
   }
-  .topbtns .wide {
+  .brand small,
+  #wanChips {
     display: none;
   }
 }
@@ -615,7 +788,10 @@ details.fibers summary {
     padding: 0.35rem 0.5rem;
     gap: 0.35rem 0.5rem;
   }
+  .sfield,
   .sbox,
+  .stat #bigNum span,
+  .btnlink.adminlink span,
   #leftcol,
   #right,
   #bottom,
@@ -1023,7 +1199,7 @@ details.fibers summary {
 /* TV mode (prototype body.tv): watch only — no building list or layer bar, mini map kept */
 #app.tv #left,
 #app.tv #bottom,
-#app.tv .sbox,
+#app.tv .sfield,
 #app.tv .pmin {
   display: none;
 }
@@ -1245,5 +1421,460 @@ body:has(.admin) {
   .badge,
   button.chip {
     min-height: 0;
+  }
+}
+
+/* ── Live touches: health ring, pop on change, incident cards, live feed, all-clear ──────────
+   Every animation stops in eco mode (#app.calm) and with prefers-reduced-motion. */
+.health {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: none;
+}
+.health svg {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+.health circle {
+  fill: none;
+  stroke-width: 3.4;
+}
+.health .track {
+  stroke: color-mix(in srgb, var(--line) 80%, transparent);
+}
+.health .val {
+  stroke: var(--main);
+  stroke-linecap: round;
+  transition:
+    stroke-dasharray 0.8s ease,
+    stroke 0.4s;
+}
+.health.warn .val {
+  stroke: var(--warn);
+}
+.health.down .val,
+.health.cut .val {
+  stroke: var(--down);
+}
+.health b {
+  font-size: max(12px, 0.7rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.health.down {
+  border-radius: 50%;
+  animation: healthp 2.4s ease-in-out infinite;
+}
+@keyframes healthp {
+  50% {
+    box-shadow: 0 0 0.9rem color-mix(in srgb, var(--down) 45%, transparent);
+  }
+}
+
+#bigNum b {
+  display: inline-block;
+  animation: pop 0.45s ease-out;
+}
+#bigNum.hot b {
+  text-shadow: 0 0 0.8rem color-mix(in srgb, var(--down) 55%, transparent);
+}
+@keyframes pop {
+  0% {
+    transform: scale(1.45);
+  }
+  60% {
+    transform: scale(0.94);
+  }
+}
+
+.chip {
+  transition:
+    background-color 0.3s,
+    border-color 0.3s;
+}
+#top .chip.st-warn {
+  background: color-mix(in srgb, var(--warn) 14%, transparent);
+  border-color: color-mix(in srgb, var(--warn) 55%, var(--line));
+}
+#top .chip.st-down,
+#top .chip.st-cut {
+  background: color-mix(in srgb, var(--down) 14%, transparent);
+  border-color: color-mix(in srgb, var(--down) 55%, var(--line));
+}
+#top .chips > .chip {
+  animation: chipin 0.4s ease-out;
+}
+@keyframes chipin {
+  from {
+    transform: translateY(-3px);
+    opacity: 0.4;
+  }
+}
+.ib,
+.topbtns .btnlink {
+  transition:
+    transform 0.15s,
+    border-color 0.2s,
+    background-color 0.2s;
+}
+.topbtns .btnlink:hover,
+.blist button:hover {
+  border-color: var(--main);
+  background: color-mix(in srgb, var(--main) 10%, var(--panel));
+}
+.ib:not(:disabled):active {
+  transform: translateY(1px) scale(0.97);
+}
+
+/* incidents */
+.incsum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+}
+.pill {
+  font-size: max(12px, 0.78rem);
+  font-weight: 600;
+  padding: 0.05rem 0.55rem;
+  border-radius: 1rem;
+  border: 1px solid currentColor;
+}
+.pill.down {
+  color: var(--down-ink);
+  background: color-mix(in srgb, var(--down) 12%, transparent);
+}
+.pill.warn {
+  color: var(--warn-ink);
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+}
+.incsum .next {
+  margin-left: auto;
+  font-size: max(12px, 0.78rem);
+  padding: 0.1rem 0.5rem;
+}
+kbd {
+  font: inherit;
+  font-size: max(12px, 0.72rem);
+  padding: 0 0.3rem;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 0.25rem;
+  color: var(--ink-2);
+}
+.inc {
+  position: relative;
+  transition:
+    transform 0.15s,
+    box-shadow 0.2s,
+    border-color 0.2s;
+}
+.inc.down {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--down) 11%, transparent),
+    transparent 70%
+  );
+}
+.inc.warn {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--warn) 9%, transparent),
+    transparent 70%
+  );
+}
+.inc.acked {
+  opacity: 0.86;
+}
+.inc[data-go]:hover {
+  transform: translateX(-2px);
+  box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.22);
+}
+.inc.down:not(.acked) {
+  animation: incglow 2.6s ease-in-out infinite;
+}
+@keyframes incglow {
+  50% {
+    box-shadow: inset 4px 0 0.9rem -0.4rem var(--down);
+  }
+}
+.inc.fresh {
+  animation:
+    incin 0.5s ease-out,
+    fresh 1.2s ease-in-out 3;
+}
+@keyframes incin {
+  from {
+    transform: translateX(1rem);
+    opacity: 0;
+  }
+}
+@keyframes fresh {
+  50% {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--wan) 70%, transparent);
+  }
+}
+.newtag {
+  font-weight: 700;
+  color: var(--link);
+}
+.inc .impact {
+  color: var(--ink);
+}
+.allok {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.4rem 0.2rem;
+}
+.allok .empty {
+  margin: 0;
+}
+.okdot {
+  flex: none;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: var(--main);
+  animation: breathe 2.8s ease-in-out infinite;
+}
+@keyframes breathe {
+  50% {
+    box-shadow: 0 0 0 0.4rem color-mix(in srgb, var(--main) 20%, transparent);
+  }
+}
+
+/* live feed (what just changed), top-right of the scene */
+#feed {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: min(19rem, 100%);
+  pointer-events: none;
+}
+.fcard {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  border-radius: 0.55rem;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--main);
+  background: var(--panel);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 0.6rem 1.6rem rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+  animation: feedin 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+.fcard.down {
+  border-left-color: var(--down);
+}
+.fcard.warn {
+  border-left-color: var(--warn);
+}
+@keyframes feedin {
+  from {
+    transform: translateX(110%);
+    opacity: 0;
+  }
+}
+.fcard button {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+.fgo {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  text-align: left;
+  white-space: normal;
+  padding: 0.45rem 0.4rem 0.5rem 0.6rem;
+  min-width: 0;
+}
+.ficon {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+.fcard.down .ficon {
+  animation: blink 1s steps(2, start) 4;
+}
+@keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
+.ftext {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+.ftext b {
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+.ftext small {
+  font-size: max(12px, 0.75rem);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.fx {
+  flex: none;
+  padding: 0 0.6rem;
+  font-size: 1.1rem;
+  color: var(--ink-2);
+}
+.fgo:hover,
+.fx:hover {
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+.flife {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: currentColor;
+  color: var(--main);
+  transform-origin: left;
+  animation: life 9s linear forwards; /* = FEED_MS (events.ts) */
+}
+.fcard.down .flife {
+  color: var(--down);
+}
+.fcard.warn .flife {
+  color: var(--warn);
+}
+@keyframes life {
+  to {
+    transform: scaleX(0);
+  }
+}
+
+#toast {
+  animation: toastin 0.3s ease-out;
+}
+@keyframes toastin {
+  from {
+    transform: translate(-50%, -0.6rem);
+    opacity: 0;
+  }
+}
+
+/* panels slide in once on load */
+#top,
+#leftcol > *,
+#right,
+#bottom {
+  animation: panelin 0.55s ease-out backwards;
+}
+#leftcol > * {
+  animation-name: panelinL;
+  animation-delay: 0.08s;
+}
+#right {
+  animation-name: panelinR;
+  animation-delay: 0.12s;
+}
+#bottom {
+  animation-delay: 0.16s;
+}
+@keyframes panelin {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+}
+@keyframes panelinL {
+  from {
+    opacity: 0;
+    transform: translateX(-0.8rem);
+  }
+}
+@keyframes panelinR {
+  from {
+    opacity: 0;
+    transform: translateX(0.8rem);
+  }
+}
+
+#app.calm #ui *,
+#app.calm #ui *::before,
+#app.calm #ui *::after {
+  animation: none !important;
+  transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  #ui *,
+  #ui *::before,
+  #ui *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .flife {
+    display: none;
+  }
+}
+@media (pointer: coarse) {
+  .incsum kbd {
+    display: none;
+  }
+}
+
+/* display face for titles and numbers */
+.ptitle,
+#miniBox figcaption,
+#info h2,
+#help h2,
+#tourBox h3,
+.admin-top h1,
+.health b,
+.pill,
+.rtabs button[role='tab'],
+.tabs button[role='tab'] {
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
+}
+.ptitle,
+#miniBox figcaption {
+  text-transform: none;
+  font-weight: 600;
+}
+
+/* demo band: slim, one line, themed select */
+#demoBar {
+  padding: 0.25rem 0.35rem 0.25rem 0.5rem;
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--warn) 14%, var(--panel));
+  border-color: color-mix(in srgb, var(--warn) 70%, transparent);
+}
+#demoBar select {
+  border-radius: 0.5rem;
+  border-color: color-mix(in srgb, var(--warn) 50%, var(--line));
+  padding: 0.25rem 0.5rem;
+}
+#demoBar > button:last-child {
+  border-radius: 0.5rem;
+}
+@media (pointer: coarse) {
+  .ib {
+    width: 44px;
+    height: 44px;
+  }
+  .btnlink.adminlink {
+    height: auto;
   }
 }
