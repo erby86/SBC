@@ -17,7 +17,10 @@ FROM nginxinc/nginx-unprivileged:1.29-alpine AS runtime
 USER root
 RUN apk upgrade --no-cache
 ENV API_UPSTREAM=http://noc-dev-api:3001
+# The checkout on the server may be 0600 (umask 077) and nginx runs as 101, so set modes here.
+# Not COPY --chmod: BuildKit applies that mode to the parent dir it creates too (0644, no +x).
 COPY apps/web/nginx.conf.template /etc/nginx/templates/default.conf.template
+RUN chmod 0755 /etc/nginx/templates && chmod 0644 /etc/nginx/templates/default.conf.template
 COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
 USER 101
 EXPOSE 80
