@@ -1247,3 +1247,414 @@ body:has(.admin) {
     min-height: 0;
   }
 }
+
+/* ── Live touches: health ring, pop on change, incident cards, live feed, all-clear ──────────
+   Every animation stops in eco mode (#app.calm) and with prefers-reduced-motion. */
+.health {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: none;
+}
+.health svg {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+.health circle {
+  fill: none;
+  stroke-width: 3.4;
+}
+.health .track {
+  stroke: color-mix(in srgb, var(--line) 80%, transparent);
+}
+.health .val {
+  stroke: var(--main);
+  stroke-linecap: round;
+  transition:
+    stroke-dasharray 0.8s ease,
+    stroke 0.4s;
+}
+.health.warn .val {
+  stroke: var(--warn);
+}
+.health.down .val,
+.health.cut .val {
+  stroke: var(--down);
+}
+.health b {
+  font-size: max(12px, 0.7rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.health.down {
+  border-radius: 50%;
+  animation: healthp 2.4s ease-in-out infinite;
+}
+@keyframes healthp {
+  50% {
+    box-shadow: 0 0 0.9rem color-mix(in srgb, var(--down) 45%, transparent);
+  }
+}
+
+#bigNum b {
+  display: inline-block;
+  animation: pop 0.45s ease-out;
+}
+#bigNum.hot b {
+  text-shadow: 0 0 0.8rem color-mix(in srgb, var(--down) 55%, transparent);
+}
+@keyframes pop {
+  0% {
+    transform: scale(1.45);
+  }
+  60% {
+    transform: scale(0.94);
+  }
+}
+
+.chip {
+  transition:
+    background-color 0.3s,
+    border-color 0.3s;
+}
+#top .chip.st-warn {
+  background: color-mix(in srgb, var(--warn) 14%, transparent);
+  border-color: color-mix(in srgb, var(--warn) 55%, var(--line));
+}
+#top .chip.st-down,
+#top .chip.st-cut {
+  background: color-mix(in srgb, var(--down) 14%, transparent);
+  border-color: color-mix(in srgb, var(--down) 55%, var(--line));
+}
+#top .chips > .chip {
+  animation: chipin 0.4s ease-out;
+}
+@keyframes chipin {
+  from {
+    transform: translateY(-3px);
+    opacity: 0.4;
+  }
+}
+.topbtns button,
+.topbtns .btnlink {
+  transition:
+    transform 0.15s,
+    border-color 0.2s,
+    background-color 0.2s;
+}
+.topbtns button:not(:disabled):hover,
+.topbtns .btnlink:hover,
+.blist button:hover {
+  border-color: var(--main);
+  background: color-mix(in srgb, var(--main) 10%, var(--panel));
+}
+.topbtns button:not(:disabled):active {
+  transform: translateY(1px) scale(0.97);
+}
+
+/* incidents */
+.incsum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+}
+.pill {
+  font-size: max(12px, 0.78rem);
+  font-weight: 600;
+  padding: 0.05rem 0.55rem;
+  border-radius: 1rem;
+  border: 1px solid currentColor;
+}
+.pill.down {
+  color: var(--down-ink);
+  background: color-mix(in srgb, var(--down) 12%, transparent);
+}
+.pill.warn {
+  color: var(--warn-ink);
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+}
+.incsum .next {
+  margin-left: auto;
+  font-size: max(12px, 0.78rem);
+  padding: 0.1rem 0.5rem;
+}
+kbd {
+  font: inherit;
+  font-size: max(12px, 0.72rem);
+  padding: 0 0.3rem;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 0.25rem;
+  color: var(--ink-2);
+}
+.inc {
+  position: relative;
+  transition:
+    transform 0.15s,
+    box-shadow 0.2s,
+    border-color 0.2s;
+}
+.inc.down {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--down) 11%, transparent),
+    transparent 70%
+  );
+}
+.inc.warn {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--warn) 9%, transparent),
+    transparent 70%
+  );
+}
+.inc.acked {
+  opacity: 0.86;
+}
+.inc[data-go]:hover {
+  transform: translateX(-2px);
+  box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.22);
+}
+.inc.down:not(.acked) {
+  animation: incglow 2.6s ease-in-out infinite;
+}
+@keyframes incglow {
+  50% {
+    box-shadow: inset 4px 0 0.9rem -0.4rem var(--down);
+  }
+}
+.inc.fresh {
+  animation:
+    incin 0.5s ease-out,
+    fresh 1.2s ease-in-out 3;
+}
+@keyframes incin {
+  from {
+    transform: translateX(1rem);
+    opacity: 0;
+  }
+}
+@keyframes fresh {
+  50% {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--wan) 70%, transparent);
+  }
+}
+.newtag {
+  font-weight: 700;
+  color: var(--link);
+}
+.inc .impact {
+  color: var(--ink);
+}
+.allok {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.4rem 0.2rem;
+}
+.allok .empty {
+  margin: 0;
+}
+.okdot {
+  flex: none;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: var(--main);
+  animation: breathe 2.8s ease-in-out infinite;
+}
+@keyframes breathe {
+  50% {
+    box-shadow: 0 0 0 0.4rem color-mix(in srgb, var(--main) 20%, transparent);
+  }
+}
+
+/* live feed (what just changed), top-right of the scene */
+#feed {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: min(19rem, 100%);
+  pointer-events: none;
+}
+.fcard {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  border-radius: 0.55rem;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--main);
+  background: var(--panel);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 0.6rem 1.6rem rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+  animation: feedin 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+.fcard.down {
+  border-left-color: var(--down);
+}
+.fcard.warn {
+  border-left-color: var(--warn);
+}
+@keyframes feedin {
+  from {
+    transform: translateX(110%);
+    opacity: 0;
+  }
+}
+.fcard button {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+.fgo {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  text-align: left;
+  white-space: normal;
+  padding: 0.45rem 0.4rem 0.5rem 0.6rem;
+  min-width: 0;
+}
+.ficon {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+.fcard.down .ficon {
+  animation: blink 1s steps(2, start) 4;
+}
+@keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
+.ftext {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+.ftext b {
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+.ftext small {
+  font-size: max(12px, 0.75rem);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.fx {
+  flex: none;
+  padding: 0 0.6rem;
+  font-size: 1.1rem;
+  color: var(--ink-2);
+}
+.fgo:hover,
+.fx:hover {
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+.flife {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: currentColor;
+  color: var(--main);
+  transform-origin: left;
+  animation: life 9s linear forwards; /* = FEED_MS (events.ts) */
+}
+.fcard.down .flife {
+  color: var(--down);
+}
+.fcard.warn .flife {
+  color: var(--warn);
+}
+@keyframes life {
+  to {
+    transform: scaleX(0);
+  }
+}
+
+#toast {
+  animation: toastin 0.3s ease-out;
+}
+@keyframes toastin {
+  from {
+    transform: translate(-50%, -0.6rem);
+    opacity: 0;
+  }
+}
+
+/* panels slide in once on load */
+#top,
+#leftcol > *,
+#right,
+#bottom {
+  animation: panelin 0.55s ease-out backwards;
+}
+#leftcol > * {
+  animation-name: panelinL;
+  animation-delay: 0.08s;
+}
+#right {
+  animation-name: panelinR;
+  animation-delay: 0.12s;
+}
+#bottom {
+  animation-delay: 0.16s;
+}
+@keyframes panelin {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+}
+@keyframes panelinL {
+  from {
+    opacity: 0;
+    transform: translateX(-0.8rem);
+  }
+}
+@keyframes panelinR {
+  from {
+    opacity: 0;
+    transform: translateX(0.8rem);
+  }
+}
+
+#app.calm #ui *,
+#app.calm #ui *::before,
+#app.calm #ui *::after {
+  animation: none !important;
+  transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  #ui *,
+  #ui *::before,
+  #ui *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .flife {
+    display: none;
+  }
+}
+@media (pointer: coarse) {
+  .incsum kbd {
+    display: none;
+  }
+}
