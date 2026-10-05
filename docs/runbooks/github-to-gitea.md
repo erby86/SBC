@@ -24,7 +24,7 @@ git push -u origin module/Mxx-ชื่อ
 ## 2. PR ใน Gitea
 
 เปิด `http://git.sbc.lan/sbc/sbc-noc/compare/main...module/Mxx-ชื่อ` → New Pull Request → รอ CI (`ci / quality`,
-`ci / secrets`, `ci / audit`, `build`, `db-integration`, `e2e`) เขียวครบ — `e2e` ใช้ราว 10–20 นาที ภาพอยู่ใน artifact `e2e-shots` → Merge
+`ci / secrets`, `ci / audit`, `build`, `scan`, `db-integration`, `e2e`) เขียวครบ — `e2e` ใช้ราว 10–20 นาที ภาพอยู่ใน artifact `e2e-shots` → Merge
 
 - "This branch is already included in the target branch" = งานเข้า main ไปแล้ว (หรือดึงจาก GitHub ไม่สำเร็จ) → ปิด PR นั้น
   แล้วเช็ก `git log origin/main`
@@ -34,8 +34,11 @@ git push -u origin module/Mxx-ชื่อ
 
 ```bash
 cd /opt/sbc-noc/src && git pull -q && git log --oneline -1
-docker compose --env-file /opt/sbc-noc/dev.env -f infra/compose/compose.dev.yml up -d --build 2>&1 | tail -2
+infra/scripts/deploy.sh staging 2>&1 | tail -6
 ```
+
+`deploy.sh staging` (M17) = backup ฐาน dev → build → Trivy → `up -d` → รอ health; ควรจบด้วย `staging OK`
+prod ใช้ `infra/scripts/deploy.sh prod` แยกต่างหาก (`docs/modules/M17.md`)
 
 - สั่งงาน worker ให้รันทันที (ไม่รอรอบ): `docker exec sbc-noc-dev-worker node dist/run-job-cli.js <ชื่องาน>`
   (`unifi-aps`, `omada-aps`, `asset-locs`, `zabbix-match`, `zabbix-tags`, `registry-stats`)
