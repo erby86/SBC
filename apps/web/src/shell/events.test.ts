@@ -28,6 +28,13 @@ describe('diffIncidents', () => {
     ]);
   });
 
+  it('does not call a long-running problem new when it comes back after one poll', () => {
+    const at = Date.parse('2026-10-05T04:05:00Z');
+    const old = { ...inc('old', 'down'), since: '2026-05-01T00:00:00Z' };
+    const ev = diffIncidents([], [old, inc('n', 'warn')], at);
+    expect(ev.map((e) => e.device)).toEqual(['n']);
+  });
+
   it('ignores a device that got better (down → warn) or stayed the same', () => {
     expect(diffIncidents([inc('a', 'down')], [inc('a', 'warn')])).toEqual([]);
   });

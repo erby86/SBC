@@ -11,7 +11,9 @@ import {
   type UnlocatedList,
 } from '@sbc-noc/shared';
 import { STATE_ICON, type UiState } from '@sbc-noc/ui';
+import { useState } from 'react';
 import { deviceKind, type LabModel } from '../scene/model.js';
+import { firstToHandle, priority, PRIORITY_TH, splitIncidents, STALE_DAYS } from './console.js';
 import { plainMessage } from './messages.js';
 
 /** What the device is, in words a teacher knows (shown before the location). */
@@ -80,76 +82,68 @@ export function makeNames(layout: Layout | undefined) {
 }
 export type Names = ReturnType<typeof makeNames>;
 
+/** Incidents of one root cause each: P1–P3 cards, then warnings older than 7 days folded into one
+ * group, then planned maintenance. Totals live only in the top bar. */
 export function Incidents({
   snap,
   layout,
   names,
   current,
-  demo,
+  building = null,
   now = Date.now(),
   isFresh = () => false,
   onGo,
-  onNext,
+  onClearBuilding,
 }: {
   snap: StatusSnapshot | null;
   layout: Layout | undefined;
   names: Names;
   current: string | null;
-  demo: string | null;
+  /** Focused building: only its incidents are listed. */
+  building?: string | null;
   /** Clock for "12 นาที" (ticks between snapshots). */
   now?: number;
   /** Incident seen for the first time a moment ago (highlighted). */
   isFresh?: (device: string) => boolean;
   onGo: (code: string) => void;
-  /** Go to the next incident nobody has taken (key N). */
-  onNext?: () => void;
+  onClearBuilding?: () => void;
 }) {
+  const [staleOpen, setStaleOpen] = useState(false);
   if (!snap) return <p className="empty">รอข้อมูลสถานะ…</p>;
-  const downs = snap.incidents.filter((i) => i.severity === 'down').length;
-  const warns = snap.incidents.length - downs;
   const children = new Map<string, string[]>();
   for (const d of layout?.devices ?? [])
     if (d.uplink) children.set(d.uplink, [...(children.get(d.uplink) ?? []), d.code]);
   const go = (code: string) => (names.has(code) ? onGo(code) : undefined);
+  const inBuilding = (code: string) => !building || names.building(code) === building;
+  const { main, stale } = splitIncidents(
+    snap.incidents.filter((i) => inBuilding(i.device)),
+    now,
+  );
+  const maint = snap.maintenance.filter((m) => inBuilding(m.device));
+  const showStale = staleOpen || stale.some((i) => i.device === current);
   return (
     <div data-testid="incidents">
-      {demo && <p className="demonote">{demo}</p>}
-      {snap.incidents.length > 0 && (
-        <div className="incsum">
-          {downs > 0 && (
-            <span className="pill down">
-              {STATE_ICON.down} ใช้งานไม่ได้ {downs}
-            </span>
-          )}
-          {warns > 0 && (
-            <span className="pill warn">
-              {STATE_ICON.warn} ควรตรวจสอบ {warns}
-            </span>
-          )}
-          {onNext && (
-            <button
-              className="next"
-              onClick={onNext}
-              aria-label="ไปเหตุถัดไป"
-              title="ไปเหตุถัดไปที่ยังไม่มีคนรับ (กด N)"
-            >
-              เหตุถัดไป <kbd>N</kbd>
-            </button>
-          )}
-        </div>
+      {building && onClearBuilding && (
+        <button className="only" onClick={onClearBuilding} title="แสดงทุกอาคาร">
+          เฉพาะ {names.buildingName(building)} ✕
+        </button>
       )}
-      {snap.incidents.length === 0 ? (
+      {main.length === 0 && stale.length === 0 && (
         <div className="allok" data-testid="all-ok">
           <span className="okdot" aria-hidden="true" />
-          <p className="empty">ไม่มีแจ้งเตือน ทุกระบบปกติ</p>
+          <p className="empty">
+            {building ? 'อาคารนี้ไม่มีแจ้งเตือน' : 'ไม่มีแจ้งเตือน ทุกระบบปกติ'}
+          </p>
         </div>
-      ) : (
-        snap.incidents.map((i) => (
+      )}
+      {main.map((i) => {
+        const p = priority(i);
+        return (
           <article
             key={i.device}
             className={`inc ${i.severity}${current === i.device ? ' cur' : ''}${isFresh(i.device) ? ' fresh' : ''}${i.ack ? ' acked' : ''}`}
             tabIndex={0}
-            aria-label={`${DEVICE_STATE_TH[i.severity]} ${names.name(i.device)} ${names.where(i.device)}`}
+            aria-label={`${p} ${DEVICE_STATE_TH[i.severity]} ${names.name(i.device)} ${names.where(i.device)}`}
             title="ไปที่อุปกรณ์ในภาพ 3D"
             data-go={i.device}
             onClick={() => go(i.device)}
@@ -158,20 +152,24 @@ export function Incidents({
             }}
           >
             <h3>
-              <span className={`i ${i.severity}`}>{STATE_ICON[i.severity]}</span>{' '}
-              {names.name(i.device)}
+              <span className={`prio ${p}`} title={PRIORITY_TH[p]}>
+                {p}
+              </span>
+              <span className="nm">{names.name(i.device)}</span>
+              <span className="age" title={`เริ่มเมื่อ ${fullTime(i.since)}`}>
+                {fmtAgo(i.since, now)}
+              </span>
             </h3>
             <p title={plainMessage(i.message) !== i.message ? i.message : undefined}>
               {names.kind(i.device)}
               {names.where(i.device)} · {plainMessage(i.message)}
             </p>
-            <div className="meta">
-              <span title={`เริ่มเมื่อ ${fullTime(i.since)}`}>
-                {DEVICE_STATE_TH[i.severity]} {fmtAgo(i.since, now)}
-              </span>
-              {i.impacted > 0 && <span className="impact">กระทบ {i.impacted} อุปกรณ์</span>}
-              {isFresh(i.device) && <span className="newtag">ใหม่</span>}
-            </div>
+            {(i.impacted > 0 || isFresh(i.device)) && (
+              <div className="meta">
+                {i.impacted > 0 && <span className="impact">กระทบ {i.impacted} อุปกรณ์</span>}
+                {isFresh(i.device) && <span className="newtag">ใหม่</span>}
+              </div>
+            )}
             {i.ack && (
               <div className="ack">
                 ✓ รับเรื่องโดย {i.ack.by}
@@ -179,12 +177,42 @@ export function Incidents({
               </div>
             )}
           </article>
-        ))
+        );
+      })}
+      {stale.length > 0 && (
+        <div className="staleg" data-testid="stale-group">
+          <button
+            className="staleh"
+            aria-expanded={showStale}
+            onClick={() => setStaleOpen(!showStale)}
+            title={`ควรตรวจสอบ ค้างมานานกว่า ${STALE_DAYS} วัน`}
+          >
+            <span className="prio P3">P3 × {stale.length}</span>
+            <span className="t">ค้างนานเกิน {STALE_DAYS} วัน</span>
+            <span className="chev">{showStale ? 'ซ่อน' : 'ดู'}</span>
+          </button>
+          {showStale &&
+            stale.map((i) => (
+              <button
+                key={i.device}
+                className={`srow${current === i.device ? ' cur' : ''}`}
+                data-go={i.device}
+                onClick={() => go(i.device)}
+                title={`${names.where(i.device)} · เริ่มเมื่อ ${fullTime(i.since)}`}
+              >
+                <span className="i warn">{STATE_ICON.warn}</span>
+                <span className="tx">
+                  <b>{names.name(i.device)}</b> · {plainMessage(i.message)}
+                </span>
+                <span className="age">{fmtAgo(i.since, now)}</span>
+              </button>
+            ))}
+        </div>
       )}
-      {snap.maintenance.length > 0 && (
+      {maint.length > 0 && (
         <>
           <p className="sub2">อยู่ระหว่างบำรุงรักษา</p>
-          {snap.maintenance.map((m) => (
+          {maint.map((m) => (
             <article
               key={m.device}
               className="inc maint"
@@ -196,7 +224,8 @@ export function Incidents({
               }}
             >
               <h3>
-                <span className="i maint">{STATE_ICON.maint}</span> {names.name(m.device)}
+                <span className="i maint">{STATE_ICON.maint}</span>{' '}
+                <span className="nm">{names.name(m.device)}</span>
               </h3>
               <p>
                 {names.where(m.device)} · {m.message}
@@ -209,13 +238,64 @@ export function Incidents({
           ))}
         </>
       )}
-      {snap.incidents.some((i) => !i.ack) && !demo && (
+    </div>
+  );
+}
+
+/** "ทำอะไรก่อน": the first down incident nobody has taken, with where to go and how to take it. */
+export function FirstCard({
+  snap,
+  names,
+  demo,
+  now = Date.now(),
+  zabbixUrl,
+  onGo,
+}: {
+  snap: StatusSnapshot | null;
+  names: Names;
+  demo: boolean;
+  now?: number;
+  /** Zabbix page of the device (M22 link template); null when not set up. */
+  zabbixUrl: (code: string) => string | null;
+  onGo: (code: string) => void;
+}) {
+  const i = snap ? firstToHandle(snap.incidents) : null;
+  if (!i) return null;
+  const p = priority(i);
+  const url = zabbixUrl(i.device);
+  return (
+    <section id="first" className="panel" aria-label="ทำอะไรก่อน" data-testid="first">
+      <p className="fhead">
+        <span className={`prio ${p}`} title={PRIORITY_TH[p]}>
+          {p} {p === 'P1' ? 'วิกฤต' : 'สูง'}
+        </span>
+        <span className="lbl">ทำอะไรก่อน</span>
+      </p>
+      <h3>{names.name(i.device)} ใช้งานไม่ได้</h3>
+      <p className="line">
+        {names.kind(i.device)}
+        {names.where(i.device)} · {plainMessage(i.message)} · {fmtAgo(i.since, now)}
+        {i.impacted > 0 ? ` · กระทบ ${i.impacted} อุปกรณ์` : ''}
+      </p>
+      <div className="btns">
+        {names.has(i.device) && (
+          <button className="primary" onClick={() => onGo(i.device)}>
+            ดูบนผัง
+          </button>
+        )}
+        {url && !demo && (
+          <a className="btnlink" href={url} target="_blank" rel="noopener noreferrer">
+            รับเรื่องใน Zabbix ↗
+          </a>
+        )}
+      </div>
+      {!url && !demo && (
         <p className="hnote">
-          รับเรื่องใน Zabbix ไปก่อน (ขึ้นที่การ์ดภายใน 30 วินาที) —
+          รับเรื่องใน Zabbix (ขึ้นที่การ์ดภายใน 30 วินาที) —
           ปุ่มรับเรื่องในหน้านี้มาพร้อมระบบเข้าสู่ระบบ
         </p>
       )}
-    </div>
+    </section>
   );
 }
 

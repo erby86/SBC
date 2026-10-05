@@ -1,6 +1,5 @@
-// Live feed cards over the scene (new / worse / recovered — click flies there) and the health ring
-// of the top bar.
-import { STATE_ICON, type UiState } from '@sbc-noc/ui';
+// Live feed cards over the scene (new / worse / recovered — click flies there).
+import { STATE_ICON } from '@sbc-noc/ui';
 import type { FeedEvent } from './events.js';
 import type { Names } from './panels.js';
 
@@ -61,27 +60,5 @@ export function Feed({
         </div>
       ))}
     </div>
-  );
-}
-
-/** Donut of usable/total devices, coloured by the worst state. */
-export function HealthRing({ on, total, worst }: { on: number; total: number; worst: UiState }) {
-  if (!total) return null;
-  const pct = Math.round((on / total) * 100);
-  const r = 15.9155; // circumference 100
-  return (
-    <span
-      className={`health ${worst}`}
-      role="img"
-      aria-label={`สุขภาพเครือข่าย ${pct}% ใช้งานได้ ${on} จาก ${total}`}
-      title={`ใช้งานได้ ${on} จาก ${total} อุปกรณ์ (เครือข่าย AP NVR ไม่นับที่บำรุงรักษา)`}
-      data-testid="health"
-    >
-      <svg viewBox="0 0 36 36" aria-hidden="true">
-        <circle className="track" cx="18" cy="18" r={r} />
-        <circle className="val" cx="18" cy="18" r={r} strokeDasharray={`${pct} ${100 - pct}`} />
-      </svg>
-      <b>{pct}%</b>
-    </span>
   );
 }

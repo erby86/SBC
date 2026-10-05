@@ -35,6 +35,7 @@ test('lets scrollable boxes, ellipsis and hidden text pass', async ({ page }) =>
       <div style="height:40px;overflow:auto"><p>1</p><p>2</p><p>3 อยู่ล่างแต่เลื่อนดูได้</p></div>
       <div style="width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">ตัดด้วยจุดสามจุด</div>
       <div style="display:none">ซ่อนอยู่</div>
+      <div style="margin-top:600px">หน้ายาว เลื่อนลงมาอ่านได้</div>
       <div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">สำหรับโปรแกรมอ่านจอ</div>`),
   );
   expect(await findTextOverflow(page)).toEqual([]);

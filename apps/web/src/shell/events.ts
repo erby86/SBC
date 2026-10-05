@@ -1,5 +1,5 @@
 // Live feed: what changed between two snapshots (new incident, got worse, recovered), shown as
-// short cards over the scene, and the overall health of the network for the top bar ring.
+// short cards over the scene.
 import type { StatusSnapshot } from '@sbc-noc/shared';
 import { useEffect, useRef, useState } from 'react';
 
@@ -15,6 +15,9 @@ export interface FeedEvent {
 }
 
 /** Changes from `prev` to `next`; nothing for the first snapshot (prev null). */
+/** An incident that started longer ago than this is not reported as new (flapping polls). */
+export const NEW_MAX_AGE_MS = 15 * 60_000;
+
 export function diffIncidents(
   prev: readonly Incident[] | null,
   next: readonly Incident[],
@@ -26,9 +29,17 @@ export function diffIncidents(
   const out: FeedEvent[] = [];
   for (const i of next) {
     const p = before.get(i.device);
-    if (!p)
-      out.push({ id: `${i.device}@${at}`, kind: i.severity, change: 'new', device: i.device, at });
-    else if (p.severity === 'warn' && i.severity === 'down')
+    if (!p) {
+      // a long-running problem that drops out for one poll and comes back is not news
+      if (at - Date.parse(i.since) < NEW_MAX_AGE_MS)
+        out.push({
+          id: `${i.device}@${at}`,
+          kind: i.severity,
+          change: 'new',
+          device: i.device,
+          at,
+        });
+    } else if (p.severity === 'warn' && i.severity === 'down')
       out.push({ id: `${i.device}@${at}`, kind: 'down', change: 'worse', device: i.device, at });
   }
   for (const p of prev)

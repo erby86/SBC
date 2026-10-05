@@ -124,7 +124,7 @@ describe('NOC screen (M18 frame, M19 scene)', () => {
     expect(screen.getAllByTestId('incidents')[0]?.textContent).toContain('8 เซียน main');
     expect(screen.getAllByTestId('incidents')[0]?.textContent).toContain('กระทบ 3 อุปกรณ์');
     expect(screen.getByTestId('open-incidents').textContent).toContain('1');
-    expect(screen.getByTestId('state-chips').textContent).toContain('เครือข่าย 0/1');
+    expect(screen.getByTestId('state-chips').textContent).toContain('อุปกรณ์ 0/1');
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
@@ -155,7 +155,7 @@ describe('NOC screen (M18 frame, M19 scene)', () => {
       }),
     );
     const building = screen.getAllByTestId('buildings')[0]?.querySelector('button');
-    expect(building?.textContent).toContain('1 จุด'); // m-s8 down
+    expect(building?.textContent).toContain('✕ 1'); // m-s8 down: listed first, one problem
     act(() => building?.click());
     const floors = screen.getAllByTestId('floors')[0];
     expect(floors?.querySelectorAll('button')).toHaveLength(9); // ทุกชั้น + 8 floors
@@ -224,6 +224,7 @@ describe('NOC screen (M18 frame, M19 scene)', () => {
 
   it('switches between dark and light and remembers the choice', () => {
     renderAt('/', <App />);
+    act(() => screen.getByTestId('menu').click());
     const btn = screen.getByTestId('theme-toggle');
     act(() => btn.click());
     const first = document.documentElement.dataset['theme'];
@@ -309,7 +310,12 @@ describe('NOC screen panels and modes (M20)', () => {
     push(snapshot(false));
     const tab = (start: string) =>
       screen.getAllByRole('tab').find((t) => t.textContent?.startsWith(start)) as HTMLElement;
-    await waitFor(() => expect(tab('ยังไม่ระบุที่ตั้ง').textContent).toBe('ยังไม่ระบุที่ตั้ง (1)'));
+    // devices without a position open from the menu
+    act(() => screen.getByTestId('menu').click());
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'ยังไม่มีตำแหน่งบนผัง (1)' })).toBeDefined(),
+    );
+    act(() => screen.getByTestId('menu').click());
     act(() => tab('ประวัติ').click());
     const h = screen.getByTestId('history');
     expect(h.textContent).toContain('ทั้งโรงเรียน');
@@ -323,7 +329,9 @@ describe('NOC screen panels and modes (M20)', () => {
     expect(screen.getByTestId('history').textContent).toContain('เฉพาะ 8 เซียน');
     // labs of the focused building
     expect(screen.getAllByTestId('labs')[0]?.textContent).toContain('ห้องคอม 40');
-    act(() => tab('ยังไม่ระบุที่ตั้ง').click());
+    act(() => screen.getByTestId('menu').click());
+    act(() => screen.getByRole('button', { name: 'ยังไม่มีตำแหน่งบนผัง (1)' }).click());
+    expect(tab('ไม่มีตำแหน่ง')?.textContent).toBe('ไม่มีตำแหน่ง 1');
     expect(screen.getByTestId('unlocated').textContent).toContain('SW-UNKNOWN');
     expect(screen.getByTestId('unlocated').textContent).toContain('กลุ่ม 02-Switch');
   });
@@ -336,6 +344,7 @@ describe('NOC screen panels and modes (M20)', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByTestId('help')).toBeNull();
     localStorage.removeItem('noc-tour');
+    act(() => screen.getByTestId('menu').click());
     act(() => screen.getByRole('button', { name: 'วิธีใช้' }).click());
     act(() => screen.getByRole('button', { name: 'เริ่มแนะนำการใช้งานอีกครั้ง' }).click());
     for (let i = 0; i < 4; i++) act(() => screen.getByRole('button', { name: 'ถัดไป' }).click());
@@ -348,9 +357,11 @@ describe('NOC screen panels and modes (M20)', () => {
     renderAt('/', <App />);
     await loaded();
     push(snapshot(false));
+    act(() => screen.getByTestId('menu').click());
     act(() => screen.getByTestId('tv').click());
     expect(document.documentElement.classList.contains('tv')).toBe(true);
     expect(screen.getByTestId('info').textContent).toContain('8 เซียน main');
+    act(() => screen.getByTestId('menu').click());
     act(() => screen.getByTestId('tv').click());
     expect(document.documentElement.classList.contains('tv')).toBe(false);
   });
@@ -381,7 +392,7 @@ describe('NOC screen panels and modes (M20)', () => {
     await waitFor(() =>
       expect(screen.getAllByTestId('incidents')[0]?.textContent).toContain('8 เซียน main'),
     );
-    expect(screen.getAllByTestId('incidents')[0]?.textContent).toContain('ข้อมูลสาธิต');
+    // the band says it is demo data; the alert list no longer repeats it (declutter)
     expect(FakeWebSocket.last).toBeNull();
     expect(screen.getByRole('combobox', { name: 'สถานการณ์สาธิต' })).toBeDefined();
   });
