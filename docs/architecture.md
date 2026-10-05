@@ -78,7 +78,7 @@ sbc-noc/
 ## CI (ADR-0007, ADR-0016)
 
 - `ci.yml` ทุก push/PR: `quality` (format, lint, ทิศทาง import, typecheck, test), `secrets` (gitleaks), `audit` (pnpm audit high)
-- `build.yml` เฉพาะ PR เข้า `main` และ tag `v*`: `build` (+ Testcontainers M03, image/Trivy/SBOM M17, Playwright M22)
+- `build.yml` เฉพาะ PR เข้า `main` และ tag `v*`: `build` (+ image/Trivy/SBOM M17), `db-integration` (PostgreSQL 16 + Redis จริง, M03), `e2e` (Playwright 3 ขนาด บน stack ใน job, artifact `e2e-shots`, M22)
 
 ## ADR
 

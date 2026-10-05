@@ -46,6 +46,12 @@ export const linkTemplateSchema = z
     { message: 'http(s) URL; placeholders: ' + LINK_PLACEHOLDERS.join(', ') },
   );
 
+/** Env key of a template: empty or unset = no button (compose passes `${VAR:-}` as ""). */
+export const optionalLinkTemplateSchema = z.preprocess(
+  (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+  linkTemplateSchema.optional(),
+);
+
 /** Fills the first template whose placeholders all have a value; null = no usable link. */
 export function fillLinkTemplate(template: string | null, values: LinkValues): string | null {
   if (!template) return null;
