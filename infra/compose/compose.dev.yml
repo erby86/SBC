@@ -57,6 +57,10 @@ services:
       DEMO_MODE: ${DEMO_MODE:-true}
       # Registry editor without login (M21, ADR-0020) — dev only until M23.
       REGISTRY_EDIT: ${REGISTRY_EDIT:-true}
+      # Zabbix/Grafana/GLPI buttons (M22): URL templates from the env file, empty = no button.
+      LINK_ZABBIX_URL: ${LINK_ZABBIX_URL:-}
+      LINK_GRAFANA_URL: ${LINK_GRAFANA_URL:-}
+      LINK_GLPI_URL: ${LINK_GLPI_URL:-}
     depends_on:
       noc-dev-migrate: { condition: service_completed_successfully }
     networks: [internal, shared]

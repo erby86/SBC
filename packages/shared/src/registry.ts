@@ -85,6 +85,8 @@ export const deviceSchema = z.object({
   lifecycle: z.string(),
   dataStatus: z.string(),
   zabbixHostId: nullableStr,
+  /** asset.assets.asset_tag (เลขครุภัณฑ์) — GLPI link (M22). */
+  assetTag: nullableStr,
   placement: devicePlacementSchema.nullable(),
 });
 
@@ -92,7 +94,6 @@ export const deviceDetailSchema = deviceSchema.extend({
   firmware: nullableStr,
   rack: nullableStr,
   powerSource: nullableStr,
-  assetTag: nullableStr,
   warrantyUntil: nullableStr,
   eolDate: nullableStr,
   verifiedAt: nullableStr,
