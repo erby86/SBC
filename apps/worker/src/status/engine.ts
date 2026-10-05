@@ -3,17 +3,32 @@
 // snapshot that goes to Redis for the api/WebSocket. When Zabbix cannot be read the previous data
 // is kept with its old lastUpdate, so after 2 minutes every screen shows the states as stale.
 import type { DbPool } from '@sbc-noc/db';
+// M20: every few minutes it also writes the 24 h problem history and the Zabbix hosts that match no
+// registry device (status:history, status:unlocated) for the history and "ไม่มีตำแหน่ง" panels.
 import {
   computeStatus,
+  type HistoryEvent,
+  type StatusHistory,
   type StatusInput,
   type StatusSnapshot,
   type TopologyDevice,
+  type UnlocatedList,
 } from '@sbc-noc/shared';
-import type { ZabbixClient, ZabbixProblem } from '../connectors/zabbix.js';
+import type {
+  ZabbixClient,
+  ZabbixGroupedHost,
+  ZabbixProblem,
+  ZabbixProblemEvent,
+} from '../connectors/zabbix.js';
 
 export const SNAPSHOT_KEY = 'status:snapshot';
 export const UPDATES_CHANNEL = 'status:updates';
+export const HISTORY_KEY = 'status:history';
+export const UNLOCATED_KEY = 'status:unlocated';
 export const DEFAULT_POLL_MS = 30_000;
+/** History/unlocated change slowly and cost more queries: refresh every 2 minutes. */
+export const EXTRAS_EVERY_MS = 2 * 60_000;
+export const HISTORY_HOURS = 24;
 
 /** Zabbix severity → NOC state: High/Disaster = down, Warning/Average = warn, lower = ignored. */
 export function stateOfSeverity(severity: number): 'down' | 'warn' | null {
@@ -82,6 +97,89 @@ export function inputFromZabbix(
   return { lastUpdate: now.toISOString(), signals, acks, maintenance: maint, labOnline: {} };
 }
 
+/**
+ * Problem events → history rows (warn/down only), newest first; hosts outside the registry keep
+ * their name. `open` adds problems still going that started before the window (event.get
+ * time_from only returns events that started inside it).
+ */
+export function historyFromZabbix(
+  events: ZabbixProblemEvent[],
+  deviceOfHost: Map<string, string>,
+  now: Date,
+  hours = HISTORY_HOURS,
+  open: ZabbixProblem[] = [],
+): StatusHistory {
+  const iso = (sec: number) => new Date(sec * 1000).toISOString();
+  const rows: HistoryEvent[] = [];
+  const seen = new Set(events.map((e) => e.eventid));
+  const hostName = new Map(events.flatMap((e) => e.hosts.map((h) => [h.hostid, h.name] as const)));
+  const all: ZabbixProblemEvent[] = [
+    ...events,
+    ...open
+      .filter((p) => !seen.has(p.eventid))
+      .map((p) => ({
+        eventid: p.eventid,
+        name: p.name,
+        severity: p.severity,
+        clock: p.clock,
+        endClock: null,
+        hosts: p.hostids.map((hostid) => ({
+          hostid,
+          name: hostName.get(hostid) ?? deviceOfHost.get(hostid) ?? `host ${hostid}`,
+        })),
+      })),
+  ];
+  for (const e of all) {
+    const severity = stateOfSeverity(e.severity);
+    if (!severity) continue;
+    for (const h of e.hosts.length ? e.hosts : [{ hostid: '', name: '?' }]) {
+      rows.push({
+        device: deviceOfHost.get(h.hostid) ?? null,
+        host: h.name,
+        severity,
+        start: iso(e.clock),
+        end: e.endClock === null ? null : iso(e.endClock),
+        message: e.name,
+      });
+    }
+  }
+  rows.sort((a, b) => Date.parse(b.start) - Date.parse(a.start));
+  return { updatedAt: now.toISOString(), hours, events: rows };
+}
+
+/** Zabbix hosts no registry device matches, with their worst open problem. */
+export function unlocatedFromZabbix(
+  hosts: ZabbixGroupedHost[],
+  problems: ZabbixProblem[],
+  deviceOfHost: Map<string, string>,
+  now: Date,
+): UnlocatedList {
+  const worst = new Map<string, 'warn' | 'down'>();
+  for (const p of problems) {
+    const st = stateOfSeverity(p.severity);
+    if (!st) continue;
+    for (const h of p.hostids) if (worst.get(h) !== 'down') worst.set(h, st);
+  }
+  return {
+    updatedAt: now.toISOString(),
+    hosts: hosts
+      .filter((h) => !deviceOfHost.has(h.hostid))
+      .map((h) => ({
+        hostid: h.hostid,
+        name: h.name || h.host,
+        ip: h.ips[0] ?? null,
+        groups: h.groups,
+        state: worst.get(h.hostid) ?? ('ok' as const),
+      }))
+      .sort(
+        (a, b) =>
+          Number(b.state === 'down') - Number(a.state === 'down') ||
+          Number(b.state === 'warn') - Number(a.state === 'warn') ||
+          a.name.localeCompare(b.name),
+      ),
+  };
+}
+
 /** Registry uplink tree + Zabbix host → device code (only live, non-sample devices). */
 export async function loadTopology(
   db: DbPool,
@@ -122,7 +220,8 @@ export interface StatusEngine {
 
 export function createStatusEngine(deps: {
   db: DbPool | null;
-  zabbix: Pick<ZabbixClient, 'problems' | 'hostsInMaintenance'>;
+  zabbix: Pick<ZabbixClient, 'problems' | 'hostsInMaintenance'> &
+    Partial<Pick<ZabbixClient, 'problemEvents' | 'hostsWithGroups'>>;
   store: SnapshotStore;
   logger: { warn(m: string): void };
   /** Registry reader; tests can replace it. */
@@ -132,6 +231,40 @@ export function createStatusEngine(deps: {
     deps.topology ??
     (() => (deps.db ? loadTopology(deps.db) : Promise.reject(new Error('no database'))));
   let last: StatusInput | null = null;
+  let problems: ZabbixProblem[] = [];
+  let extrasAt = 0;
+  const z = deps.zabbix;
+  const warn = (what: string, err: unknown) =>
+    deps.logger.warn(`status: ${what}: ${err instanceof Error ? err.message : err}`);
+
+  async function refreshExtras(now: Date, deviceOfHost: Map<string, string>) {
+    if (now.getTime() - extrasAt < EXTRAS_EVERY_MS) return;
+    extrasAt = now.getTime();
+    if (z.problemEvents) {
+      try {
+        const from = Math.floor(now.getTime() / 1000) - HISTORY_HOURS * 3600;
+        const h = historyFromZabbix(
+          await z.problemEvents(from),
+          deviceOfHost,
+          now,
+          HISTORY_HOURS,
+          problems,
+        );
+        await deps.store.set(HISTORY_KEY, JSON.stringify(h));
+      } catch (err) {
+        warn('history not readable (role needs event.get)', err);
+      }
+    }
+    if (z.hostsWithGroups) {
+      try {
+        const u = unlocatedFromZabbix(await z.hostsWithGroups(), problems, deviceOfHost, now);
+        await deps.store.set(UNLOCATED_KEY, JSON.stringify(u));
+      } catch (err) {
+        warn('unlocated hosts not readable', err);
+      }
+    }
+  }
+
   return {
     async tick(now = new Date()) {
       let topology: TopologyDevice[];
@@ -145,11 +278,9 @@ export function createStatusEngine(deps: {
         return null;
       }
       try {
-        const [problems, maint] = await Promise.all([
-          deps.zabbix.problems(),
-          deps.zabbix.hostsInMaintenance(),
-        ]);
-        last = inputFromZabbix(problems, maint, deviceOfHost, now);
+        const [open, maint] = await Promise.all([z.problems(), z.hostsInMaintenance()]);
+        problems = open;
+        last = inputFromZabbix(open, maint, deviceOfHost, now);
       } catch (err) {
         deps.logger.warn(
           `status: zabbix not readable: ${err instanceof Error ? err.message : err}`,
@@ -164,6 +295,7 @@ export function createStatusEngine(deps: {
       } catch (err) {
         deps.logger.warn(`status: redis write failed: ${err instanceof Error ? err.message : err}`);
       }
+      await refreshExtras(now, deviceOfHost);
       return snapshot;
     },
   };

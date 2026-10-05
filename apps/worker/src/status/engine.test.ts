@@ -11,8 +11,12 @@ import { describe, expect, it } from 'vitest';
 import type { ZabbixProblem } from '../connectors/zabbix.js';
 import {
   createStatusEngine,
+  HISTORY_KEY,
+  historyFromZabbix,
   inputFromZabbix,
   SNAPSHOT_KEY,
+  UNLOCATED_KEY,
+  unlocatedFromZabbix,
   stateOfSeverity,
   UPDATES_CHANNEL,
 } from './engine.js';
@@ -170,5 +174,175 @@ describe('Zabbix → engine input', () => {
       },
     ]);
     expect(input.maintenance).toEqual([{ device: 'c1036', message: 'เปลี่ยนสาย', by: 'Zabbix' }]);
+  });
+});
+
+describe('history and unlocated hosts (M20)', () => {
+  const map = new Map([['10085', 'c1036']]);
+  const t = (sec: number) => new Date(sec * 1000).toISOString();
+
+  it('turns problem events into history rows, newest first, warn/down only', () => {
+    const h = historyFromZabbix(
+      [
+        {
+          eventid: '1',
+          name: 'Unavailable by ICMP ping',
+          severity: 4,
+          clock: 1000,
+          endClock: 1600,
+          hosts: [{ hostid: '10085', name: 'CCR1036' }],
+        },
+        {
+          eventid: '2',
+          name: 'High latency',
+          severity: 2,
+          clock: 2000,
+          endClock: null,
+          hosts: [{ hostid: '777', name: 'OLD-AP' }],
+        },
+        { eventid: '3', name: 'info', severity: 1, clock: 3000, endClock: null, hosts: [] },
+      ],
+      map,
+      NOW,
+    );
+    expect(h.hours).toBe(24);
+    expect(h.events).toEqual([
+      {
+        device: null,
+        host: 'OLD-AP',
+        severity: 'warn',
+        start: t(2000),
+        end: null,
+        message: 'High latency',
+      },
+      {
+        device: 'c1036',
+        host: 'CCR1036',
+        severity: 'down',
+        start: t(1000),
+        end: t(1600),
+        message: 'Unavailable by ICMP ping',
+      },
+    ]);
+  });
+
+  it('keeps problems still open that started before the 24 h window', () => {
+    const h = historyFromZabbix(
+      [
+        {
+          eventid: '9',
+          name: 'High latency',
+          severity: 2,
+          clock: 5000,
+          endClock: null,
+          hosts: [{ hostid: '10085', name: 'CCR1036' }],
+        },
+      ],
+      map,
+      NOW,
+      24,
+      [
+        {
+          eventid: '9',
+          name: 'High latency',
+          severity: 2,
+          clock: 5000,
+          hostids: ['10085'],
+          acknowledged: false,
+          ack: null,
+        },
+        {
+          eventid: '1',
+          name: 'Unavailable by ICMP ping',
+          severity: 4,
+          clock: 100,
+          hostids: ['10085'],
+          acknowledged: false,
+          ack: null,
+        },
+      ],
+    );
+    expect(h.events.map((e) => [e.device, e.host, e.severity, e.start, e.end])).toEqual([
+      ['c1036', 'CCR1036', 'warn', t(5000), null],
+      ['c1036', 'CCR1036', 'down', t(100), null],
+    ]);
+  });
+
+  it('lists hosts outside the registry with their worst problem, down first', () => {
+    const host = (hostid: string, name: string) => ({
+      hostid,
+      host: name,
+      name,
+      ips: ['192.168.1.9'],
+      groups: ['02-Switches'],
+    });
+    const u = unlocatedFromZabbix(
+      [host('10085', 'CCR1036'), host('1', 'B-OK'), host('2', 'A-DOWN'), host('3', 'C-WARN')],
+      [
+        {
+          eventid: '1',
+          name: 'x',
+          severity: 2,
+          clock: 1,
+          hostids: ['2'],
+          acknowledged: false,
+          ack: null,
+        },
+        {
+          eventid: '2',
+          name: 'y',
+          severity: 4,
+          clock: 1,
+          hostids: ['2'],
+          acknowledged: false,
+          ack: null,
+        },
+        {
+          eventid: '3',
+          name: 'z',
+          severity: 3,
+          clock: 1,
+          hostids: ['3'],
+          acknowledged: false,
+          ack: null,
+        },
+      ],
+      map,
+      NOW,
+    );
+    expect(u.hosts.map((h) => [h.name, h.state])).toEqual([
+      ['A-DOWN', 'down'],
+      ['C-WARN', 'warn'],
+      ['B-OK', 'ok'],
+    ]);
+    expect(u.hosts[0]).toMatchObject({ ip: '192.168.1.9', groups: ['02-Switches'] });
+  });
+
+  it('refreshes them every 2 minutes, and a failing event.get does not stop the snapshot', async () => {
+    const writes: string[] = [];
+    let events = 0;
+    const engine = createStatusEngine({
+      db: null,
+      topology: async () => ({ topology: DEMO_TOPOLOGY, deviceOfHost: new Map() }),
+      zabbix: {
+        problems: async () => [],
+        hostsInMaintenance: async () => [],
+        problemEvents: async () => {
+          events += 1;
+          throw new Error('No permissions to call "event.get"');
+        },
+        hostsWithGroups: async () => [],
+      },
+      store: { set: async (k) => writes.push(k), publish: async () => undefined },
+      logger: { warn: () => undefined },
+    });
+    const at = (s: number) => new Date(NOW.getTime() + s * 1000);
+    expect(await engine.tick(at(0))).not.toBeNull();
+    await engine.tick(at(30));
+    await engine.tick(at(130));
+    expect(events).toBe(2);
+    expect(writes.filter((k) => k === SNAPSHOT_KEY)).toHaveLength(3);
+    expect(writes.filter((k) => k === UNLOCATED_KEY)).toHaveLength(2);
+    expect(writes.filter((k) => k === HISTORY_KEY)).toHaveLength(0);
   });
 });

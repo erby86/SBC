@@ -10,6 +10,9 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
 import { App } from './App.js';
+import { applyTheme, savedTheme } from './shell/theme.js';
+
+applyTheme(savedTheme()); // before the first paint, so a saved theme does not flash
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root not found');

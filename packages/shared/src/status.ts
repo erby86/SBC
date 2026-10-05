@@ -66,8 +66,49 @@ export const statusSnapshotSchema = z.object({
   incidents: z.array(incidentSchema),
   counts: z.record(deviceStateSchema, z.number().int().nonnegative()),
   labOnline: z.record(z.string(), z.number().int().nonnegative()),
+  /** Planned work on registry devices (M20 incidents panel); older snapshots have none. */
+  maintenance: z
+    .array(z.object({ device: z.string(), message: z.string(), by: z.string() }))
+    .default([]),
 });
 export type StatusSnapshot = z.infer<typeof statusSnapshotSchema>;
+
+/** One problem of the last 24 h (M20 history panel); `end` null = not resolved yet. */
+export const historyEventSchema = z.object({
+  /** Registry device code; null when the Zabbix host is not in the registry. */
+  device: z.string().nullable(),
+  /** Zabbix host name (device code in demo mode). */
+  host: z.string(),
+  severity: z.enum(['down', 'warn']),
+  start: z.iso.datetime(),
+  end: z.iso.datetime().nullable(),
+  message: z.string(),
+});
+export type HistoryEvent = z.infer<typeof historyEventSchema>;
+
+export const statusHistorySchema = z.object({
+  updatedAt: z.iso.datetime(),
+  hours: z.number().int().positive(),
+  /** Newest first. */
+  events: z.array(historyEventSchema),
+});
+export type StatusHistory = z.infer<typeof statusHistorySchema>;
+
+/** A Zabbix host that no registry device matches, so it has no place in the 3D view (M20). */
+export const unlocatedHostSchema = z.object({
+  hostid: z.string(),
+  name: z.string(),
+  ip: z.string().nullable(),
+  groups: z.array(z.string()),
+  state: z.enum(['ok', 'warn', 'down']),
+});
+export type UnlocatedHost = z.infer<typeof unlocatedHostSchema>;
+
+export const unlocatedListSchema = z.object({
+  updatedAt: z.iso.datetime(),
+  hosts: z.array(unlocatedHostSchema),
+});
+export type UnlocatedList = z.infer<typeof unlocatedListSchema>;
 
 /** M15 done-condition: more than 2 minutes without data = stale. */
 export const STALE_AFTER_MS = 2 * 60_000;
@@ -161,5 +202,6 @@ export function computeStatus(
     incidents,
     counts,
     labOnline: input.labOnline,
+    maintenance: input.maintenance.filter((m) => known.has(m.device)),
   };
 }

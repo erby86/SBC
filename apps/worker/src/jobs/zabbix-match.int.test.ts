@@ -44,6 +44,8 @@ describe.skipIf(!url)('zabbix-match job', () => {
     setHostTags: async () => undefined,
     problems: async () => [],
     hostsInMaintenance: async () => [],
+    problemEvents: async () => [],
+    hostsWithGroups: async () => [],
   };
 
   beforeAll(async () => {

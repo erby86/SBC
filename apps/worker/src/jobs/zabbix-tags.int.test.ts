@@ -30,6 +30,8 @@ function memoryZabbix(hosts: ZabbixTaggedHost[]): ZabbixClient & { writes: numbe
     },
     problems: async () => [],
     hostsInMaintenance: async () => [],
+    problemEvents: async () => [],
+    hostsWithGroups: async () => [],
   };
 }
 

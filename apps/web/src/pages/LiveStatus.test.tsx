@@ -29,6 +29,7 @@ const snap = (
   incidents: [],
   counts: { ok: 10, warn: 0, down: 0, cut: 0, maint: 0 },
   labOnline: {},
+  maintenance: [],
   ...extra,
 });
 

@@ -24,7 +24,13 @@ import {
   runRegistryChecks,
   search,
 } from '@sbc-noc/db';
-import { parseEnv, serverEnvSchema, statusSnapshotSchema } from '@sbc-noc/shared';
+import {
+  parseEnv,
+  serverEnvSchema,
+  statusHistorySchema,
+  statusSnapshotSchema,
+  unlocatedListSchema,
+} from '@sbc-noc/shared';
 import { Redis } from 'ioredis';
 import { z } from 'zod';
 import { buildApp } from './app.js';
@@ -52,6 +58,14 @@ const readSnapshot = async () => {
   const raw = await redis.get('status:snapshot'); // written by the worker (M15)
   return raw ? statusSnapshotSchema.parse(JSON.parse(raw)) : null;
 };
+
+// M20: history and unlocated hosts, refreshed by the worker every few minutes
+const readJson =
+  <T>(key: string, parse: (v: unknown) => T) =>
+  async (): Promise<T | null> => {
+    const raw = await redis.get(key);
+    return raw ? parse(JSON.parse(raw)) : null;
+  };
 
 // M16: one subscriber connection for the whole api; channels are not prefixed by ioredis.
 const updatesChannel = `${env.REDIS_PREFIX}status:updates`;
@@ -89,6 +103,10 @@ const app = await buildApp(
     },
     demo: env.DEMO_MODE,
     status: readSnapshot,
+    statusExtras: {
+      history: readJson('status:history', (v) => statusHistorySchema.parse(v)),
+      unlocated: readJson('status:unlocated', (v) => unlocatedListSchema.parse(v)),
+    },
     ...(env.REGISTRY_EDIT
       ? {
           registryEdit: {

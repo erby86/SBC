@@ -18,6 +18,7 @@ export const statusDeltaSchema = z.object({
   incidents: z.array(incidentSchema),
   counts: statusSnapshotSchema.shape.counts,
   labOnline: statusSnapshotSchema.shape.labOnline,
+  maintenance: statusSnapshotSchema.shape.maintenance,
 });
 export type StatusDelta = z.infer<typeof statusDeltaSchema>;
 
@@ -44,6 +45,7 @@ export function diffSnapshots(prev: StatusSnapshot, next: StatusSnapshot): Statu
     incidents: next.incidents,
     counts: next.counts,
     labOnline: next.labOnline,
+    maintenance: next.maintenance,
   };
 }
 
@@ -60,6 +62,7 @@ export function applyDelta(prev: StatusSnapshot, d: StatusDelta): StatusSnapshot
     incidents: d.incidents,
     counts: d.counts,
     labOnline: d.labOnline,
+    maintenance: d.maintenance,
   };
 }
 
@@ -69,6 +72,7 @@ export function isEmptyDelta(prev: StatusSnapshot, d: StatusDelta): boolean {
     Object.keys(d.changed).length === 0 &&
     d.stale === prev.stale &&
     JSON.stringify(d.incidents) === JSON.stringify(prev.incidents) &&
-    JSON.stringify(d.labOnline) === JSON.stringify(prev.labOnline)
+    JSON.stringify(d.labOnline) === JSON.stringify(prev.labOnline) &&
+    JSON.stringify(d.maintenance) === JSON.stringify(prev.maintenance)
   );
 }

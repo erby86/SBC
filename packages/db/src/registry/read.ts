@@ -11,6 +11,7 @@ import type {
   Link,
   Location,
   SearchHit,
+  Waypoint,
 } from '@sbc-noc/shared';
 import type pg from 'pg';
 
@@ -336,9 +337,11 @@ export async function listLinks(db: Q): Promise<Link[]> {
     cable_cores: number[] | null;
     speed_mbps: number | null;
     color: string | null;
+    lane: number | null;
+    waypoints: unknown;
   }>(
     `SELECT k.code, da.code AS a, db.code AS b, k.media_code, k.is_uplink, c.code AS cable, k.cable_cores,
-            k.speed_mbps, rt.color
+            k.speed_mbps, rt.color, rt.lane, rt.waypoints
      FROM net.links k JOIN net.devices da ON da.id = k.a_device_id JOIN net.devices db ON db.id = k.b_device_id
      LEFT JOIN net.cables c ON c.id = k.cable_id LEFT JOIN viz.link_routes rt ON rt.link_id = k.id
      WHERE k.deleted_at IS NULL AND da.deleted_at IS NULL AND db.deleted_at IS NULL
@@ -355,7 +358,31 @@ export async function listLinks(db: Q): Promise<Link[]> {
     cableCores: r.cable_cores,
     speedMbps: r.speed_mbps,
     color: r.color,
+    lane: r.lane,
+    waypoints: toWaypoints(r.waypoints),
   }));
+}
+
+/**
+ * viz.link_routes.waypoints is free jsonb: keep [x, z] / [x, y, z] arrays or {x, y?, z} objects,
+ * drop the rest. y is the cable height at that bend (prototype routes, M19).
+ */
+export function toWaypoints(v: unknown): Waypoint[] {
+  if (!Array.isArray(v)) return [];
+  const num = (n: unknown): n is number => typeof n === 'number' && isFinite(n);
+  const out: Waypoint[] = [];
+  for (const p of v as unknown[]) {
+    let x: unknown, y: unknown, z: unknown;
+    if (Array.isArray(p)) {
+      if (p.length === 2) [x, z] = p as unknown[];
+      else if (p.length === 3) [x, y, z] = p as unknown[];
+    } else if (p && typeof p === 'object') {
+      ({ x, y, z } = p as { x?: unknown; y?: unknown; z?: unknown });
+    }
+    if (!num(x) || !num(z)) continue;
+    out.push(num(y) ? [x, y, z] : [x, z]);
+  }
+  return out;
 }
 
 export async function listCables(db: Q): Promise<Cable[]> {

@@ -2,6 +2,7 @@
 // records the editor name typed here and the client IP in the audit trail.
 import { NavLink, Route, Routes, useParams } from 'react-router';
 import { useHealth } from '../data/api.js';
+import { useDemoList } from '../data/extras.js';
 import { defaultWsUrl } from '../data/live.js';
 import { DeviceForm } from './admin/DeviceForm.js';
 import { DevicesPage } from './admin/DevicesPage.js';
@@ -24,6 +25,7 @@ function DeviceRoute() {
 
 export function AdminHome() {
   const health = useHealth();
+  const demo = useDemoList(true);
   const [editor, setEditor] = useEditor();
   return (
     <div className="admin">
@@ -50,6 +52,15 @@ export function AdminHome() {
         <NavLink to="/" className="btnlink">
           ← หน้าผัง
         </NavLink>
+        {demo.data && (
+          <NavLink
+            to="/?demo=mixed"
+            className="btnlink"
+            title="สถานการณ์ตัวอย่างสำหรับอบรม (ADR-0014)"
+          >
+            โหมดสาธิต
+          </NavLink>
+        )}
       </header>
       <nav className="admin-nav" aria-label="เมนูหลังบ้าน">
         <NavLink to="/admin/devices">อุปกรณ์</NavLink>

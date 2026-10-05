@@ -17,7 +17,7 @@ import {
 import { z } from 'zod';
 import { registerMetrics } from './metrics.js';
 import { demoRoutes } from './routes/demo.js';
-import { statusRoutes } from './routes/status.js';
+import { statusExtraRoutes, statusRoutes, type StatusExtras } from './routes/status.js';
 import { liveRoutes, type LiveHub } from './routes/live.js';
 import { registryEditRoutes, type RegistryEditor } from './routes/registry-edit.js';
 import { registryRoutes, type RegistryReader } from './routes/registry.js';
@@ -37,6 +37,8 @@ export interface AppDeps {
   demo?: boolean;
   /** M15 latest status snapshot (Redis); route registered only when provided. */
   status?: () => Promise<StatusSnapshot | null>;
+  /** M20 history + unlocated hosts (Redis, written by the worker). */
+  statusExtras?: StatusExtras;
   /** M16 live status hub (WebSocket /status/ws). */
   live?: LiveHub;
   /** M21 registry editor; only with REGISTRY_EDIT=true (dev until login, ADR-0020). */
@@ -159,6 +161,7 @@ export async function buildApp(
   if (deps.registry) registryRoutes(app, deps.registry);
   if (deps.demo) demoRoutes(app);
   if (deps.status) statusRoutes(app, deps.status);
+  if (deps.statusExtras) statusExtraRoutes(app, deps.statusExtras);
   if (deps.live) await liveRoutes(app, deps.live);
   if (deps.registryEdit) registryEditRoutes(app, deps.registryEdit);
 

@@ -6,6 +6,7 @@ import { createDbPool, type DbPool } from '../index.js';
 import { loadMigrations, migrate } from '../migrate.js';
 import { readSeedFiles, type SeedFiles } from './files.js';
 import { importSeed, type SeedReport } from './import.js';
+import { applyPrototypeRoutes } from './routes.js';
 
 const url = process.env['TEST_DATABASE_URL'];
 const SEED_DIR = fileURLToPath(new URL('../../../../infra/seed/', import.meta.url));
@@ -52,6 +53,33 @@ describe.skipIf(!url)('M04 seed import', () => {
     expect(second.written).toBe(0);
     expect(second.actual).toEqual(first.actual);
     expect(after.rows[0]?.n).toBe(before.rows[0]?.n);
+  });
+
+  it('writes the prototype device positions and cable bends (M19)', async () => {
+    const n = async (sql: string) => Number((await pool.query<{ n: string }>(sql)).rows[0]?.n);
+    expect(await n('SELECT count(*) AS n FROM viz.device_placements')).toBe(
+      seed.routes.placements.length,
+    );
+    expect(
+      await n(`SELECT count(*) AS n FROM viz.link_routes WHERE waypoints <> '[]'::jsonb`),
+    ).toBe(seed.routes.routes.length);
+  });
+
+  it('never overwrites a position or route someone already set (M19)', async () => {
+    const c = await pool.connect();
+    try {
+      await c.query('BEGIN'); // rolled back: leaves no audit entries for the other tests
+      await c.query(`UPDATE viz.device_placements SET u = 0.1 WHERE device_id =
+        (SELECT id FROM net.devices WHERE code = 'm-s8')`);
+      const r = await applyPrototypeRoutes(c, seed.routes);
+      expect(r).toEqual({ placements: 0, routes: 0, missing: [] });
+      const u = await c.query(`SELECT u FROM viz.device_placements WHERE device_id =
+        (SELECT id FROM net.devices WHERE code = 'm-s8')`);
+      expect(Number(u.rows[0]?.u)).toBe(0.1);
+    } finally {
+      await c.query('ROLLBACK');
+      c.release();
+    }
   });
 
   it('keeps LOC-187 and gives SPORT-xx new LOC numbers from 188 (ADR-0001)', async () => {

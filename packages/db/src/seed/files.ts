@@ -24,14 +24,33 @@ export interface PrototypeLayout {
   wan: { device: string; provider: string; label: string; priority: number }[];
 }
 
+/** Device positions and cable bends read from the running prototype (M19). */
+export interface PrototypeRoutes {
+  placements: { device: string; u: number; v: number }[];
+  routes: { device: string; waypoints: [number, number, number][] }[];
+}
+
 export interface SeedFiles {
   buildings: Record<string, string>[];
   areas: Record<string, string>[];
   devices: Record<string, string>[];
   layout: PrototypeLayout;
+  routes: PrototypeRoutes;
 }
 
-/** Reads infra/seed (buildings.csv, areas.csv, devices.csv, prototype-layout.json). */
+/** Reads infra/seed/prototype-routes.json (empty when the file is not there). */
+export async function readPrototypeRoutes(dir: string): Promise<PrototypeRoutes> {
+  try {
+    return JSON.parse(
+      await readFile(join(dir, 'prototype-routes.json'), 'utf8'),
+    ) as PrototypeRoutes;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return { placements: [], routes: [] };
+    throw err;
+  }
+}
+
+/** Reads infra/seed (buildings.csv, areas.csv, devices.csv, prototype-layout.json, prototype-routes.json). */
 export async function readSeedFiles(dir: string): Promise<SeedFiles> {
   const csv = async (name: string) => parseCsv(await readFile(join(dir, name), 'utf8'));
   return {
@@ -41,5 +60,6 @@ export async function readSeedFiles(dir: string): Promise<SeedFiles> {
     layout: JSON.parse(
       await readFile(join(dir, 'prototype-layout.json'), 'utf8'),
     ) as PrototypeLayout,
+    routes: await readPrototypeRoutes(dir),
   };
 }
