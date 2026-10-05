@@ -14,7 +14,8 @@ RUN pnpm turbo run build --filter=@sbc-noc/web...
 # NPM proxy hosts keep forwarding to <container>:80.
 FROM nginxinc/nginx-unprivileged:1.29-alpine AS runtime
 ENV API_UPSTREAM=http://noc-dev-api:3001
-COPY apps/web/nginx.conf.template /etc/nginx/templates/default.conf.template
+# --chmod: the checkout on the server may be 0600 (umask 077); nginx runs as 101 and must read it.
+COPY --chmod=0644 apps/web/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
 USER 101
 EXPOSE 80
