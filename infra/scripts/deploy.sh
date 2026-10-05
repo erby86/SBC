@@ -17,7 +17,7 @@ ACTION="${2:-}"
 ROLLBACK_TAG="${3:-}"
 
 SRC="${SRC:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-TRIVY_IMAGE="${TRIVY_IMAGE:-aquasec/trivy:0.67.2}"
+TRIVY_IMAGE="${TRIVY_IMAGE:-aquasec/trivy:0.74.0}"
 NO_SCAN="${NO_SCAN:-false}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-180}"
 APPS=(api worker web)
@@ -88,7 +88,7 @@ deploy_staging() {
   fi
 
   step "build"
-  "${compose[@]}" build
+  "${compose[@]}" build --pull
 
   step "Trivy scan"
   mkdir -p /opt/sbc-noc/sbom
@@ -157,7 +157,7 @@ deploy_prod() {
   step "build images $tag"
   local app
   for app in "${APPS[@]}"; do
-    docker build -f "apps/$app/Dockerfile" -t "${prefix}sbc-noc-$app:$tag" \
+    docker build --pull -f "apps/$app/Dockerfile" -t "${prefix}sbc-noc-$app:$tag" \
       --label "org.opencontainers.image.version=$version" \
       --label "org.opencontainers.image.revision=$(git rev-parse HEAD)" .
   done
