@@ -171,25 +171,25 @@
   padding-left: 0.6rem;
   border-left: 1px solid var(--line);
 }
-.fresh {
+#fresh {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   color: var(--ink-2);
   font-variant-numeric: tabular-nums;
 }
-.fresh .dot {
+#fresh .dot {
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 50%;
   background: var(--ink-2);
   flex: none;
 }
-.fresh.f-live .dot {
+#fresh.f-live .dot {
   background: var(--main);
   animation: breathe 2.4s ease-in-out infinite;
 }
-.fresh.f-demo .dot {
+#fresh.f-demo .dot {
   background: var(--warn);
 }
 #fresh.stale {
@@ -759,6 +759,12 @@ details.fibers summary {
   display: none;
 }
 
+/* ISP chips go first when the top bar would wrap; ISP problems still show as incidents */
+@media (max-width: 1500px) {
+  #wanChips {
+    display: none;
+  }
+}
 @media (max-width: 1180px) {
   #ui {
     grid-template-columns: minmax(9rem, 12rem) minmax(0, 1fr) minmax(15rem, 19rem);

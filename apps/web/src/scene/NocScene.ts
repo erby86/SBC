@@ -6,6 +6,8 @@
 // InstancedMesh, fibre tubes with moving data and light tails, alert beams/rings/halos, bloom,
 // building focus + floor cut, fly-to, top view, mini map, labels that avoid each other, badges
 // over problem devices, eco mode (auto when the frame rate drops below 24).
+//
+// Buildings are drawn as wireframes (WIRE): outlines and floor lines carry the shape.
 import type { StatusSnapshot } from '@sbc-noc/shared';
 import { STATE_ICON, type LayerKey, type UiState } from '@sbc-noc/ui';
 import * as THREE from 'three';
@@ -48,6 +50,8 @@ export interface SceneOptions {
 const HOME = { pos: new THREE.Vector3(-62, 70, 95), tgt: new THREE.Vector3(0, 2, 18) };
 const AUTO_ECO_FPS = 24;
 const EMISSIVE = 0.35;
+/** Wireframe buildings: bright outlines and floor lines, near-clear slabs and glass. */
+const WIRE = { edge: 0.95, floor: 0.5, slab: 0.06, fill: 0.03, mull: 0.12, shadow: 0.5 };
 
 type Mat = THREE.MeshLambertMaterial;
 
@@ -107,7 +111,9 @@ interface BuildingView {
   group: THREE.Group;
   slabMat: Mat;
   edgeMat: THREE.LineBasicMaterial;
-  slabs: { mesh: THREE.Mesh; floor: number }[];
+  /** Floor slab (near-invisible fill) and its outline, which carries the wireframe look. */
+  slabs: { mesh: THREE.Mesh; line: THREE.LineSegments; floor: number }[];
+  floorMat: THREE.LineBasicMaterial;
   edges: THREE.LineSegments;
   inner: THREE.LineSegments | null;
   floorBox: THREE.LineSegments;
@@ -546,11 +552,20 @@ export class NocScene {
       const H = m.floorHeight;
       const h = m.floors * H;
       const slabMat = this.theme(
-        new THREE.MeshLambertMaterial({ color: C.slab, transparent: true, opacity: 0.55 }),
+        new THREE.MeshLambertMaterial({
+          color: C.slab,
+          transparent: true,
+          opacity: WIRE.slab,
+          depthWrite: false,
+        }),
         'slab',
       );
       const edgeMat = this.theme(
-        new THREE.LineBasicMaterial({ color: C.edge, transparent: true, opacity: 0.8 }),
+        new THREE.LineBasicMaterial({ color: C.edge, transparent: true, opacity: WIRE.edge }),
+        'edge',
+      );
+      const floorMat = this.theme(
+        new THREE.LineBasicMaterial({ color: C.edge, transparent: true, opacity: WIRE.floor }),
         'edge',
       );
       const edges = new THREE.LineSegments(
@@ -583,7 +598,13 @@ export class NocScene {
           const s = new THREE.Mesh(new THREE.BoxGeometry(w, 0.08, d), slabMat);
           s.position.set(x, f * H, z);
           g.add(s);
-          slabs.push({ mesh: s, floor: f });
+          const line = new THREE.LineSegments(
+            new THREE.EdgesGeometry(new THREE.PlaneGeometry(w, d).rotateX(-Math.PI / 2)),
+            floorMat,
+          );
+          line.position.set(x, f * H + 0.05, z);
+          g.add(line);
+          slabs.push({ mesh: s, line, floor: f });
         }
       }
       let inner: THREE.LineSegments | null = null;
@@ -598,7 +619,12 @@ export class NocScene {
       // ground shadow, glass skin and mullions
       const sh = new THREE.Mesh(
         new THREE.PlaneGeometry(m.width * 1.45, m.depth * 1.45),
-        new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }),
+        new THREE.MeshBasicMaterial({
+          map: shadowTex,
+          transparent: true,
+          opacity: WIRE.shadow,
+          depthWrite: false,
+        }),
       );
       sh.rotation.x = -Math.PI / 2;
       sh.position.y = 0.012;
@@ -612,7 +638,7 @@ export class NocScene {
           new THREE.MeshBasicMaterial({
             color: C.slab,
             transparent: true,
-            opacity: 0.07,
+            opacity: WIRE.fill,
             depthWrite: false,
           }),
           'slab',
@@ -634,7 +660,7 @@ export class NocScene {
           }
         }
         mullMat = this.theme(
-          new THREE.LineBasicMaterial({ color: C.edge, transparent: true, opacity: 0.16 }),
+          new THREE.LineBasicMaterial({ color: C.edge, transparent: true, opacity: WIRE.mull }),
           'edge',
         );
         mull = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), mullMat);
@@ -645,6 +671,7 @@ export class NocScene {
         group: g,
         slabMat,
         edgeMat,
+        floorMat,
         slabs,
         edges,
         inner,
@@ -1261,16 +1288,17 @@ export class NocScene {
     for (const b of this.blds.values()) {
       const dim = !!focus && b.m.code !== focus;
       const cut = b.m.code === focus && !!fs;
-      b.slabMat.opacity = dim ? 0.08 : 0.55;
-      b.edgeMat.opacity = dim ? 0.18 : 0.8;
-      for (const s of b.slabs) s.mesh.visible = !cut || s.floor <= (fs ?? 0) - 1;
+      b.slabMat.opacity = dim ? WIRE.slab / 3 : WIRE.slab;
+      b.edgeMat.opacity = dim ? 0.18 : WIRE.edge;
+      b.floorMat.opacity = dim ? 0.1 : WIRE.floor;
+      for (const s of b.slabs) s.mesh.visible = s.line.visible = !cut || s.floor <= (fs ?? 0) - 1;
       b.edges.visible = !cut;
       if (b.inner) b.inner.visible = !cut;
       b.floorBox.visible = cut;
       if (cut) b.floorBox.position.y = ((fs ?? 1) - 1) * b.m.floorHeight + b.m.floorHeight / 2;
       if (b.fillMat && b.mullMat && b.fill && b.mull) {
-        b.fillMat.opacity = dim ? 0.015 : 0.07;
-        b.mullMat.opacity = dim ? 0.04 : 0.16;
+        b.fillMat.opacity = dim ? WIRE.fill / 4 : WIRE.fill;
+        b.mullMat.opacity = dim ? 0.04 : WIRE.mull;
         b.fill.visible = b.mull.visible = !cut;
       }
       b.label.classList.toggle('dim', dim);
