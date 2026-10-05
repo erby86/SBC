@@ -30,6 +30,8 @@ import {
 import { defaultWsUrl, useLiveStatus, type LiveMode } from '../data/live.js';
 import { buildSceneModel, deviceKind, type SceneModel } from '../scene/model.js';
 import type { NocScene, Selection } from '../scene/NocScene.js';
+import { useIncidentFeed, useNow } from './events.js';
+import { Feed, HealthRing } from './feed.js';
 import { Help, Tour, tourSeen } from './Help.js';
 import {
   fmtAgo,
@@ -109,6 +111,7 @@ function TopBar({
   view,
   demo,
   search,
+  theme,
   onBigNum,
   onGo,
 }: {
@@ -118,16 +121,27 @@ function TopBar({
   view: ViewControls;
   demo: React.ReactNode;
   search: React.ReactNode;
+  theme: ReturnType<typeof useTheme>;
   onBigNum: () => void;
   onGo: (code: string) => void;
 }) {
-  const theme = useTheme();
   const open = snap?.incidents.filter((i) => !i.ack).length ?? 0;
   const wans = (layout?.devices ?? []).filter((d) => deviceKind(d) === 'wan');
+  const cats = snap ? categoryChips(layout, snap) : [];
+  const health = {
+    on: cats.reduce((n, c) => n + c.on, 0),
+    total: cats.reduce((n, c) => n + c.total, 0),
+    worst: cats.some((c) => c.worst === 'down')
+      ? ('down' as const)
+      : cats.some((c) => c.worst === 'warn')
+        ? ('warn' as const)
+        : ('ok' as const),
+  };
   return (
     <header id="top" className="panel">
       {demo}
       <h1>SB School NOC</h1>
+      {snap && <HealthRing {...health} />}
       <button
         id="bigNum"
         className={open ? 'hot' : ''}
@@ -135,18 +149,17 @@ function TopBar({
         data-testid="open-incidents"
         onClick={onBigNum}
       >
-        <b>{open}</b>
+        <b key={open}>{open}</b>
         <span>ยังไม่มีคนรับ</span>
       </button>
       {search}
       <div className="chips" aria-live="polite" data-testid="state-chips">
-        {snap &&
-          categoryChips(layout, snap).map((c) => (
-            <span key={c.label} className="chip" title={c.tip}>
-              <span className={`i ${c.worst}`}>{STATE_ICON[c.worst]}</span>
-              {c.label} {c.on}/{c.total}
-            </span>
-          ))}
+        {cats.map((c) => (
+          <span key={`${c.label}${c.on}`} className={`chip st-${c.worst}`} title={c.tip}>
+            <span className={`i ${c.worst}`}>{STATE_ICON[c.worst]}</span>
+            {c.label} {c.on}/{c.total}
+          </span>
+        ))}
       </div>
       {snap && wans.length > 0 && (
         <div className="chips" id="wanChips" aria-label="สถานะอินเทอร์เน็ต">
@@ -156,7 +169,7 @@ function TopBar({
             return (
               <button
                 key={d.code}
-                className="chip wanchip"
+                className={`chip wanchip st-${st}`}
                 title={`อินเทอร์เน็ต ${d.name} · ${DEVICE_STATE_TH[st]}${inc ? ` · ${inc.message}` : ''}`}
                 onClick={() => onGo(d.code)}
               >
@@ -650,6 +663,8 @@ export function NocShell() {
   const fibers = useMemo(() => fiberRows(model, layout.data), [model, layout.data]);
   const incCount = snap?.incidents.length ?? 0;
   const unlCount = unlocatedCount(unlocated, unplaced);
+  const feed = useIncidentFeed(snap, isDemo ? `demo:${demoName}` : 'live');
+  const now = useNow();
   const demoLabel = isDemo ? (demo.data?.label ?? demoList.data?.label ?? 'ข้อมูลสาธิต') : null;
 
   useEffect(() => {
@@ -766,6 +781,60 @@ export function NocShell() {
     return () => clearTimeout(t);
   }, [tv.on]);
 
+  /** Unacked incidents first (worst first, as listed), then the acked ones; wraps around. */
+  const nextIncident = () => {
+    const list = snap?.incidents ?? [];
+    const order = [...list.filter((i) => !i.ack), ...list.filter((i) => i.ack)]
+      .map((i) => i.device)
+      .filter((d) => names.has(d));
+    if (!order.length) {
+      setToast('ไม่มีเหตุที่มีตำแหน่งในผัง');
+      return;
+    }
+    const cur = sel?.kind === 'device' ? order.indexOf(sel.code) : -1;
+    const code = order[(cur + 1) % order.length] as string;
+    go(code);
+    setToast(`เหตุ ${((cur + 1) % order.length) + 1}/${order.length} · ${names.name(code)}`);
+  };
+
+  // single-key shortcuts (e.code: the same physical keys with the Thai layout)
+  const hotkey = useRef<(code: string) => boolean>(() => false);
+  hotkey.current = (code) => {
+    const digit = /^Digit([1-9])$/.exec(code);
+    if (digit) {
+      const b = layout.data?.buildings[Number(digit[1]) - 1];
+      if (!b) return false;
+      focus(building === b.code ? null : b.code);
+      setToast(building === b.code ? 'ดูทั้งโรงเรียน' : `อาคาร ${b.name}`);
+      return true;
+    }
+    switch (code) {
+      case 'KeyN':
+        nextIncident();
+        return true;
+      case 'KeyT':
+        view.onTop();
+        return true;
+      case 'KeyH':
+      case 'Digit0':
+        view.onHome();
+        return true;
+      case 'KeyE':
+        view.onEco();
+        setToast(eco ? 'ปิดโหมดประหยัด' : 'เปิดโหมดประหยัด');
+        return true;
+      case 'KeyL':
+        theme.toggle();
+        return true;
+      case 'KeyF':
+        if (document.fullscreenElement) void document.exitFullscreen?.();
+        else void document.documentElement.requestFullscreen?.().catch(() => undefined);
+        return true;
+      default:
+        return false;
+    }
+  };
+
   // keyboard: / or Ctrl+K search, ? help, Esc closes the top-most thing
   const esc = useRef<() => void>(() => undefined);
   esc.current = () => {
@@ -797,12 +866,15 @@ export function NocShell() {
       } else if (question) {
         e.preventDefault();
         setHelp(true);
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && hotkey.current(e.code)) {
+        e.preventDefault();
       }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, []);
 
+  const theme = useTheme();
   const view: ViewControls = {
     ready: !!scene,
     top,
@@ -852,7 +924,10 @@ export function NocShell() {
       names={names}
       current={sel?.kind === 'device' ? sel.code : null}
       demo={demoLabel}
+      now={now}
+      isFresh={(d) => feed.isFresh(d, now)}
       onGo={onGo}
+      onNext={nextIncident}
     />
   );
   const historyPanel = (
@@ -871,7 +946,12 @@ export function NocShell() {
   return (
     <div
       id="app"
-      className={[snap?.stale ? 'stale' : '', tv.on ? 'tv' : '', isDemo ? 'demo' : '']
+      className={[
+        snap?.stale ? 'stale' : '',
+        tv.on ? 'tv' : '',
+        isDemo ? 'demo' : '',
+        eco ? 'calm' : '',
+      ]
         .filter(Boolean)
         .join(' ')}
     >
@@ -926,6 +1006,7 @@ export function NocShell() {
             setSheetTab('inc');
             setSheetMin(false);
           }}
+          theme={theme}
           onGo={go}
         />
 
@@ -1008,10 +1089,11 @@ export function NocShell() {
           )}
           {hint.show && scene && !tv.on && <p id="hint">{hint.text}</p>}
           {toast && (
-            <div id="toast" role="status">
+            <div id="toast" role="status" key={toast}>
               {toast}
             </div>
           )}
+          <Feed events={feed.events} names={names} onGo={go} onDismiss={feed.dismiss} />
           {sel && layout.data && model && (
             <InfoPanel
               sel={sel}
