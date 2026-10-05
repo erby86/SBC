@@ -24,7 +24,7 @@ git push -u origin module/Mxx-ชื่อ
 ## 2. PR ใน Gitea
 
 เปิด `http://git.sbc.lan/sbc/sbc-noc/compare/main...module/Mxx-ชื่อ` → New Pull Request → รอ CI (`ci / quality`,
-`ci / secrets`, `ci / audit`, `build`, `db-integration`) เขียวครบ → Merge
+`ci / secrets`, `ci / audit`, `build`, `db-integration`, `e2e`) เขียวครบ — `e2e` ใช้ราว 10–20 นาที ภาพอยู่ใน artifact `e2e-shots` → Merge
 
 - "This branch is already included in the target branch" = งานเข้า main ไปแล้ว (หรือดึงจาก GitHub ไม่สำเร็จ) → ปิด PR นั้น
   แล้วเช็ก `git log origin/main`
