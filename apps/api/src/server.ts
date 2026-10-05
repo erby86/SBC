@@ -21,6 +21,7 @@ import {
   listLinks,
   listLocations,
   pingDatabase,
+  readSyncHealth,
   runRegistryChecks,
   search,
 } from '@sbc-noc/db';
@@ -31,6 +32,9 @@ import {
   statusHistorySchema,
   statusSnapshotSchema,
   unlocatedListSchema,
+  WORKER_HEARTBEAT_KEY,
+  WORKER_QUEUE_KEY,
+  workerQueueSchema,
 } from '@sbc-noc/shared';
 import { Redis } from 'ioredis';
 import { z } from 'zod';
@@ -113,6 +117,13 @@ const app = await buildApp(
       glpi: env.LINK_GLPI_URL ?? null,
     },
     status: readSnapshot,
+    // M35: read on every /metrics scrape (Zabbix, once a minute)
+    selfmon: {
+      heartbeat: () => redis.get(WORKER_HEARTBEAT_KEY),
+      queue: readJson(WORKER_QUEUE_KEY, (v) => workerQueueSchema.parse(v)),
+      snapshotAt: async () => (await readSnapshot())?.generatedAt ?? null,
+      syncJobs: () => readSyncHealth(pool),
+    },
     statusExtras: {
       history: readJson('status:history', (v) => statusHistorySchema.parse(v)),
       unlocated: readJson('status:unlocated', (v) => unlocatedListSchema.parse(v)),

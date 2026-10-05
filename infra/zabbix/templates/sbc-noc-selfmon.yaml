@@ -1,0 +1,248 @@
+# M35 self-monitoring (ADR-0010). Import in Zabbix 7.0: Data collection > Templates > Import,
+# then link "SBC NOC self-monitoring" to host sbc-noc. Reads http://noc.sbc.lan/api/metrics once a
+# minute (one HTTP request; every other item is dependent). No token: /api/metrics is open to the
+# management network only (NPM access list sbc-noc-mgmt).
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: a571c0d144b14fd4a87a9d9b2aa9fcd6
+      name: Templates/Applications
+  templates:
+    - uuid: 748ace1fefc44c3b9822a1195db879cb
+      template: 'SBC NOC self-monitoring'
+      name: 'SBC NOC self-monitoring'
+      description: 'sbc-noc worker, sync queue and sync jobs from /api/metrics (M35, ADR-0010).'
+      groups:
+        - name: Templates/Applications
+      items:
+        - uuid: 6194888ae6e44f968cdd6247f31c9179
+          name: 'NOC metrics (raw)'
+          type: HTTP_AGENT
+          key: noc.metrics
+          delay: 1m
+          history: '0'
+          value_type: TEXT
+          trends: '0'
+          url: '{$NOC.URL}/api/metrics'
+          tags:
+            - tag: component
+              value: noc
+        - uuid: 38dd0620e6fb4642a1e8da4e4f3e199e
+          name: 'NOC worker up'
+          type: DEPENDENT
+          key: noc.worker.up
+          delay: '0'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - noc_worker_up
+                - value
+                - ''
+          master_item:
+            key: noc.metrics
+          tags:
+            - tag: component
+              value: noc
+          triggers:
+            - uuid: c846f434d38645a98e7965baa28dd7b2
+              expression: 'max(/SBC NOC self-monitoring/noc.worker.up,3m)=0'
+              name: 'NOC worker หยุดทำงาน'
+              priority: HIGH
+              description: 'ไม่มี heartbeat จาก worker เกิน 90 วินาทีติดกัน 3 นาที: สถานะบนหน้าจอจะค้าง ดู docker logs ของ container worker'
+        - uuid: a37c4cc4123e45b096988429842feec7
+          name: 'NOC database readable'
+          type: DEPENDENT
+          key: noc.selfmon.db
+          delay: '0'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - 'noc_selfmon_source_up{source="db"}'
+                - value
+                - ''
+          master_item:
+            key: noc.metrics
+          tags:
+            - tag: component
+              value: noc
+          triggers:
+            - uuid: 2f07326f12ef4655802b9bb7df152ab6
+              expression: 'max(/SBC NOC self-monitoring/noc.selfmon.db,3m)=0'
+              name: 'NOC อ่านฐานข้อมูลไม่ได้'
+              priority: HIGH
+        - uuid: 7cb904998b3a4be5aff2482585f82697
+          name: 'NOC Redis readable'
+          type: DEPENDENT
+          key: noc.selfmon.redis
+          delay: '0'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - 'noc_selfmon_source_up{source="redis"}'
+                - value
+                - ''
+          master_item:
+            key: noc.metrics
+          tags:
+            - tag: component
+              value: noc
+          triggers:
+            - uuid: 05481f3aa1004012b19d738a15d98a6c
+              expression: 'max(/SBC NOC self-monitoring/noc.selfmon.redis,3m)=0'
+              name: 'NOC อ่าน Redis ไม่ได้'
+              priority: HIGH
+        - uuid: f0e861bf0e34441e8b8a9b755a93802e
+          name: 'NOC queue: jobs waiting'
+          type: DEPENDENT
+          key: noc.queue.wait
+          delay: '0'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - 'noc_queue_jobs{state="wait"}'
+                - value
+                - ''
+          master_item:
+            key: noc.metrics
+          tags:
+            - tag: component
+              value: noc
+        - uuid: 4759b0dfc70f44e89d3fcde45e855aad
+          name: 'NOC queue: oldest waiting job'
+          type: DEPENDENT
+          key: noc.queue.oldest_waiting
+          delay: '0'
+          value_type: FLOAT
+          units: s
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - noc_queue_oldest_waiting_seconds
+                - value
+                - ''
+          master_item:
+            key: noc.metrics
+          tags:
+            - tag: component
+              value: noc
+          triggers:
+            - uuid: 7ac406d235d4455fa8477e932d84d436
+              expression: 'min(/SBC NOC self-monitoring/noc.queue.oldest_waiting,5m)>600'
+              name: 'NOC คิวงานค้าง (รอเกิน 10 นาที)'
+              priority: WARNING
+              description: 'มีงานรอในคิวนานเกิน 10 นาที: worker อาจติดงานใดงานหนึ่ง ดู noc.sync.running ของแต่ละงาน'
+        - uuid: f7b7912b197242a0aca4fb06e3182040
+          name: 'NOC status snapshot age'
+          type: DEPENDENT
+          key: noc.status.snapshot_age
+          delay: '0'
+          value_type: FLOAT
+          units: s
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - noc_status_snapshot_age_seconds
+                - value
+                - ''
+          master_item:
+            key: noc.metrics
+          tags:
+            - tag: component
+              value: noc
+          triggers:
+            - uuid: 621496da4fc748bdab1755b01731d3b2
+              expression: 'min(/SBC NOC self-monitoring/noc.status.snapshot_age,3m)>120'
+              name: 'NOC ข้อมูลสถานะค้างเกิน 2 นาที'
+              priority: WARNING
+              description: 'เครื่องคำนวณสถานะ (M15) ไม่ได้เขียน snapshot ใหม่: worker ติดต่อ Zabbix API ไม่ได้ หรือ worker หยุด'
+      discovery_rules:
+        - uuid: dab4a1b2d6fd4656b728946464034694
+          name: 'NOC sync jobs'
+          type: DEPENDENT
+          key: noc.sync.jobs
+          delay: '0'
+          description: 'หนึ่งแถวต่องานซิงก์ที่ทำงานใน 7 วันล่าสุด (sync.runs)'
+          item_prototypes:
+            - uuid: 3d6bfaaf3d5c43ee8b917bbef4f1f44e
+              name: 'NOC sync {#JOB}: last attempt failed'
+              type: DEPENDENT
+              key: 'noc.sync.failed[{#JOB}]'
+              delay: '0'
+              preprocessing:
+                - type: PROMETHEUS_PATTERN
+                  parameters:
+                    - 'noc_sync_job_last_failed{job="{#JOB}"}'
+                    - value
+                    - ''
+              master_item:
+                key: noc.metrics
+              tags:
+                - tag: component
+                  value: noc-sync
+                - tag: job
+                  value: '{#JOB}'
+              trigger_prototypes:
+                - uuid: 8b1f0c5e2d7a4c39a6e4f2b1d9c37e50
+                  expression: 'min(/SBC NOC self-monitoring/noc.sync.failed[{#JOB}],3m)=1'
+                  name: 'NOC งานซิงก์ล้ม: {#JOB}'
+                  priority: AVERAGE
+                  description: "ครั้งล่าสุดของงานนี้ล้ม (ลองใหม่ครบแล้วหรือยังล้มอยู่): ดู sync.runs.detail->>'error' ของงานนี้"
+            - uuid: 5c2e9a7d41f34b8e9d06a3b7c1e8f249
+              name: 'NOC sync {#JOB}: failed attempts since success'
+              type: DEPENDENT
+              key: 'noc.sync.failed_attempts[{#JOB}]'
+              delay: '0'
+              preprocessing:
+                - type: PROMETHEUS_PATTERN
+                  parameters:
+                    - 'noc_sync_job_failed_attempts{job="{#JOB}"}'
+                    - value
+                    - ''
+              master_item:
+                key: noc.metrics
+              tags:
+                - tag: component
+                  value: noc-sync
+                - tag: job
+                  value: '{#JOB}'
+            - uuid: e3a1d8b6c09f4f7a8b25d4c6e7f10a93
+              name: 'NOC sync {#JOB}: running for'
+              type: DEPENDENT
+              key: 'noc.sync.running[{#JOB}]'
+              delay: '0'
+              value_type: FLOAT
+              units: s
+              preprocessing:
+                - type: PROMETHEUS_PATTERN
+                  parameters:
+                    - 'noc_sync_job_running_seconds{job="{#JOB}"}'
+                    - value
+                    - ''
+              master_item:
+                key: noc.metrics
+              tags:
+                - tag: component
+                  value: noc-sync
+                - tag: job
+                  value: '{#JOB}'
+              trigger_prototypes:
+                - uuid: 1f6b3c8e9a2d4e5f8c7b6a5d4e3f2a1b
+                  expression: 'min(/SBC NOC self-monitoring/noc.sync.running[{#JOB}],10m)>3600'
+                  name: 'NOC งานซิงก์ค้างเกิน 1 ชั่วโมง: {#JOB}'
+                  priority: WARNING
+          master_item:
+            key: noc.metrics
+          lld_macro_paths:
+            - lld_macro: '{#JOB}'
+              path: '$.labels.job'
+          preprocessing:
+            - type: PROMETHEUS_TO_JSON
+              parameters:
+                - noc_sync_job_last_failed
+      tags:
+        - tag: class
+          value: software
+      macros:
+        - macro: '{$NOC.URL}'
+          value: 'http://noc.sbc.lan'
+          description: 'ที่อยู่ NOC ที่ Zabbix เข้าถึง (prod); host staging ใช้ http://noc-dev.sbc.lan'

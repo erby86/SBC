@@ -2,7 +2,7 @@ import { createDbPool } from '@sbc-noc/db';
 import { parseEnv, serverEnvSchema } from '@sbc-noc/shared';
 import { readFileSync } from 'node:fs';
 import { Redis } from 'ioredis';
-import { beat } from './heartbeat.js';
+import { beat, writeQueueState } from './heartbeat.js';
 import { createOmadaClient } from './connectors/omada.js';
 import { createSbcAssetClient } from './connectors/sbc-asset.js';
 import { createUnifiClient } from './connectors/unifi.js';
@@ -129,6 +129,7 @@ const runtime = await startRuntime({
 async function tick(): Promise<void> {
   try {
     await beat(redis, HEARTBEAT_TTL_SECONDS);
+    await writeQueueState(redis, runtime.queue, HEARTBEAT_TTL_SECONDS);
   } catch (err) {
     logger.warn(`heartbeat failed: ${err instanceof Error ? err.message : String(err)}`);
   }
