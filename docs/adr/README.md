@@ -22,3 +22,4 @@
 | [0018](0018-db-migrations.md)             | migration ฐานข้อมูล                      |
 | [0019](0019-zabbix-sync-user.md)          | ผู้ใช้ Zabbix สำหรับงานซิงก์ (เขียน tag) |
 | [0020](0020-registry-editor-before-3d.md) | ทำหน้าจัดการทะเบียน (M21) ก่อนฉาก 3D     |
+| [0021](0021-g4-parallel-with-g1-g3.md)    | ทำและปิด G4 บน dev ขนานกับ G1–G3         |
