@@ -39,7 +39,7 @@
 }
 #bigNum {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.35rem;
   border: none;
   background: transparent;
@@ -56,7 +56,7 @@
   color: var(--down);
 }
 #bigNum span {
-  font-size: 0.75rem;
+  font-size: max(12px, 0.75rem);
   color: var(--ink-2);
   white-space: normal;
   max-width: 4.5rem;
@@ -73,7 +73,7 @@
   width: 100%;
 }
 #fresh.stale {
-  color: var(--down);
+  color: var(--down-ink);
   border-color: var(--down);
 }
 .topbtns {
@@ -142,7 +142,7 @@
 }
 .blist .n {
   margin-left: auto;
-  font-size: 0.8rem;
+  font-size: max(12px, 0.8rem);
   color: var(--ink-2);
   white-space: nowrap;
 }
@@ -152,7 +152,7 @@
   padding: 0.45rem 0.55rem 0.4rem;
 }
 #miniBox figcaption {
-  font-size: 0.85rem;
+  font-size: max(12px, 0.85rem);
   font-weight: 600;
   display: flex;
   justify-content: space-between;
@@ -163,7 +163,7 @@
 #miniBox figcaption small {
   font-weight: 400;
   color: var(--ink-2);
-  font-size: 0.75rem;
+  font-size: max(12px, 0.75rem);
 }
 #mini {
   display: block;
@@ -233,7 +233,7 @@
   transform: translate(-50%, -100%);
   white-space: nowrap;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: max(12px, 0.85rem);
   line-height: 1.4;
   padding: 0.05rem 0.5rem;
   border-radius: 0.3rem;
@@ -259,7 +259,7 @@
   position: absolute;
   transform: translate(-50%, -100%);
   white-space: nowrap;
-  font-size: 0.8rem;
+  font-size: max(12px, 0.8rem);
   line-height: 1.4;
   font-weight: 600;
   padding: 0 0.45rem;
@@ -274,10 +274,10 @@
   text-overflow: ellipsis;
 }
 .badge.down {
-  color: var(--down);
+  color: var(--down-ink);
 }
 .badge.warn {
-  color: var(--warn);
+  color: var(--warn-ink);
 }
 .ring {
   display: inline-block;
@@ -317,7 +317,7 @@
   bottom: 0;
   margin: 0;
   padding: 0.35rem 0.7rem;
-  font-size: 0.82rem;
+  font-size: max(12px, 0.82rem);
   color: var(--ink-2);
   background: var(--panel);
   border-radius: 0.4rem;
@@ -357,7 +357,7 @@
 }
 #info .sub {
   color: var(--ink-2);
-  font-size: 0.85rem;
+  font-size: max(12px, 0.85rem);
   margin: 0 0 0.5rem;
 }
 #info dl {
@@ -417,7 +417,7 @@
   gap: 0.6rem;
   flex-wrap: wrap;
   margin: 0.3rem 0 0;
-  font-size: 0.75rem;
+  font-size: max(12px, 0.75rem);
   color: var(--ink-2);
 }
 .mlegend .view {
@@ -475,7 +475,7 @@ details.fibers summary {
   max-width: calc(100% - 1rem);
   padding: 0.35rem 0.9rem;
   border-radius: 0.4rem;
-  background: var(--down);
+  background: var(--alert-bg);
   color: #fff;
   font-size: 0.9rem;
   text-align: center;
@@ -499,7 +499,7 @@ details.fibers summary {
 .tabs button[role='tab'] {
   flex: 1 1 0;
   padding: 0.2rem 0.3rem;
-  font-size: 0.85rem;
+  font-size: max(12px, 0.85rem);
   white-space: normal;
   min-width: 0;
 }
@@ -525,7 +525,7 @@ details.fibers summary {
 }
 .inc p {
   margin: 0.1rem 0 0;
-  font-size: 0.82rem;
+  font-size: max(12px, 0.82rem);
   color: var(--ink-2);
   overflow-wrap: anywhere;
 }
@@ -533,17 +533,17 @@ details.fibers summary {
   display: flex;
   gap: 0.6rem;
   flex-wrap: wrap;
-  font-size: 0.78rem;
+  font-size: max(12px, 0.78rem);
   color: var(--ink-2);
   margin-top: 0.2rem;
 }
 .inc .ack {
-  font-size: 0.78rem;
+  font-size: max(12px, 0.78rem);
   margin-top: 0.35rem;
-  color: var(--main);
+  color: var(--ok-ink);
 }
 .empty {
-  font-size: 0.82rem;
+  font-size: max(12px, 0.82rem);
   color: var(--ink-2);
   margin: 0 0 0.4rem;
 }
@@ -557,7 +557,7 @@ details.fibers summary {
   align-items: center;
   gap: 0.3rem 1rem;
   padding: 0.3rem 0.8rem;
-  font-size: 0.85rem;
+  font-size: max(12px, 0.85rem);
   max-width: 100%;
 }
 #bottom label {
@@ -689,7 +689,7 @@ details.fibers summary {
   padding: 0.45rem 0.6rem;
 }
 .sgh {
-  font-size: 0.75rem;
+  font-size: max(12px, 0.75rem);
   color: var(--ink-2);
   margin: 0.5rem 0.3rem 0.2rem;
   font-weight: 600;
@@ -702,10 +702,10 @@ details.fibers summary {
 }
 .sq button {
   padding: 0.15rem 0.6rem;
-  font-size: 0.82rem;
+  font-size: max(12px, 0.82rem);
 }
 .shelp {
-  font-size: 0.82rem;
+  font-size: max(12px, 0.82rem);
   color: var(--ink-2);
   margin: 0.5rem 0.3rem;
 }
@@ -714,7 +714,7 @@ details.fibers summary {
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.8rem;
+  font-size: max(12px, 0.8rem);
   color: var(--ink-2);
   padding: 0.1rem 0.3rem 0.3rem;
 }
@@ -735,12 +735,12 @@ details.fibers summary {
 .sr b {
   display: block;
   font-weight: 600;
-  font-size: 0.88rem;
+  font-size: max(12px, 0.88rem);
 }
 .sr small {
   display: block;
   color: var(--ink-2);
-  font-size: 0.78rem;
+  font-size: max(12px, 0.78rem);
   overflow-wrap: anywhere;
 }
 .sr.on,
@@ -753,7 +753,7 @@ details.fibers summary {
   left: 50%;
   transform: translateX(-50%);
   padding: 0.3rem 0.5rem 0.3rem 0.8rem;
-  font-size: 0.85rem;
+  font-size: max(12px, 0.85rem);
   display: flex;
   gap: 0.6rem;
   align-items: center;
@@ -767,12 +767,12 @@ details.fibers summary {
   top: 2.6rem;
 }
 .hnote {
-  font-size: 0.78rem;
+  font-size: max(12px, 0.78rem);
   color: var(--ink-2);
   margin: 0 0 0.45rem;
 }
 .sub2 {
-  font-size: 0.8rem;
+  font-size: max(12px, 0.8rem);
   font-weight: 600;
   color: var(--ink-2);
   margin: 0.6rem 0 0.3rem;
@@ -794,13 +794,13 @@ details.fibers summary {
   grid-template-columns: auto auto minmax(0, 1fr);
   gap: 0.4rem;
   align-items: baseline;
-  font-size: 0.85rem;
+  font-size: max(12px, 0.85rem);
   padding: 0.3rem 0.2rem;
   border-bottom: 1px solid var(--line);
 }
 .hrow .tm {
   color: var(--ink-2);
-  font-size: 0.78rem;
+  font-size: max(12px, 0.78rem);
   font-variant-numeric: tabular-nums;
 }
 .hrow .tx {
@@ -811,11 +811,11 @@ details.fibers summary {
 .urow small {
   display: block;
   color: var(--ink-2);
-  font-size: 0.78rem;
+  font-size: max(12px, 0.78rem);
   overflow-wrap: anywhere;
 }
 .hrow .live {
-  color: var(--down);
+  color: var(--down-ink);
   font-weight: 600;
 }
 .hrow.go,
@@ -825,7 +825,7 @@ details.fibers summary {
 .urow {
   padding: 0.3rem 0.2rem;
   border-bottom: 1px solid var(--line);
-  font-size: 0.85rem;
+  font-size: max(12px, 0.85rem);
 }
 .urow b {
   font-weight: 600;
@@ -842,7 +842,7 @@ details.fibers summary {
   background: transparent;
   box-shadow: none;
   padding: 0.2rem 0.4rem;
-  font-size: 0.82rem;
+  font-size: max(12px, 0.82rem);
   white-space: normal;
 }
 .bar {
@@ -870,7 +870,7 @@ details.fibers summary {
 }
 .pmin {
   padding: 0 0.45rem;
-  font-size: 0.85rem;
+  font-size: max(12px, 0.85rem);
   line-height: 1.3;
   flex: 0 0 auto;
 }
@@ -909,7 +909,7 @@ details.fibers summary {
 #help table {
   border-collapse: collapse;
   width: 100%;
-  font-size: 0.88rem;
+  font-size: max(12px, 0.88rem);
 }
 #help td {
   padding: 0.2rem 0.4rem;
@@ -934,10 +934,10 @@ details.fibers summary {
   border-radius: 0.25rem;
   padding: 0 0.35rem;
   font-family: inherit;
-  font-size: 0.82rem;
+  font-size: max(12px, 0.82rem);
 }
 #help .hp {
-  font-size: 0.88rem;
+  font-size: max(12px, 0.88rem);
   margin: 0;
 }
 #help .row {
@@ -974,7 +974,7 @@ details.fibers summary {
   align-items: center;
 }
 #tourBox .step {
-  font-size: 0.8rem;
+  font-size: max(12px, 0.8rem);
   color: var(--ink-2);
 }
 .tourOn {
@@ -995,7 +995,7 @@ details.fibers summary {
   border-radius: 0.4rem;
   background: color-mix(in srgb, var(--warn) 22%, transparent);
   border: 1px solid var(--warn);
-  font-size: 0.88rem;
+  font-size: max(12px, 0.88rem);
 }
 #demoBar select {
   max-width: 16rem;
@@ -1012,7 +1012,7 @@ details.fibers summary {
   z-index: 50;
 }
 .demonote {
-  font-size: 0.78rem;
+  font-size: max(12px, 0.78rem);
   color: var(--ink-2);
   margin: 0 0 0.45rem;
   padding: 0.3rem 0.5rem;
@@ -1128,7 +1128,7 @@ details.fibers summary {
 .tbl {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.88rem;
+  font-size: max(12px, 0.88rem);
 }
 .tbl th,
 .tbl td {
@@ -1154,7 +1154,7 @@ details.fibers summary {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-  font-size: 0.88rem;
+  font-size: max(12px, 0.88rem);
 }
 .field.check {
   flex-direction: row;
@@ -1170,15 +1170,15 @@ details.fibers summary {
 }
 .fhint {
   color: var(--ink-2);
-  font-size: 0.78rem;
+  font-size: max(12px, 0.78rem);
 }
 .ferr {
-  color: var(--down);
-  font-size: 0.8rem;
+  color: var(--down-ink);
+  font-size: max(12px, 0.8rem);
 }
 .ok-msg {
-  color: var(--main);
-  font-size: 0.85rem;
+  color: var(--ok-ink);
+  font-size: max(12px, 0.85rem);
 }
 .actions {
   grid-column: 1 / -1;
@@ -1192,13 +1192,13 @@ details.fibers summary {
 }
 button.danger {
   border-color: var(--down);
-  color: var(--down);
+  color: var(--down-ink);
 }
 button.linkish {
   background: none;
   border: none;
   box-shadow: none;
-  color: var(--wan);
+  color: var(--link);
   padding: 0;
   text-decoration: underline;
 }
@@ -1210,7 +1210,7 @@ button.linkish {
 }
 .history {
   margin-top: 1rem;
-  font-size: 0.85rem;
+  font-size: max(12px, 0.85rem);
   grid-column: 1 / -1;
 }
 .history h3 {
@@ -1232,4 +1232,18 @@ button.linkish {
 }
 body:has(.admin) {
   overflow: auto;
+}
+
+/* touch screens (rule for controls in packages/ui tokens.css): link buttons match, while scene
+   badges and status chips stay compact — they float over the 3D view and have list equivalents */
+@media (pointer: coarse) {
+  .btnlink {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .badge,
+  button.chip {
+    min-height: 0;
+  }
 }
