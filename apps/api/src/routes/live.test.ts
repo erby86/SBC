@@ -16,6 +16,7 @@ const base = (lastUpdate: string, states: StatusSnapshot['states'] = {}): Status
   incidents: [],
   counts: { ok: 3, warn: 0, down: 0, cut: 0, maint: 0 },
   labOnline: {},
+  maintenance: [],
 });
 
 function fakeSource(initial: StatusSnapshot | null) {

@@ -8,7 +8,9 @@ import {
   DEMO_TOPOLOGY,
   findScenario,
   scenarioInput,
+  statusHistorySchema,
   statusSnapshotSchema,
+  unlocatedListSchema,
 } from '@sbc-noc/shared';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
@@ -53,23 +55,9 @@ export function demoRoutes(app: FastifyInstance, now: () => Date = () => new Dat
             ...demoFlag,
             scenario: meta,
             snapshot: statusSnapshotSchema,
-            unlocated: z.array(
-              z.object({
-                name: z.string(),
-                ip: z.string(),
-                state: z.enum(['ok', 'down']),
-                group: z.string(),
-              }),
-            ),
-            history: z.array(
-              z.object({
-                device: z.string(),
-                severity: z.enum(['down', 'warn']),
-                start: z.string(),
-                end: z.string(),
-                message: z.string(),
-              }),
-            ),
+            // same shapes as /status/history and /status/unlocated, so the screen shows both alike
+            unlocated: unlocatedListSchema,
+            history: statusHistorySchema,
           }),
           404: z.object({ message: z.string() }),
         },
@@ -85,14 +73,39 @@ export function demoRoutes(app: FastifyInstance, now: () => Date = () => new Dat
         label: DEMO_LABEL,
         scenario: { name: s.name, title: s.title, description: s.description },
         snapshot: computeStatus(DEMO_TOPOLOGY, scenarioInput(s, at), at),
-        unlocated: s.unlocated,
-        history: s.history.map((h) => ({
-          device: h.device,
-          severity: h.severity,
-          start: ago(h.startMin),
-          end: ago(h.endMin),
-          message: h.message,
-        })),
+        unlocated: {
+          updatedAt: at.toISOString(),
+          hosts: s.unlocated.map((u) => ({
+            hostid: u.name,
+            name: u.name,
+            ip: u.ip,
+            groups: [u.group],
+            state: u.state,
+          })),
+        },
+        history: {
+          updatedAt: at.toISOString(),
+          hours: 24,
+          // open problems first (still going), then the resolved ones, newest first
+          events: [
+            ...s.signals.map((x) => ({
+              device: x.device,
+              host: x.device,
+              severity: x.severity,
+              start: ago(x.sinceMin),
+              end: null,
+              message: x.message,
+            })),
+            ...s.history.map((h) => ({
+              device: h.device,
+              host: h.device,
+              severity: h.severity,
+              start: ago(h.startMin),
+              end: ago(h.endMin),
+              message: h.message,
+            })),
+          ].sort((x, y) => Date.parse(y.start) - Date.parse(x.start)),
+        },
       };
     },
   );

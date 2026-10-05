@@ -19,6 +19,7 @@ const snap = (lastUpdate: string): StatusSnapshot => ({
   ],
   counts: { ok: 10, warn: 0, down: 1, cut: 1, maint: 0 },
   labOnline: {},
+  maintenance: [],
 });
 
 describe('GET /status (M15)', () => {
@@ -44,6 +45,60 @@ describe('GET /status (M15)', () => {
     expect((await app.inject({ method: 'GET', url: '/status' })).json()).toMatchObject({
       stale: true,
     });
+    await app.close();
+  });
+});
+
+describe('GET /status/history, /status/unlocated (M20)', () => {
+  const at = '2026-10-05T03:00:00.000Z';
+  it('503 until the worker has written them, then the stored lists', async () => {
+    let ready = false;
+    const app = await buildApp(
+      {},
+      {
+        statusExtras: {
+          history: async () =>
+            ready
+              ? {
+                  updatedAt: at,
+                  hours: 24,
+                  events: [
+                    {
+                      device: 'm-s8',
+                      host: 'S8-MAIN',
+                      severity: 'down' as const,
+                      start: at,
+                      end: null,
+                      message: 'Unavailable by ICMP ping',
+                    },
+                  ],
+                }
+              : null,
+          unlocated: async () =>
+            ready
+              ? {
+                  updatedAt: at,
+                  hosts: [
+                    {
+                      hostid: '10500',
+                      name: 'SW-UNKNOWN',
+                      ip: '192.168.1.45',
+                      groups: ['02-Switches'],
+                      state: 'ok' as const,
+                    },
+                  ],
+                }
+              : null,
+        },
+      },
+    );
+    expect((await app.inject({ method: 'GET', url: '/status/history' })).statusCode).toBe(503);
+    expect((await app.inject({ method: 'GET', url: '/status/unlocated' })).statusCode).toBe(503);
+    ready = true;
+    const h = await app.inject({ method: 'GET', url: '/status/history' });
+    expect(h.json()).toMatchObject({ hours: 24, events: [{ device: 'm-s8', end: null }] });
+    const u = await app.inject({ method: 'GET', url: '/status/unlocated' });
+    expect(u.json()).toMatchObject({ hosts: [{ name: 'SW-UNKNOWN', groups: ['02-Switches'] }] });
     await app.close();
   });
 });

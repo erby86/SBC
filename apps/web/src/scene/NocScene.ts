@@ -237,6 +237,8 @@ export class NocScene {
   };
   private focusB: string | null = null;
   private floorSel: number | null = null;
+  /** Search results highlighted in the view (M20); null = no highlight. */
+  private hl: Set<string> | null = null;
   private selected: Selection | null = null;
   private fly: {
     p0: THREE.Vector3;
@@ -434,6 +436,17 @@ export class NocScene {
       p = l.mesh.position.clone();
     }
     if (fly) this.flyTo(new THREE.Vector3(p.x - 12, p.y + 14, p.z + 16), p);
+  }
+
+  /** Highlight search results (M20): they stay visible, everything else fades. null clears. */
+  highlight(codes: string[] | null): void {
+    this.hl = codes ? new Set(codes) : null;
+    this.applyVisibility();
+  }
+
+  /** Slow turn around the view (TV mode with nothing to show, M20). */
+  setAutoRotate(on: boolean): void {
+    this.controls.autoRotate = on && !this.reduce;
   }
 
   home(): void {
@@ -1263,9 +1276,11 @@ export class NocScene {
       b.label.classList.toggle('dim', dim);
     }
     const incIds = new Set(this.incidents().map((i) => i.device));
+    const hl = this.hl;
     for (const d of this.devs.values()) {
-      d.visible = this.devVisible(d, incIds);
-      d.mat.opacity = Math.min(focus && d.m.building !== focus ? 0.12 : 1, d.maxOpacity);
+      d.visible = this.devVisible(d, incIds) || !!hl?.has(d.m.code);
+      const faded = (focus && d.m.building !== focus) || (hl && !hl.has(d.m.code));
+      d.mat.opacity = Math.min(faded ? 0.12 : 1, d.maxOpacity);
       if (d.mesh) {
         d.mesh.visible = d.visible;
         const mm = d.mesh.material as Mat;
@@ -1283,7 +1298,9 @@ export class NocScene {
       const a = this.devs.get(l.m.a);
       const b = this.devs.get(l.m.b);
       const vis = !!a && !!b && this.layerOn[l.m.layer] && a.visible && b.visible;
-      const rel = !focus || a?.m.building === focus || b?.m.building === focus;
+      const rel =
+        (!focus || a?.m.building === focus || b?.m.building === focus) &&
+        (!hl || hl.has(l.m.a) || hl.has(l.m.b));
       l.visible = vis;
       if (l.line) l.line.visible = vis;
       l.mat.transparent = true;

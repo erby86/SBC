@@ -23,15 +23,16 @@ export function defaultWsUrl(): string {
 
 /**
  * M16: live status over WebSocket (/api/status/ws). When the socket is unavailable it
- * falls back to GET /api/status every 30 s and keeps retrying the socket.
+ * falls back to GET /api/status every 30 s and keeps retrying the socket. `null` = off (demo mode).
  */
-export function useLiveStatus(wsUrl: string) {
+export function useLiveStatus(wsUrl: string | null) {
   const [snapshot, setSnapshot] = useState<StatusSnapshot | null>(null);
   const [mode, setMode] = useState<LiveMode>('connecting');
   const [changes, setChanges] = useState<Change[]>([]);
   const current = useRef<StatusSnapshot | null>(null);
 
   useEffect(() => {
+    if (wsUrl === null) return; // demo mode (M20): no live data at all
     let ws: WebSocket | null = null;
     let poll: ReturnType<typeof setInterval> | undefined;
     let retry: ReturnType<typeof setTimeout> | undefined;

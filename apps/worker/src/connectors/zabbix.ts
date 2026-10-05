@@ -29,6 +29,21 @@ export interface ZabbixProblem {
   ack: { userid: string; clock: number; message: string } | null;
 }
 
+/** A problem event of the recent past (event.get) and when it recovered, if it did. */
+export interface ZabbixProblemEvent {
+  eventid: string;
+  name: string;
+  severity: number;
+  clock: number;
+  /** Unix seconds of the recovery event; null = still a problem. */
+  endClock: number | null;
+  hosts: { hostid: string; name: string }[];
+}
+
+export interface ZabbixGroupedHost extends ZabbixHost {
+  groups: string[];
+}
+
 export interface ZabbixClient {
   hosts(): Promise<ZabbixHost[]>;
   /** Hosts with their tags; optionally only those in the named host groups. */
@@ -39,6 +54,10 @@ export interface ZabbixClient {
   problems(): Promise<ZabbixProblem[]>;
   /** Host ids currently in a maintenance period, with the maintenance name when readable. */
   hostsInMaintenance(): Promise<{ hostid: string; name: string }[]>;
+  /** Problem events since `fromSec` (unix seconds), newest first (M20 history). */
+  problemEvents(fromSec: number): Promise<ZabbixProblemEvent[]>;
+  /** Monitored hosts with their host group names (M20 unlocated list). */
+  hostsWithGroups(): Promise<ZabbixGroupedHost[]>;
 }
 
 export function createZabbixClient(
@@ -178,6 +197,68 @@ export function createZabbixClient(
       return rows.map((r) => ({
         hostid: r.hostid,
         name: names.get(r.maintenanceid) ?? 'Zabbix maintenance',
+      }));
+    },
+    async problemEvents(fromSec) {
+      const rows = await call<
+        {
+          eventid: string;
+          name: string;
+          severity: string;
+          clock: string;
+          r_eventid: string;
+          hosts?: { hostid: string; name: string }[];
+        }[]
+      >('event.get', {
+        output: ['eventid', 'name', 'severity', 'clock', 'r_eventid'],
+        source: 0,
+        object: 0,
+        value: 1,
+        time_from: fromSec,
+        selectHosts: ['hostid', 'name'],
+        sortfield: ['clock', 'eventid'],
+        sortorder: 'DESC',
+        limit: 1000,
+      });
+      const rIds = [...new Set(rows.map((r) => r.r_eventid).filter((id) => id && id !== '0'))];
+      const ends = new Map<string, number>();
+      if (rIds.length) {
+        const rec = await call<{ eventid: string; clock: string }[]>('event.get', {
+          output: ['eventid', 'clock'],
+          eventids: rIds,
+        });
+        for (const r of rec) ends.set(r.eventid, Number(r.clock));
+      }
+      return rows.map((r) => ({
+        eventid: r.eventid,
+        name: r.name,
+        severity: Number(r.severity),
+        clock: Number(r.clock),
+        endClock: r.r_eventid && r.r_eventid !== '0' ? (ends.get(r.r_eventid) ?? null) : null,
+        hosts: (r.hosts ?? []).map((h) => ({ hostid: h.hostid, name: h.name })),
+      }));
+    },
+    async hostsWithGroups() {
+      const rows = await call<
+        {
+          hostid: string;
+          host: string;
+          name: string;
+          interfaces: { ip: string }[];
+          hostgroups?: { name: string }[];
+        }[]
+      >('host.get', {
+        output: ['hostid', 'host', 'name'],
+        selectInterfaces: ['ip'],
+        selectHostGroups: ['name'],
+        monitored_hosts: true,
+      });
+      return rows.map((h) => ({
+        hostid: h.hostid,
+        host: h.host,
+        name: h.name,
+        ips: [...new Set(h.interfaces.map((i) => i.ip).filter(Boolean))],
+        groups: (h.hostgroups ?? []).map((g) => g.name),
       }));
     },
   };

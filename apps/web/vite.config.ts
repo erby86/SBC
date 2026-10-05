@@ -8,7 +8,11 @@ export default defineConfig({
   server: {
     // `pnpm --filter @sbc-noc/web dev` proxies to a local api (`pnpm --filter @sbc-noc/api dev`).
     proxy: {
-      '/api': { target: 'http://localhost:3001', rewrite: (path) => path.replace(/^\/api/, '') },
+      '/api': {
+        target: 'http://localhost:3001',
+        ws: true, // live status WebSocket (M16)
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
     },
   },
   test: {
