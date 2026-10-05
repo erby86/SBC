@@ -10,8 +10,8 @@ export type DeviceState = z.infer<typeof deviceStateSchema>;
 /** Thai labels used on screen (prototype ST_TH). */
 export const DEVICE_STATE_TH: Record<DeviceState, string> = {
   ok: 'ปกติ',
-  warn: 'เตือน',
-  down: 'ล่ม',
+  warn: 'ควรตรวจสอบ',
+  down: 'ใช้งานไม่ได้',
   cut: 'ขาดการเชื่อมต่อจากต้นทาง',
   maint: 'บำรุงรักษา',
 };

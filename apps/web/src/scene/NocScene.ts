@@ -311,7 +311,7 @@ export class NocScene {
     try {
       this.composer = new EffectComposer(this.renderer);
       this.composer.addPass(new RenderPass(this.scene, this.camera));
-      this.bloom = new UnrealBloomPass(new THREE.Vector2(800, 600), 0.85, 0.45, 0.5);
+      this.bloom = new UnrealBloomPass(new THREE.Vector2(800, 600), 0.6, 0.4, 0.55);
       this.composer.addPass(this.bloom);
       this.composer.addPass(new OutputPass());
     } catch {

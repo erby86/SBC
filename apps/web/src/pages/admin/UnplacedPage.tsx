@@ -3,6 +3,7 @@
 import type { UnplacedAp } from '@sbc-noc/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { notify } from './popups.js';
 import { api, EditError, useOptions, useRooms } from './editApi.js';
 import { num, val } from './Field.js';
 
@@ -18,6 +19,7 @@ function PlaceRow({ ap }: { ap: UnplacedAp }) {
     mutationFn: () =>
       api.placeAp(ap.system, ap.mac, { building: building || null, floor, locCode, no: null }),
     onSuccess: async () => {
+      notify(`วาง ${ap.name} แล้ว`);
       await qc.invalidateQueries({ queryKey: ['unplaced'] });
       await qc.invalidateQueries({ queryKey: ['devices'] });
       await qc.invalidateQueries({ queryKey: ['layout'] });

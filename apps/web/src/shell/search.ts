@@ -36,8 +36,8 @@ const T_WORD: Record<DeviceKind | 'other', string> = {
 };
 const S_WORD: Record<UiState, string> = {
   ok: 'ปกติ ok online',
-  warn: 'เตือน warn warning',
-  down: 'ล่ม down offline ดับ',
+  warn: 'ควรตรวจสอบ ตรวจสอบ เตือน warn warning',
+  down: 'ใช้งานไม่ได้ ไม่ได้ ล่ม down offline ดับ',
   cut: 'ขาด ขาดการเชื่อมต่อ cut unreachable',
   maint: 'บำรุงรักษา บำรุง maintenance',
 };
@@ -210,7 +210,7 @@ export function runSearch(index: SearchEntry[], q: string, stateOf: StateOf): Se
     .map((r) => r.e);
 }
 
-export const QUICK = ['ล่ม', 'เตือน', 'ap ล่ม', 'nvr', 'main', 'ห้องคอม'];
+export const QUICK = ['ใช้งานไม่ได้', 'ควรตรวจสอบ', 'ap ล่ม', 'nvr', 'main', 'ห้องคอม'];
 
 const RECENT_KEY = 'noc-recent';
 export function loadRecent(): string[] {

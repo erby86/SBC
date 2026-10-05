@@ -1,24 +1,24 @@
 /* Design tokens from the prototype (docs/prototype/sb-noc-3d-baseline-v3.html), M18.
    Colours: dark by default, light with prefers-color-scheme or data-theme on <html>. */
 :root {
-  --bg: #0c1522;
-  --ground: #101d2e;
-  --grid: #1b2c43;
-  --slab: #1d3048;
-  --edge: #5f86ad;
-  --ink: #e6eef7;
-  --ink-2: #9db0c6;
-  --panel: rgba(14, 24, 38, 0.9);
-  --line: #27405e;
+  --bg: #0d1726;
+  --ground: #111d2f;
+  --grid: #1c2b42;
+  --slab: #1b2a40;
+  --edge: #5d80a8;
+  --ink: #eef3f9;
+  --ink-2: #9aabbf;
+  --panel: rgba(20, 32, 50, 0.9);
+  --line: #26384f;
   --core: #f2c14e;
-  --main: #47d6a4;
-  --access: #6fb6ff;
+  --main: #4cc38a;
+  --access: #6cb8ff;
   --lab: #b9a7ff;
   --nvr: #ef7fc4;
-  --wan: #58c8f0;
+  --wan: #5fb3f0;
   --ap: #c6e86b;
   --planned: #7d8ca0;
-  --down: #ff5b6b;
+  --down: #ef5b6b;
   --muted: #4a5a6e;
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
@@ -26,71 +26,73 @@
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme='dark']) {
-    --bg: #e9eef4;
-    --ground: #f3f6fa;
-    --grid: #d6dfe9;
-    --slab: #dfe8f2;
+    --bg: #eef2f7;
+    --ground: #f6f8fb;
+    --grid: #dbe3ec;
+    --slab: #e2e9f2;
     --edge: #6a88a8;
-    --ink: #132235;
-    --ink-2: #4d6178;
-    --panel: rgba(255, 255, 255, 0.93);
-    --line: #c9d5e2;
+    --ink: #13233a;
+    --ink-2: #566a82;
+    --panel: rgba(255, 255, 255, 0.94);
+    --line: #d3dde8;
     --core: #c98f10;
-    --main: #139a6e;
+    --main: #1f9d63;
     --access: #2f7fd6;
     --lab: #6c55d9;
     --nvr: #c43f8f;
-    --wan: #1c8fbf;
+    --wan: #1f78c8;
     --ap: #6f8f12;
     --planned: #8b98a8;
-    --down: #e0263a;
+    --down: #d63445;
     --muted: #aab6c4;
   }
 }
 :root[data-theme='dark'] {
-  --bg: #0c1522;
-  --ground: #101d2e;
-  --grid: #1b2c43;
-  --slab: #1d3048;
-  --edge: #5f86ad;
-  --ink: #e6eef7;
-  --ink-2: #9db0c6;
-  --panel: rgba(14, 24, 38, 0.9);
-  --line: #27405e;
+  --bg: #0d1726;
+  --ground: #111d2f;
+  --grid: #1c2b42;
+  --slab: #1b2a40;
+  --edge: #5d80a8;
+  --ink: #eef3f9;
+  --ink-2: #9aabbf;
+  --panel: rgba(20, 32, 50, 0.9);
+  --line: #26384f;
   --core: #f2c14e;
-  --main: #47d6a4;
-  --access: #6fb6ff;
+  --main: #4cc38a;
+  --access: #6cb8ff;
   --lab: #b9a7ff;
   --nvr: #ef7fc4;
-  --wan: #58c8f0;
+  --wan: #5fb3f0;
   --ap: #c6e86b;
   --planned: #7d8ca0;
-  --down: #ff5b6b;
+  --down: #ef5b6b;
   --muted: #4a5a6e;
 }
 :root[data-theme='light'] {
-  --bg: #e9eef4;
-  --ground: #f3f6fa;
-  --grid: #d6dfe9;
-  --slab: #dfe8f2;
+  --bg: #eef2f7;
+  --ground: #f6f8fb;
+  --grid: #dbe3ec;
+  --slab: #e2e9f2;
   --edge: #6a88a8;
-  --ink: #132235;
-  --ink-2: #4d6178;
-  --panel: rgba(255, 255, 255, 0.93);
-  --line: #c9d5e2;
+  --ink: #13233a;
+  --ink-2: #566a82;
+  --panel: rgba(255, 255, 255, 0.94);
+  --line: #d3dde8;
   --core: #c98f10;
-  --main: #139a6e;
+  --main: #1f9d63;
   --access: #2f7fd6;
   --lab: #6c55d9;
   --nvr: #c43f8f;
-  --wan: #1c8fbf;
+  --wan: #1f78c8;
   --ap: #6f8f12;
   --planned: #8b98a8;
-  --down: #e0263a;
+  --down: #d63445;
   --muted: #aab6c4;
 }
 :root {
-  --warn: #ffc23d;
+  --warn: #e9b44c;
+  --accent: #6cb8ff;
+  --on-accent: #0b1422;
   /* Text-on-panel variants of the status colours (WCAG AA 4.5:1). The scene keeps the bright
      tokens above; text and status glyphs use these. */
   --ok-ink: var(--main);
@@ -103,14 +105,16 @@
   --font-body: 'Noto Sans Thai Variable', 'Noto Sans Thai', Tahoma, 'Leelawadee UI', sans-serif;
   --font-display: 'Chakra Petch', var(--font-body);
   /* solid surface for native popups (<option>) — they ignore translucent panels */
-  --surface: #13202f;
+  --surface: #16243a;
   /* native controls (select popups, scrollbars, date pickers) follow the theme */
   color-scheme: dark;
   font-size: clamp(13px, 0.3vw + 9.5px, 16px);
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme='dark']) {
-    --warn: #b7791f;
+    --warn: #c98a12;
+    --accent: #1f6fd1;
+    --on-accent: #ffffff;
     --ok-ink: #0b7a55;
     --warn-ink: #8a5a00;
     --down-ink: #c8102e;
@@ -122,9 +126,11 @@
   }
 }
 :root[data-theme='dark'] {
-  --surface: #13202f;
+  --surface: #16243a;
   color-scheme: dark;
-  --warn: #ffc23d;
+  --warn: #e9b44c;
+  --accent: #6cb8ff;
+  --on-accent: #0b1422;
   --ok-ink: var(--main);
   --warn-ink: var(--warn);
   --down-ink: var(--down);
@@ -135,7 +141,9 @@
 :root[data-theme='light'] {
   --surface: #ffffff;
   color-scheme: light;
-  --warn: #b7791f;
+  --warn: #c98a12;
+  --accent: #1f6fd1;
+  --on-accent: #ffffff;
   --ok-ink: #0b7a55;
   --warn-ink: #8a5a00;
   --down-ink: #c8102e;
@@ -189,8 +197,8 @@ button {
 }
 button[aria-pressed='true'],
 button[aria-selected='true'] {
-  border-color: var(--main);
-  box-shadow: inset 0 0 0 1px var(--main);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 button:disabled {
   opacity: 0.5;
@@ -219,7 +227,7 @@ a {
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 0.7rem;
+  border-radius: 0.9rem;
   -webkit-backdrop-filter: blur(12px) saturate(140%);
   backdrop-filter: blur(12px) saturate(140%);
   box-shadow:

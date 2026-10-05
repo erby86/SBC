@@ -9,6 +9,7 @@ import { DevicesPage } from './admin/DevicesPage.js';
 import { useEditor } from './admin/editApi.js';
 import { RoomsPage } from './admin/RoomsPage.js';
 import { UnplacedPage } from './admin/UnplacedPage.js';
+import { Toaster } from './admin/popups.js';
 import { LiveStatus } from './LiveStatus.js';
 import { RegistryChecks } from './RegistryChecks.js';
 
@@ -30,7 +31,7 @@ export function AdminHome() {
   return (
     <div className="admin">
       <header className="panel admin-top">
-        <h1>SB School NOC · จัดการ</h1>
+        <h1>ศูนย์ดูแลเครือข่าย · จัดการ</h1>
         <label className="editor-name">
           ผู้แก้:
           <input
@@ -95,6 +96,7 @@ export function AdminHome() {
           }
         />
       </Routes>
+      <Toaster />
     </div>
   );
 }

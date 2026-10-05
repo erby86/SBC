@@ -93,6 +93,11 @@ describe('back office (M21)', () => {
     const name = await screen.findByDisplayValue('8 เซียน main');
     fireEvent.change(name, { target: { value: '8 เซียน main (SG3428)' } });
     fireEvent.click(screen.getByRole('button', { name: 'บันทึก' }));
+    // the confirm pop-up lists what changes before anything is sent
+    const dlg = await screen.findByRole('dialog');
+    expect(dlg.textContent).toContain('8 เซียน main (SG3428)');
+    expect(calls.some((c) => c.method === 'PATCH')).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'ยืนยันบันทึก' }));
     await screen.findByText(/บันทึกแล้ว/);
     const patch = calls.find((c) => c.method === 'PATCH');
     expect(patch?.body).toEqual({ rowVersion: 7, name: '8 เซียน main (SG3428)' });
@@ -104,6 +109,7 @@ describe('back office (M21)', () => {
     renderAt('/admin/devices/m-s8', <App />);
     fireEvent.change(await screen.findByDisplayValue('8 เซียน main'), { target: { value: 'x' } });
     fireEvent.click(screen.getByRole('button', { name: 'บันทึก' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'ยืนยันบันทึก' }));
     expect((await screen.findByRole('alert')).textContent).toContain('มีคนแก้อุปกรณ์นี้ไปก่อนแล้ว');
     expect(screen.getByRole('button', { name: 'โหลดข้อมูลล่าสุด' })).toBeDefined();
   });
