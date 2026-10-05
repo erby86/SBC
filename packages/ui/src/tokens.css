@@ -100,6 +100,12 @@
   --cut-ink: #7a8ca3;
   --link: var(--wan);
   --alert-bg: #c8102e;
+  --font-body: 'Noto Sans Thai Variable', 'Noto Sans Thai', Tahoma, 'Leelawadee UI', sans-serif;
+  --font-display: 'Chakra Petch', var(--font-body);
+  /* solid surface for native popups (<option>) — they ignore translucent panels */
+  --surface: #13202f;
+  /* native controls (select popups, scrollbars, date pickers) follow the theme */
+  color-scheme: dark;
   font-size: clamp(13px, 0.3vw + 9.5px, 16px);
 }
 @media (prefers-color-scheme: light) {
@@ -111,9 +117,13 @@
     --maint-ink: #5f6f83;
     --cut-ink: #66768a;
     --link: #11729a;
+    --surface: #ffffff;
+    color-scheme: light;
   }
 }
 :root[data-theme='dark'] {
+  --surface: #13202f;
+  color-scheme: dark;
   --warn: #ffc23d;
   --ok-ink: var(--main);
   --warn-ink: var(--warn);
@@ -123,6 +133,8 @@
   --link: var(--wan);
 }
 :root[data-theme='light'] {
+  --surface: #ffffff;
+  color-scheme: light;
   --warn: #b7791f;
   --ok-ink: #0b7a55;
   --warn-ink: #8a5a00;
@@ -146,7 +158,7 @@ body {
 body {
   background: var(--bg);
   color: var(--ink);
-  font-family: 'IBM Plex Sans Thai', Tahoma, 'Leelawadee UI', sans-serif;
+  font-family: var(--font-body);
   font-size: 1rem;
   line-height: 1.45;
   font-variant-numeric: tabular-nums;
@@ -269,4 +281,13 @@ a {
     transition: none !important;
     animation: none !important;
   }
+}
+
+select {
+  background-color: var(--surface);
+}
+option,
+optgroup {
+  background: var(--surface);
+  color: var(--ink);
 }

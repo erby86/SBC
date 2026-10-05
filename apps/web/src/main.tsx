@@ -1,9 +1,10 @@
 import './zod-config.js'; // first: before any module builds or parses a schema
-import '@fontsource/ibm-plex-sans-thai/thai-400.css';
-import '@fontsource/ibm-plex-sans-thai/thai-500.css';
-import '@fontsource/ibm-plex-sans-thai/thai-600.css';
-import '@fontsource/ibm-plex-sans-thai/latin-400.css';
-import '@fontsource/ibm-plex-sans-thai/latin-600.css';
+// body: Noto Sans Thai (variable weight); display (brand, numbers, headings): Chakra Petch
+import '@fontsource-variable/noto-sans-thai/index.css';
+import '@fontsource/chakra-petch/thai-500.css';
+import '@fontsource/chakra-petch/thai-600.css';
+import '@fontsource/chakra-petch/latin-500.css';
+import '@fontsource/chakra-petch/latin-600.css';
 import '@sbc-noc/ui/tokens.css';
 import './shell/shell.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
