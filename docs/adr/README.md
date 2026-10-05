@@ -1,25 +1,26 @@
 # ADR index
 
-| #                                         | เรื่อง                                   |
-| ----------------------------------------- | ---------------------------------------- |
-| [0001](0001-loc-numbering.md)             | เลข LOC                                  |
-| [0002](0002-device-code.md)               | รหัสอุปกรณ์                              |
-| [0003](0003-asset-scope.md)               | ขอบเขตครุภัณฑ์                           |
-| [0004](0004-computer-lab-online.md)       | เครื่องออนไลน์ห้องคอมพิวเตอร์            |
-| [0005](0005-secret-storage.md)            | ที่เก็บ secret                           |
-| [0006](0006-label-format.md)              | รูปแบบรหัสป้าย                           |
-| [0007](0007-ci-runner.md)                 | CI runner                                |
-| [0008](0008-addresses.md)                 | ที่อยู่ระบบ                              |
-| [0009](0009-repo-structure.md)            | โครงสร้าง repo                           |
-| [0010](0010-self-monitoring.md)           | การเฝ้าระบบตัวเอง                        |
-| [0011](0011-offline-login.md)             | ล็อกอินเมื่ออินเทอร์เน็ตล่ม              |
-| [0012](0012-remote-access.md)             | การเข้าใช้จากนอกโรงเรียน                 |
-| [0013](0013-environments.md)              | สภาพแวดล้อม                              |
-| [0014](0014-demo-mode.md)                 | โหมดสาธิต                                |
-| [0015](0015-release-rollback.md)          | การออกรุ่นและย้อนกลับ                    |
-| [0016](0016-ci-security.md)               | ความปลอดภัยใน CI                         |
-| [0017](0017-time.md)                      | เวลา                                     |
-| [0018](0018-db-migrations.md)             | migration ฐานข้อมูล                      |
-| [0019](0019-zabbix-sync-user.md)          | ผู้ใช้ Zabbix สำหรับงานซิงก์ (เขียน tag) |
-| [0020](0020-registry-editor-before-3d.md) | ทำหน้าจัดการทะเบียน (M21) ก่อนฉาก 3D     |
-| [0021](0021-g4-parallel-with-g1-g3.md)    | ทำและปิด G4 บน dev ขนานกับ G1–G3         |
+| #                                         | เรื่อง                                           |
+| ----------------------------------------- | ------------------------------------------------ |
+| [0001](0001-loc-numbering.md)             | เลข LOC                                          |
+| [0002](0002-device-code.md)               | รหัสอุปกรณ์                                      |
+| [0003](0003-asset-scope.md)               | ขอบเขตครุภัณฑ์                                   |
+| [0004](0004-computer-lab-online.md)       | เครื่องออนไลน์ห้องคอมพิวเตอร์                    |
+| [0005](0005-secret-storage.md)            | ที่เก็บ secret                                   |
+| [0006](0006-label-format.md)              | รูปแบบรหัสป้าย                                   |
+| [0007](0007-ci-runner.md)                 | CI runner                                        |
+| [0008](0008-addresses.md)                 | ที่อยู่ระบบ                                      |
+| [0009](0009-repo-structure.md)            | โครงสร้าง repo                                   |
+| [0010](0010-self-monitoring.md)           | การเฝ้าระบบตัวเอง                                |
+| [0011](0011-offline-login.md)             | ล็อกอินเมื่ออินเทอร์เน็ตล่ม                      |
+| [0012](0012-remote-access.md)             | การเข้าใช้จากนอกโรงเรียน                         |
+| [0013](0013-environments.md)              | สภาพแวดล้อม                                      |
+| [0014](0014-demo-mode.md)                 | โหมดสาธิต                                        |
+| [0015](0015-release-rollback.md)          | การออกรุ่นและย้อนกลับ                            |
+| [0016](0016-ci-security.md)               | ความปลอดภัยใน CI                                 |
+| [0017](0017-time.md)                      | เวลา                                             |
+| [0018](0018-db-migrations.md)             | migration ฐานข้อมูล                              |
+| [0019](0019-zabbix-sync-user.md)          | ผู้ใช้ Zabbix สำหรับงานซิงก์ (เขียน tag)         |
+| [0020](0020-registry-editor-before-3d.md) | ทำหน้าจัดการทะเบียน (M21) ก่อนฉาก 3D             |
+| [0021](0021-g4-parallel-with-g1-g3.md)    | ทำและปิด G4 บน dev ขนานกับ G1–G3                 |
+| [0022](0022-build-on-host.md)             | build image บน sbc-ubuntu และ deploy ด้วยสคริปต์ |
