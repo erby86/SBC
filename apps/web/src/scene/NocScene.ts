@@ -1501,6 +1501,39 @@ export class NocScene {
     const Hh = this.opts.container.clientHeight;
     const v = this.tmp.v;
     const placed: [number, number, number, number][] = [];
+    const overlaps = (r: [number, number, number, number]) =>
+      placed.some(
+        (p) =>
+          r[0] < p[0] + p[2] + 4 &&
+          r[0] + r[2] + 4 > p[0] &&
+          r[1] < p[1] + p[3] + 2 &&
+          r[1] + r[3] + 2 > p[1],
+      );
+    // problem badges first: they never hide; one that would cover another moves up a row
+    const bs = [...this.badges].flatMap(([code, el]) => {
+      const d = this.devs.get(code);
+      if (!d) return [];
+      v.set(d.m.pos.x, d.m.pos.y + 1.3, d.m.pos.z).project(this.camera);
+      if (v.z > 1 || !d.visible) {
+        el.style.display = 'none';
+        return [];
+      }
+      el.style.display = 'block';
+      const down = el.classList.contains('down') ? 0 : 1;
+      return [{ el, sx: ((v.x + 1) / 2) * W, sy: ((1 - v.y) / 2) * Hh, down }];
+    });
+    bs.sort((a, b) => a.down - b.down || a.sy - b.sy);
+    for (const b of bs) {
+      const bw = b.el.offsetWidth || 90;
+      const bh = b.el.offsetHeight || 20;
+      const x = Math.max(bw / 2 + 4, Math.min(W - bw / 2 - 4, b.sx));
+      let y = Math.max(bh + 4, Math.min(Hh - 4, b.sy));
+      for (let k = 0; k < 4 && overlaps([x - bw / 2, y - bh, bw, bh]); k++) y -= bh + 3;
+      y = Math.max(bh + 4, y);
+      placed.push([x - bw / 2, y - bh, bw, bh]);
+      b.el.style.left = `${x}px`;
+      b.el.style.top = `${y}px`;
+    }
     const items = this.labelsList.map((l) => {
       v.copy(l.pos).project(this.camera);
       return { l, sx: ((v.x + 1) / 2) * W, sy: ((1 - v.y) / 2) * Hh, off: v.z > 1, p: l.prio() };
@@ -1516,13 +1549,7 @@ export class NocScene {
         w,
         h,
       ];
-      const hit = placed.some(
-        (p) =>
-          rect[0] < p[0] + p[2] + 4 &&
-          rect[0] + rect[2] + 4 > p[0] &&
-          rect[1] < p[1] + p[3] + 2 &&
-          rect[1] + rect[3] + 2 > p[1],
-      );
+      const hit = overlaps(rect);
       const show = !o.off && !hit;
       el.style.visibility = show ? 'visible' : 'hidden';
       if (show) {
@@ -1530,15 +1557,6 @@ export class NocScene {
         el.style.left = `${Math.max(w / 2 + 4, Math.min(W - w / 2 - 4, o.sx))}px`;
         el.style.top = `${Math.max(o.l.below ? 4 : h + 4, Math.min(Hh - 4, o.sy))}px`;
       }
-    }
-    for (const [code, el] of this.badges) {
-      const d = this.devs.get(code);
-      if (!d) continue;
-      v.set(d.m.pos.x, d.m.pos.y + 1.3, d.m.pos.z).project(this.camera);
-      el.style.display = v.z > 1 || !d.visible ? 'none' : 'block';
-      const bw = el.offsetWidth || 90;
-      el.style.left = `${Math.max(bw / 2 + 4, Math.min(W - bw / 2 - 4, ((v.x + 1) / 2) * W))}px`;
-      el.style.top = `${Math.max(24, Math.min(Hh - 4, ((1 - v.y) / 2) * Hh))}px`;
     }
   }
 
