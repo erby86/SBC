@@ -62,7 +62,7 @@ export class MiniMap {
       this.ox + (x - x0) * this.scale,
       this.oz + (z - z0) * this.scale,
     ];
-    const font = '"IBM Plex Sans Thai", Tahoma, sans-serif';
+    const font = '"Noto Sans Thai Variable", Tahoma, sans-serif';
 
     const shapes = [
       ...this.model.areas

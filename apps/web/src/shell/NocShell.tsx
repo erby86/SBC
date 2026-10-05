@@ -33,6 +33,7 @@ import type { NocScene, Selection } from '../scene/NocScene.js';
 import { useIncidentFeed, useNow } from './events.js';
 import { Feed, HealthRing } from './feed.js';
 import { Help, Tour, tourSeen } from './Help.js';
+import { Icon } from './icons.js';
 import {
   fmtAgo,
   History,
@@ -140,48 +141,62 @@ function TopBar({
   return (
     <header id="top" className="panel">
       {demo}
-      <h1>SB School NOC</h1>
-      {snap && <HealthRing {...health} />}
-      <button
-        id="bigNum"
-        className={open ? 'hot' : ''}
-        title="เหตุที่ยังไม่มีคนรับเรื่อง"
-        data-testid="open-incidents"
-        onClick={onBigNum}
-      >
-        <b key={open}>{open}</b>
-        <span>ยังไม่มีคนรับ</span>
-      </button>
-      {search}
-      <div className="chips" aria-live="polite" data-testid="state-chips">
-        {cats.map((c) => (
-          <span key={`${c.label}${c.on}`} className={`chip st-${c.worst}`} title={c.tip}>
-            <span className={`i ${c.worst}`}>{STATE_ICON[c.worst]}</span>
-            {c.label} {c.on}/{c.total}
-          </span>
-        ))}
+      <h1 className="brand">
+        <span className="logo">
+          <Icon name="logo" />
+        </span>
+        <span className="bt">
+          <small>SB School</small> NOC
+        </span>
+      </h1>
+      <div className="stat">
+        {snap && <HealthRing {...health} />}
+        <button
+          id="bigNum"
+          className={open ? 'hot' : ''}
+          title="เหตุที่ยังไม่มีคนรับเรื่อง"
+          data-testid="open-incidents"
+          onClick={onBigNum}
+        >
+          <b key={open}>{open}</b>
+          <span>ยังไม่มีคนรับ</span>
+        </button>
       </div>
-      {snap && wans.length > 0 && (
-        <div className="chips" id="wanChips" aria-label="สถานะอินเทอร์เน็ต">
-          {wans.map((d) => {
-            const st = stateOfDevice(snap, d.code);
-            const inc = snap.incidents.find((i) => i.device === d.code);
-            return (
-              <button
-                key={d.code}
-                className={`chip wanchip st-${st}`}
-                title={`อินเทอร์เน็ต ${d.name} · ${DEVICE_STATE_TH[st]}${inc ? ` · ${inc.message}` : ''}`}
-                onClick={() => onGo(d.code)}
-              >
-                <span className={`i ${st}`}>{STATE_ICON[st]}</span>
-                {d.name}
-              </button>
-            );
-          })}
+      <div className="sfield">
+        <Icon name="search" className="sicon" />
+        {search}
+      </div>
+      <div className="status">
+        <div className="chips" aria-live="polite" data-testid="state-chips">
+          {cats.map((c) => (
+            <span key={`${c.label}${c.on}`} className={`chip st-${c.worst}`} title={c.tip}>
+              <span className={`i ${c.worst}`}>{STATE_ICON[c.worst]}</span>
+              {c.label} <b>{c.on}</b>/{c.total}
+            </span>
+          ))}
         </div>
-      )}
+        {snap && wans.length > 0 && (
+          <div className="chips" id="wanChips" aria-label="สถานะอินเทอร์เน็ต">
+            {wans.map((d) => {
+              const st = stateOfDevice(snap, d.code);
+              const inc = snap.incidents.find((i) => i.device === d.code);
+              return (
+                <button
+                  key={d.code}
+                  className={`chip wanchip st-${st}`}
+                  title={`อินเทอร์เน็ต ${d.name} · ${DEVICE_STATE_TH[st]}${inc ? ` · ${inc.message}` : ''}`}
+                  onClick={() => onGo(d.code)}
+                >
+                  <span className={`i ${st}`}>{STATE_ICON[st]}</span>
+                  {d.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
       <span
-        className={`chip${snap?.stale ? ' stale' : ''}`}
+        className={`chip fresh ${!snap ? 'f-wait' : snap.stale ? 'stale' : `f-${mode}`}`}
         id="fresh"
         data-testid="fresh"
         title={
@@ -192,6 +207,7 @@ function TopBar({
               : 'ดึงข้อมูลทุก 30 วินาที · ถ้าค้างเกิน 2 นาทีจะขึ้นเตือน'
         }
       >
+        <i className="dot" aria-hidden="true" />
         {!snap
           ? 'รอข้อมูล…'
           : snap.stale
@@ -204,50 +220,67 @@ function TopBar({
           {Math.round(view.fps)} fps
         </span>
       )}
-      <div className="topbtns">
-        <button
-          className="wide"
-          aria-pressed={view.top}
-          disabled={!view.ready}
-          onClick={view.onTop}
-          title="มองจากด้านบน"
-        >
-          มุมบน
-        </button>
-        <button disabled={!view.ready} onClick={view.onHome} title="กลับไปมุมมองทั้งโรงเรียน">
-          ทั้งโรงเรียน
-        </button>
-        <button
-          className="wide"
-          aria-pressed={view.tv}
-          onClick={view.onTv}
-          title="เต็มจอ วนแจ้งเตือนที่ยังไม่มีคนรับจุดละ 10 วินาที เสียงเตือนเมื่อมีเหตุล่มใหม่"
-          data-testid="tv"
-        >
-          โหมดทีวี
-        </button>
-        <button onClick={view.onHelp} aria-label="วิธีใช้" title="วิธีใช้ (กด ?)">
-          ?
-        </button>
-        <button
-          onClick={theme.toggle}
-          aria-label={theme.theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'}
-          title={theme.theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'}
-          data-testid="theme-toggle"
-        >
-          {theme.theme === 'dark' ? '☀ สว่าง' : '☾ มืด'}
-        </button>
-        <button
-          className="wide"
-          aria-pressed={view.eco}
-          disabled={!view.ready}
-          onClick={view.onEco}
-          title="ปิดแสงเรืองและหางแสง สำหรับเครื่องที่กราฟิกไม่แรง"
-        >
-          โหมดประหยัด
-        </button>
-        <Link to="/admin" className="btnlink">
-          จัดการ
+      <div className="topbtns" role="toolbar" aria-label="มุมมองและการแสดงผล">
+        <div className="seg">
+          <button
+            className="ib wide"
+            aria-pressed={view.top}
+            disabled={!view.ready}
+            onClick={view.onTop}
+            aria-label="มุมบน"
+            title="มองจากด้านบน (T)"
+          >
+            <Icon name="top" />
+          </button>
+          <button
+            className="ib"
+            disabled={!view.ready}
+            onClick={view.onHome}
+            aria-label="ทั้งโรงเรียน"
+            title="กลับไปมุมมองทั้งโรงเรียน (H)"
+          >
+            <Icon name="home" />
+          </button>
+        </div>
+        <div className="seg wide">
+          <button
+            className="ib"
+            aria-pressed={view.tv}
+            onClick={view.onTv}
+            aria-label="โหมดทีวี"
+            title="โหมดทีวี: เต็มจอ วนแจ้งเตือนที่ยังไม่มีคนรับจุดละ 10 วินาที เสียงเตือนเมื่อมีเหตุล่มใหม่"
+            data-testid="tv"
+          >
+            <Icon name="tv" />
+          </button>
+          <button
+            className="ib"
+            aria-pressed={view.eco}
+            disabled={!view.ready}
+            onClick={view.onEco}
+            aria-label="โหมดประหยัด"
+            title="โหมดประหยัด: ปิดแสงเรืองและหางแสง สำหรับเครื่องที่กราฟิกไม่แรง (E)"
+          >
+            <Icon name="leaf" />
+          </button>
+        </div>
+        <div className="seg">
+          <button
+            className="ib"
+            onClick={theme.toggle}
+            aria-label={theme.theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'}
+            title={`${theme.theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'} (L)`}
+            data-testid="theme-toggle"
+          >
+            <Icon name={theme.theme === 'dark' ? 'sun' : 'moon'} />
+          </button>
+          <button className="ib" onClick={view.onHelp} aria-label="วิธีใช้" title="วิธีใช้ (?)">
+            <Icon name="help" />
+          </button>
+        </div>
+        <Link to="/admin" className="btnlink adminlink" title="จัดการทะเบียน">
+          <Icon name="gear" />
+          <span>จัดการ</span>
         </Link>
       </div>
     </header>
