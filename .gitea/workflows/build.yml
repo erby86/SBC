@@ -55,7 +55,7 @@ jobs:
       options: --cpus=1 --memory=1g
     timeout-minutes: 15
     env:
-      TRIVY_VERSION: 0.67.2
+      TRIVY_VERSION: 0.74.0
     steps:
       - uses: actions/checkout@v4
 

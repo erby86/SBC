@@ -17,7 +17,7 @@ ACTION="${2:-}"
 ROLLBACK_TAG="${3:-}"
 
 SRC="${SRC:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-TRIVY_IMAGE="${TRIVY_IMAGE:-aquasec/trivy:0.67.2}"
+TRIVY_IMAGE="${TRIVY_IMAGE:-aquasec/trivy:0.74.0}"
 NO_SCAN="${NO_SCAN:-false}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-180}"
 APPS=(api worker web)
