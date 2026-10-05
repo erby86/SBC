@@ -6,6 +6,11 @@ name: sbc-noc-dev
 # Service names are prefixed (noc-dev-*) because api/worker join the shared network
 # used by other systems; a plain `api` alias could collide with theirs.
 
+# Bounded container logs; Loki gets them through sbc-noc-alloy in the prod stack (M17).
+x-logging: &logging
+  driver: json-file
+  options: { max-size: '10m', max-file: '3' }
+
 x-node-env: &node-env
   NODE_ENV: production
   DATABASE_URL: postgres://sbc_noc:${POSTGRES_PASSWORD}@noc-dev-db:5432/sbc_noc
@@ -25,6 +30,7 @@ services:
     volumes:
       - db-data:/var/lib/postgresql/data
     networks: [internal]
+    logging: *logging
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U sbc_noc -d sbc_noc']
       interval: 10s
@@ -44,6 +50,7 @@ services:
     depends_on:
       noc-dev-db: { condition: service_healthy }
     networks: [internal]
+    logging: *logging
     restart: 'no'
 
   noc-dev-api:
@@ -64,6 +71,7 @@ services:
     depends_on:
       noc-dev-migrate: { condition: service_completed_successfully }
     networks: [internal, shared]
+    logging: *logging
     deploy:
       resources:
         limits: { cpus: '1', memory: 512M }
@@ -107,6 +115,7 @@ services:
     depends_on:
       noc-dev-migrate: { condition: service_completed_successfully }
     networks: [internal, shared]
+    logging: *logging
     deploy:
       resources:
         limits: { cpus: '0.5', memory: 256M }
@@ -122,6 +131,7 @@ services:
     # No published port: reachable only through Nginx Proxy Manager on the proxy network,
     # so the NPM access list cannot be bypassed via http://<host>:<port> (baseline §8, M17).
     networks: [internal, proxy]
+    logging: *logging
     deploy:
       resources:
         limits: { cpus: '0.5', memory: 128M }

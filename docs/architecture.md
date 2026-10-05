@@ -69,16 +69,16 @@ sbc-noc/
 
 ## สภาพแวดล้อม (ADR-0013)
 
-| env     | ที่อยู่           | Zabbix token       | หมายเหตุ                                                         |
-| ------- | ----------------- | ------------------ | ---------------------------------------------------------------- |
-| dev     | เครื่องผู้พัฒนา   | อ่านอย่างเดียว     | โหมดสาธิตเปิดได้ (ADR-0014)                                      |
-| staging | `noc-dev.sbc.lan` | อ่านอย่างเดียว     | โหมดสาธิตเปิดได้                                                 |
-| prod    | `noc.sbc.lan`     | อ่าน + acknowledge | deploy ที่ `/opt/sbc-noc` บน sbc-ubuntu, image จาก `git.sbc.lan` |
+| env     | ที่อยู่           | Zabbix token       | หมายเหตุ                                                                                                                              |
+| ------- | ----------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| dev     | เครื่องผู้พัฒนา   | อ่านอย่างเดียว     | โหมดสาธิตเปิดได้ (ADR-0014)                                                                                                           |
+| staging | `noc-dev.sbc.lan` | อ่านอย่างเดียว     | โหมดสาธิตเปิดได้                                                                                                                      |
+| prod    | `noc.sbc.lan`     | อ่าน + acknowledge | `infra/scripts/deploy.sh prod` บน sbc-ubuntu, image build ในเครื่อง tag `<version>-<sha>` (ADR-0022), log → Loki ผ่าน `sbc-noc-alloy` |
 
 ## CI (ADR-0007, ADR-0016)
 
 - `ci.yml` ทุก push/PR: `quality` (format, lint, ทิศทาง import, typecheck, test), `secrets` (gitleaks), `audit` (pnpm audit high)
-- `build.yml` เฉพาะ PR เข้า `main` และ tag `v*`: `build` (+ image/Trivy/SBOM M17), `db-integration` (PostgreSQL 16 + Redis จริง, M03), `e2e` (Playwright 3 ขนาด บน stack ใน job, artifact `e2e-shots`, M22)
+- `build.yml` เฉพาะ PR เข้า `main` และ tag `v*`: `build`, `scan` (Trivy lockfile + Dockerfile, SBOM artifact — M17), `db-integration` (PostgreSQL 16 + Redis จริง, M03), `e2e` (Playwright 3 ขนาด บน stack ใน job, artifact `e2e-shots`, M22)
 
 ## ADR
 

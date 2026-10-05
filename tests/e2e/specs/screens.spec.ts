@@ -12,6 +12,11 @@ const LINKS = {
   glpi: 'http://glpi.sbc.lan/front/search.php?globalsearch={code}',
 };
 
+test('page is served with a Content-Security-Policy (M17)', async ({ page }) => {
+  const res = await page.goto('/');
+  expect(res?.headers()['content-security-policy'] ?? '').toContain("default-src 'self'");
+});
+
 test('NOC page (real data)', async ({ page }, info) => {
   await openNoc(page, '/');
   await expect(page.getByTestId('demo-bar')).toHaveCount(0);

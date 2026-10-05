@@ -91,18 +91,45 @@
 }
 :root {
   --warn: #ffc23d;
+  /* Text-on-panel variants of the status colours (WCAG AA 4.5:1). The scene keeps the bright
+     tokens above; text and status glyphs use these. */
+  --ok-ink: var(--main);
+  --warn-ink: var(--warn);
+  --down-ink: var(--down);
+  --maint-ink: var(--planned);
+  --cut-ink: #7a8ca3;
+  --link: var(--wan);
+  --alert-bg: #c8102e;
   font-size: clamp(13px, 0.3vw + 9.5px, 16px);
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme='dark']) {
     --warn: #b7791f;
+    --ok-ink: #0b7a55;
+    --warn-ink: #8a5a00;
+    --down-ink: #c8102e;
+    --maint-ink: #5f6f83;
+    --cut-ink: #66768a;
+    --link: #11729a;
   }
 }
 :root[data-theme='dark'] {
   --warn: #ffc23d;
+  --ok-ink: var(--main);
+  --warn-ink: var(--warn);
+  --down-ink: var(--down);
+  --maint-ink: var(--planned);
+  --cut-ink: #7a8ca3;
+  --link: var(--wan);
 }
 :root[data-theme='light'] {
   --warn: #b7791f;
+  --ok-ink: #0b7a55;
+  --warn-ink: #8a5a00;
+  --down-ink: #c8102e;
+  --maint-ink: #5f6f83;
+  --cut-ink: #66768a;
+  --link: #11729a;
 }
 :root.tv {
   font-size: clamp(16px, 0.45vw + 9px, 22px);
@@ -175,7 +202,7 @@ a:focus-visible {
   outline-offset: 2px;
 }
 a {
-  color: var(--wan);
+  color: var(--link);
 }
 .panel {
   background: var(--panel);
@@ -195,7 +222,7 @@ a {
   align-items: center;
 }
 .chip {
-  font-size: 0.85rem;
+  font-size: max(12px, 0.85rem);
   line-height: 1.35;
   padding: 0.1rem 0.5rem;
   border-radius: 1rem;
@@ -210,24 +237,32 @@ a {
   margin-right: 0.25rem;
 }
 .i.ok {
-  color: var(--main);
+  color: var(--ok-ink);
 }
 .i.warn {
-  color: var(--warn);
+  color: var(--warn-ink);
 }
 .i.down {
-  color: var(--down);
+  color: var(--down-ink);
 }
 .i.cut {
-  color: var(--muted);
+  color: var(--cut-ink);
 }
 .i.maint {
-  color: var(--planned);
+  color: var(--maint-ink);
 }
 .chip.demo {
   background: color-mix(in srgb, var(--warn) 18%, transparent);
   border-color: var(--warn);
   font-weight: 600;
+}
+/* Touch screens: controls at least 44 px tall (WCAG 2.5.5 / Apple HIG). */
+@media (pointer: coarse) {
+  button,
+  select,
+  input:not([type='checkbox']):not([type='radio']) {
+    min-height: 44px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   * {

@@ -1,9 +1,28 @@
+# Included inside nginx's http {} block (conf.d/default.conf), so zones can be declared here.
+
+# Behind Nginx Proxy Manager every request arrives from NPM's container address; take the client
+# address from the header NPM sets so the rate limit and the api logs see the real client.
+# Only Docker/private ranges are trusted (the web container has no published port — M17).
+set_real_ip_from 172.16.0.0/12;
+set_real_ip_from 10.0.0.0/8;
+set_real_ip_from 192.168.0.0/16;
+real_ip_header X-Real-IP;
+
+# Rate limit per client (ADR-0016). Normal use is a few requests a minute per screen
+# (snapshot + WebSocket, 30 s fallback poll); bursts cover page load and search typing.
+limit_req_zone $binary_remote_addr zone=noc_api:10m rate=10r/s;
+limit_req_zone $binary_remote_addr zone=noc_ws:10m rate=30r/m;
+limit_req_status 429;
+limit_conn_zone $binary_remote_addr zone=noc_conn:10m;
+
 server {
     listen 80;
     server_name _;
     root /usr/share/nginx/html;
+    server_tokens off;
 
-    # Basic hardening (ADR-0016); full CSP arrives with the 3D client.
+    # Basic hardening (ADR-0016). nginx drops server-level add_header in any location that
+    # has its own add_header, so locations that add headers include these lines again.
     add_header X-Content-Type-Options nosniff always;
     add_header X-Frame-Options SAMEORIGIN always;
     add_header Referrer-Policy same-origin always;
@@ -20,17 +39,21 @@ server {
 
     # Live status (M16): WebSocket upgrade, long-lived connection.
     location = /api/status/ws {
+        limit_req zone=noc_ws burst=10 nodelay;
+        limit_conn noc_conn 20;
         rewrite ^ /status/ws break;
         proxy_pass $api_upstream;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_read_timeout 1h;
         proxy_send_timeout 1h;
     }
 
     location /api/ {
+        limit_req zone=noc_api burst=40 nodelay;
         rewrite ^/api/(.*)$ /$1 break;
         proxy_pass $api_upstream;
         proxy_set_header Host $host;
@@ -41,9 +64,19 @@ server {
     location /assets/ {
         expires 30d;
         add_header Cache-Control "public, immutable";
+        add_header X-Content-Type-Options nosniff always;
     }
 
+    # The app page. CSP (ADR-0016, M17): everything from this origin; inline style attributes are
+    # allowed because React/three set element styles; WebSocket is same-origin (connect-src 'self').
+    # Links to Zabbix/Grafana/GLPI are plain navigations, which CSP does not restrict.
     location / {
         try_files $uri /index.html;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options SAMEORIGIN always;
+        add_header Referrer-Policy same-origin always;
+        # index.html must not be cached: it names the hashed asset files of the current release.
+        add_header Cache-Control "no-cache" always;
     }
 }
