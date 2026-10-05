@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fillLinkTemplate, linkTemplateSchema } from './links.js';
+import { fillLinkTemplate, linkTemplateSchema, optionalLinkTemplateSchema } from './links.js';
 
 describe('fillLinkTemplate', () => {
   const zbx =
@@ -42,5 +42,15 @@ describe('linkTemplateSchema', () => {
   it('rejects other schemes and unknown placeholders', () => {
     expect(linkTemplateSchema.safeParse('javascript:alert(1)').success).toBe(false);
     expect(linkTemplateSchema.safeParse('http://a/{password}').success).toBe(false);
+  });
+});
+
+describe('optionalLinkTemplateSchema', () => {
+  it('treats empty or unset env values as no template', () => {
+    expect(optionalLinkTemplateSchema.parse('')).toBeUndefined();
+    expect(optionalLinkTemplateSchema.parse('  ')).toBeUndefined();
+    expect(optionalLinkTemplateSchema.parse(undefined)).toBeUndefined();
+    expect(optionalLinkTemplateSchema.parse('http://a/{ip}')).toBe('http://a/{ip}');
+    expect(optionalLinkTemplateSchema.safeParse('ftp://a').success).toBe(false);
   });
 });
