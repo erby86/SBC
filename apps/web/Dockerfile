@@ -13,6 +13,9 @@ RUN pnpm turbo run build --filter=@sbc-noc/web...
 # lets containers bind low ports without root (net.ipv4.ip_unprivileged_port_start=0), so the
 # NPM proxy hosts keep forwarding to <container>:80.
 FROM nginxinc/nginx-unprivileged:1.29-alpine AS runtime
+# Pull Alpine security fixes newer than the base image (Trivy gate in deploy.sh).
+USER root
+RUN apk upgrade --no-cache
 ENV API_UPSTREAM=http://noc-dev-api:3001
 COPY apps/web/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
