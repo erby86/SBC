@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router';
 import { api, EditError, useDevices, useOptions, useRooms } from './editApi.js';
 import { Field, num, val } from './Field.js';
 import { History } from './History.js';
+import { ConfirmDialog, notify } from './popups.js';
 
 type Form = Omit<DeviceEdit, 'rowVersion' | 'managedBy'>;
 
@@ -33,6 +34,24 @@ const LIFE_TH: Record<(typeof LIFECYCLES)[number], string> = {
   spare: 'สำรอง',
   retired: 'เลิกใช้',
 };
+
+const LABEL: Record<keyof Form, string> = {
+  code: 'รหัส',
+  name: 'ชื่อที่แสดง',
+  hostname: 'hostname',
+  role: 'บทบาท',
+  model: 'รุ่น',
+  locCode: 'ห้อง',
+  building: 'อาคาร',
+  floor: 'ชั้น',
+  ip: 'IP จัดการ',
+  mac: 'MAC',
+  uplink: 'ต่อจาก (uplink)',
+  uplinkMedia: 'ชนิดสาย uplink',
+  lifecycle: 'วงจรชีวิต',
+  dataStatus: 'สถานะข้อมูล',
+};
+const shown = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : String(v));
 
 function changes(from: Form, to: Form): Partial<Form> {
   const out: Record<string, unknown> = {};
@@ -62,7 +81,7 @@ export function DeviceForm({ code }: { code: string | null }) {
   const f = form ?? base;
   const rooms = useRooms(f?.building ?? undefined, f?.floor);
   const [error, setError] = useState<EditError | null>(null);
-  const [saved, setSaved] = useState<string | null>(null);
+  const [ask, setAsk] = useState<'save' | 'delete' | null>(null);
 
   const save = useMutation({
     mutationFn: async (): Promise<DeviceEdit> => {
@@ -77,7 +96,8 @@ export function DeviceForm({ code }: { code: string | null }) {
     onSuccess: async (d) => {
       setError(null);
       setForm(null);
-      setSaved(`บันทึกแล้ว ${new Date().toLocaleTimeString('th-TH')}`);
+      setAsk(null);
+      notify(`บันทึกแล้ว · ${d.code} (${new Date().toLocaleTimeString('th-TH')})`);
       qc.setQueryData(['device-edit', d.code], d);
       await qc.invalidateQueries({ queryKey: ['devices'] });
       await qc.invalidateQueries({ queryKey: ['history', 'device', d.code] });
@@ -85,17 +105,22 @@ export function DeviceForm({ code }: { code: string | null }) {
       if (code === null) await nav(`/admin/devices/${d.code}`);
     },
     onError: (e) => {
-      setSaved(null);
+      setAsk(null);
       setError(e instanceof EditError ? e : new EditError(0, String(e)));
     },
   });
   const remove = useMutation({
     mutationFn: () => api.deleteDevice(code as string, (loaded.data as DeviceEdit).rowVersion),
     onSuccess: async () => {
+      setAsk(null);
+      notify(`ลบ ${code ?? ''} แล้ว`);
       await qc.invalidateQueries({ queryKey: ['devices'] });
       await nav('/admin/devices');
     },
-    onError: (e) => setError(e instanceof EditError ? e : new EditError(0, String(e))),
+    onError: (e) => {
+      setAsk(null);
+      setError(e instanceof EditError ? e : new EditError(0, String(e)));
+    },
   });
 
   if (code !== null && loaded.isPending) return <p className="empty">กำลังโหลด…</p>;
@@ -114,7 +139,7 @@ export function DeviceForm({ code }: { code: string | null }) {
         className="grid-form"
         onSubmit={(e) => {
           e.preventDefault();
-          save.mutate();
+          setAsk('save');
         }}
       >
         {code === null && (
@@ -267,18 +292,10 @@ export function DeviceForm({ code }: { code: string | null }) {
             </button>
           )}
           {code !== null && (
-            <button
-              type="button"
-              className="danger"
-              onClick={() => {
-                if (confirm(`ลบ ${code}? (เก็บประวัติไว้ รหัสนี้จะไม่นำกลับมาใช้)`))
-                  remove.mutate();
-              }}
-            >
+            <button type="button" className="danger" onClick={() => setAsk('delete')}>
               ลบ
             </button>
           )}
-          {saved && <span className="ok-msg">{saved}</span>}
           {error && !error.field && (
             <span className="ferr" role="alert">
               {error.message}
@@ -298,6 +315,51 @@ export function DeviceForm({ code }: { code: string | null }) {
           )}
         </div>
       </form>
+      {ask === 'save' && (
+        <ConfirmDialog
+          title={code === null ? 'ยืนยันเพิ่มอุปกรณ์' : `ยืนยันบันทึก ${code}`}
+          confirmText={code === null ? 'เพิ่มอุปกรณ์' : 'ยืนยันบันทึก'}
+          busy={save.isPending}
+          onConfirm={() => save.mutate()}
+          onCancel={() => setAsk(null)}
+        >
+          <table className="difftbl">
+            <tbody>
+              {code === null
+                ? (Object.keys(LABEL) as (keyof Form)[])
+                    .filter((k) => f[k] !== null && f[k] !== '')
+                    .map((k) => (
+                      <tr key={k}>
+                        <th>{LABEL[k]}</th>
+                        <td colSpan={2}>{shown(f[k])}</td>
+                      </tr>
+                    ))
+                : (Object.keys(changes(base as Form, f)) as (keyof Form)[])
+                    .filter((k) => (base as Form)[k] !== f[k])
+                    .map((k) => (
+                      <tr key={k}>
+                        <th>{LABEL[k]}</th>
+                        <td className="was">{shown((base as Form)[k])}</td>
+                        <td className="now">{shown(f[k])}</td>
+                      </tr>
+                    ))}
+            </tbody>
+          </table>
+          <p className="fhint">บันทึกพร้อมชื่อผู้แก้และ IP ในประวัติ</p>
+        </ConfirmDialog>
+      )}
+      {ask === 'delete' && code !== null && (
+        <ConfirmDialog
+          title={`ลบ ${code}?`}
+          confirmText="ลบอุปกรณ์"
+          danger
+          busy={remove.isPending}
+          onConfirm={() => remove.mutate()}
+          onCancel={() => setAsk(null)}
+        >
+          <p>เก็บประวัติไว้ และรหัสนี้จะไม่นำกลับมาใช้อีก</p>
+        </ConfirmDialog>
+      )}
       {code !== null && <History kind="device" code={code} />}
     </div>
   );

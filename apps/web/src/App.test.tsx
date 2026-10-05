@@ -112,7 +112,7 @@ afterEach(() => {
 describe('NOC screen (M18 frame, M19 scene)', () => {
   it('shows buildings from the layout and incidents from the live status', async () => {
     renderAt('/', <App />);
-    expect(screen.getByRole('heading', { name: 'SB School NOC' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: /ศูนย์ดูแลเครือข่าย/ })).toBeDefined();
     await waitFor(() =>
       expect(screen.getAllByTestId('buildings')[0]?.textContent).toContain('8 เซียน'),
     );
@@ -164,7 +164,7 @@ describe('NOC screen (M18 frame, M19 scene)', () => {
     );
     const info = screen.getByTestId('info');
     expect(info.textContent).toContain('8 เซียน main');
-    expect(info.textContent).toContain('ล่ม');
+    expect(info.textContent).toContain('ใช้งานไม่ได้');
     expect(info.textContent).toContain('กระทบ3 อุปกรณ์');
     act(() => screen.getByRole('button', { name: 'ปิดรายละเอียด' }).click());
     expect(screen.queryByTestId('info')).toBeNull();
@@ -309,13 +309,13 @@ describe('NOC screen panels and modes (M20)', () => {
     push(snapshot(false));
     const tab = (start: string) =>
       screen.getAllByRole('tab').find((t) => t.textContent?.startsWith(start)) as HTMLElement;
-    await waitFor(() => expect(tab('ไม่มีตำแหน่ง').textContent).toBe('ไม่มีตำแหน่ง (1)'));
+    await waitFor(() => expect(tab('ยังไม่ระบุที่ตั้ง').textContent).toBe('ยังไม่ระบุที่ตั้ง (1)'));
     act(() => tab('ประวัติ').click());
     const h = screen.getByTestId('history');
     expect(h.textContent).toContain('ทั้งโรงเรียน');
-    expect(h.textContent).toContain('8 เซียน main · ล่ม');
+    expect(h.textContent).toContain('8 เซียน main · ใช้งานไม่ได้');
     expect(h.textContent).toContain('ยังไม่หาย');
-    expect(h.textContent).toContain('OLD-AP · เตือน');
+    expect(h.textContent).toContain('OLD-AP · ควรตรวจสอบ');
     expect(h.textContent).toContain('กลับมาปกติ หลัง 10 นาที');
     // focusing a building keeps only its events
     act(() => screen.getAllByTestId('buildings')[0]?.querySelector('button')?.click());
@@ -323,7 +323,7 @@ describe('NOC screen panels and modes (M20)', () => {
     expect(screen.getByTestId('history').textContent).toContain('เฉพาะ 8 เซียน');
     // labs of the focused building
     expect(screen.getAllByTestId('labs')[0]?.textContent).toContain('ห้องคอม 40');
-    act(() => tab('ไม่มีตำแหน่ง').click());
+    act(() => tab('ยังไม่ระบุที่ตั้ง').click());
     expect(screen.getByTestId('unlocated').textContent).toContain('SW-UNKNOWN');
     expect(screen.getByTestId('unlocated').textContent).toContain('กลุ่ม 02-Switch');
   });

@@ -34,6 +34,7 @@ import { useIncidentFeed, useNow } from './events.js';
 import { Feed, HealthRing } from './feed.js';
 import { Help, Tour, tourSeen } from './Help.js';
 import { Icon } from './icons.js';
+import { plainMessage } from './messages.js';
 import {
   fmtAgo,
   History,
@@ -141,12 +142,12 @@ function TopBar({
   return (
     <header id="top" className="panel">
       {demo}
-      <h1 className="brand">
+      <h1 className="brand" title="SB School NOC — ศูนย์ดูแลเครือข่ายของโรงเรียน">
         <span className="logo">
           <Icon name="logo" />
         </span>
         <span className="bt">
-          <small>SB School</small> NOC
+          <small>โรงเรียน SB School</small> ศูนย์ดูแลเครือข่าย
         </span>
       </h1>
       <div className="stat">
@@ -184,7 +185,7 @@ function TopBar({
                 <button
                   key={d.code}
                   className={`chip wanchip st-${st}`}
-                  title={`อินเทอร์เน็ต ${d.name} · ${DEVICE_STATE_TH[st]}${inc ? ` · ${inc.message}` : ''}`}
+                  title={`อินเทอร์เน็ต ${d.name} · ${DEVICE_STATE_TH[st]}${inc ? ` · ${plainMessage(inc.message)}` : ''}`}
                   onClick={() => onGo(d.code)}
                 >
                   <span className={`i ${st}`}>{STATE_ICON[st]}</span>
@@ -248,7 +249,7 @@ function TopBar({
             aria-pressed={view.tv}
             onClick={view.onTv}
             aria-label="โหมดทีวี"
-            title="โหมดทีวี: เต็มจอ วนแจ้งเตือนที่ยังไม่มีคนรับจุดละ 10 วินาที เสียงเตือนเมื่อมีเหตุล่มใหม่"
+            title="โหมดทีวี: เต็มจอ วนแจ้งเตือนที่ยังไม่มีคนรับจุดละ 10 วินาที เสียงเตือนเมื่อมีอุปกรณ์ใช้งานไม่ได้เพิ่ม"
             data-testid="tv"
           >
             <Icon name="tv" />
@@ -487,7 +488,7 @@ function InfoPanel({
           </>
         ),
       ],
-      ['อาการ', inc?.message],
+      ['อาการ', inc ? plainMessage(inc.message) : undefined],
       [
         'บำรุงรักษา',
         maint
@@ -1098,10 +1099,10 @@ export function NocShell() {
                 ที่เห็นอยู่
               </span>
               <span>
-                <b className="i down">{STATE_ICON.down}</b>ล่ม
+                <b className="i down">{STATE_ICON.down}</b>ใช้งานไม่ได้
               </span>
               <span>
-                <b className="i warn">{STATE_ICON.warn}</b>เตือน
+                <b className="i warn">{STATE_ICON.warn}</b>ควรตรวจสอบ
               </span>
             </p>
           </figure>
@@ -1145,7 +1146,7 @@ export function NocShell() {
               [
                 ['inc', `แจ้งเตือน ${incCount ? `(${incCount})` : ''}`],
                 ['hist', 'ประวัติ'],
-                ['unl', `ไม่มีตำแหน่ง ${unlCount ? `(${unlCount})` : ''}`],
+                ['unl', `ยังไม่ระบุที่ตั้ง ${unlCount ? `(${unlCount})` : ''}`],
               ] as const
             ).map(([k, label]) => (
               <button
@@ -1191,8 +1192,8 @@ export function NocShell() {
           <FiberLegend rows={fibers} />
           <span className="stlegend" title="ความหมายสัญลักษณ์สถานะ">
             <span className="i ok">{STATE_ICON.ok}</span>ปกติ{' '}
-            <span className="i warn">{STATE_ICON.warn}</span>เตือน{' '}
-            <span className="i down">{STATE_ICON.down}</span>ล่ม{' '}
+            <span className="i warn">{STATE_ICON.warn}</span>ควรตรวจสอบ{' '}
+            <span className="i down">{STATE_ICON.down}</span>ใช้งานไม่ได้{' '}
             <span className="i cut">{STATE_ICON.cut}</span>
             ขาดจากต้นทาง <span className="i maint">{STATE_ICON.maint}</span>บำรุงรักษา
           </span>
@@ -1260,7 +1261,7 @@ export function NocShell() {
                   onFloor={onFloor}
                   onLab={goLab}
                 />
-                <p className="sub2">ไม่มีตำแหน่ง {unlCount ? `(${unlCount})` : ''}</p>
+                <p className="sub2">ยังไม่ระบุที่ตั้ง {unlCount ? `(${unlCount})` : ''}</p>
                 {unlocatedPanel}
               </>
             )}

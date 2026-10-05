@@ -39,8 +39,8 @@
   top: -1px;
   height: 2px;
   border-radius: 2px;
-  background: linear-gradient(90deg, transparent, var(--main), transparent);
-  opacity: 0.7;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.45;
 }
 #app:has(#bigNum.hot) #top::before {
   background: linear-gradient(90deg, transparent, var(--down), transparent);
@@ -51,11 +51,11 @@
 .brand {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
   margin: 0;
-  font-family: var(--font-display);
-  font-weight: 600;
-  line-height: 1;
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
 }
 .brand .logo {
   display: grid;
@@ -63,9 +63,9 @@
   width: 2.2rem;
   height: 2.2rem;
   border-radius: 0.6rem;
-  color: var(--main);
-  background: color-mix(in srgb, var(--main) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--main) 45%, transparent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
 }
 .brand .logo .icon {
   width: 1.35rem;
@@ -74,16 +74,12 @@
 .brand .bt {
   display: flex;
   flex-direction: column;
-  font-size: 1.35rem;
-  letter-spacing: 0.06em;
+  font-size: 1.15rem;
 }
 .brand small {
-  font-size: max(12px, 0.68rem);
+  font-size: max(12px, 0.75rem);
   font-weight: 500;
-  letter-spacing: 0.08em;
   color: var(--ink-2);
-  text-transform: uppercase;
-  margin-bottom: 0.1rem;
 }
 .stat {
   display: flex;
@@ -240,9 +236,9 @@
   background: color-mix(in srgb, var(--ink) 9%, transparent);
 }
 .ib[aria-pressed='true'] {
-  color: var(--main);
+  color: var(--accent);
   box-shadow: none;
-  background: color-mix(in srgb, var(--main) 18%, transparent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
 }
 .btnlink {
   display: inline-block;
@@ -311,7 +307,7 @@
   white-space: normal;
 }
 .blist button[aria-current='true'] {
-  border-color: var(--main);
+  border-color: var(--accent);
 }
 .blist .n {
   margin-left: auto;
@@ -678,7 +674,7 @@ details.fibers summary {
 .inc {
   border: 1px solid var(--line);
   border-left-width: 4px;
-  border-radius: 0.4rem;
+  border-radius: 0.6rem;
   padding: 0.45rem 0.6rem;
   margin-bottom: 0.4rem;
 }
@@ -1272,8 +1268,8 @@ details.fibers summary {
   background: var(--panel);
 }
 .admin-nav a.active {
-  border-color: var(--main);
-  box-shadow: inset 0 0 0 1px var(--main);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 .editor-name {
   display: flex;
@@ -1364,7 +1360,7 @@ details.fibers summary {
   align-items: center;
 }
 .actions button[type='submit'] {
-  border-color: var(--main);
+  border-color: var(--accent);
 }
 button.danger {
   border-color: var(--down);
@@ -1496,6 +1492,10 @@ body:has(.admin) {
     background-color 0.3s,
     border-color 0.3s;
 }
+#top .chip.st-ok {
+  border-color: color-mix(in srgb, var(--main) 40%, var(--line));
+  background: color-mix(in srgb, var(--main) 6%, transparent);
+}
 #top .chip.st-warn {
   background: color-mix(in srgb, var(--warn) 14%, transparent);
   border-color: color-mix(in srgb, var(--warn) 55%, var(--line));
@@ -1523,8 +1523,8 @@ body:has(.admin) {
 }
 .topbtns .btnlink:hover,
 .blist button:hover {
-  border-color: var(--main);
-  background: color-mix(in srgb, var(--main) 10%, var(--panel));
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, var(--panel));
 }
 .ib:not(:disabled):active {
   transform: translateY(1px) scale(0.97);
@@ -1876,5 +1876,126 @@ kbd {
   }
   .btnlink.adminlink {
     height: auto;
+  }
+}
+
+/* back office pop-ups: confirm dialog with the changes, and a short "saved" notice */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--bg) 65%, transparent);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: toastin 0.2s ease-out;
+}
+.dialog {
+  width: min(30rem, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1.1rem 1.2rem 1rem;
+  background: var(--surface);
+  box-shadow: 0 1.2rem 3rem rgba(0, 0, 0, 0.35);
+  animation: dlgin 0.22s ease-out;
+}
+@keyframes dlgin {
+  from {
+    transform: translateY(0.6rem) scale(0.98);
+    opacity: 0;
+  }
+}
+.dialog h2 {
+  margin: 0 0 0.7rem;
+  font-size: 1.1rem;
+}
+.dlgbody p {
+  margin: 0 0 0.5rem;
+}
+.dlgbtns {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+.dlgbtns button.danger {
+  background: var(--down);
+  border-color: var(--down);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+.difftbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: max(12px, 0.9rem);
+}
+.difftbl th,
+.difftbl td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.35rem 0.4rem;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.difftbl th {
+  width: 35%;
+  color: var(--ink-2);
+  font-weight: 500;
+}
+.difftbl .was {
+  color: var(--ink-2);
+  text-decoration: line-through;
+}
+.difftbl .now {
+  color: var(--ok-ink);
+  font-weight: 600;
+}
+.toaster {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: calc(100vw - 2rem);
+}
+.toastok {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 1rem 0.65rem 0.75rem;
+  border-radius: 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--main) 45%, var(--line));
+  background: var(--surface);
+  box-shadow: 0 0.8rem 2rem rgba(0, 0, 0, 0.3);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  animation: feedin 0.35s ease-out;
+}
+.toastok .tick {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--main);
+  color: var(--on-accent);
+  font-size: 0.85rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .dialog,
+  .toastok {
+    animation: none;
   }
 }

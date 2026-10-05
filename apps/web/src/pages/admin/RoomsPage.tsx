@@ -4,6 +4,7 @@ import { LOCATION_SIDES, type LocationEdit } from '@sbc-noc/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api, EditError, useOptions, useRooms } from './editApi.js';
+import { notify } from './popups.js';
 import { Field, num, val } from './Field.js';
 import { History } from './History.js';
 
@@ -50,6 +51,7 @@ function RoomEditor({
         ? api.updateLocation(loc.locCode, { ...f, rowVersion: loc.rowVersion })
         : api.createLocation(f),
     onSuccess: async () => {
+      notify(loc ? `บันทึกแล้ว · ${loc.locCode}` : `เพิ่มห้อง ${f.name} แล้ว`);
       await qc.invalidateQueries({ queryKey: ['rooms'] });
       await qc.invalidateQueries({ queryKey: ['layout'] });
       onDone();

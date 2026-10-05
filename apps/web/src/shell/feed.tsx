@@ -6,10 +6,14 @@ import type { Names } from './panels.js';
 
 const CHANGE_TH: Record<FeedEvent['change'], string> = {
   new: 'เหตุใหม่',
-  worse: 'แย่ลงเป็นล่ม',
+  worse: 'แย่ลงจนใช้งานไม่ได้',
   ok: 'กลับมาปกติ',
 };
-const KIND_TH: Record<FeedEvent['kind'], string> = { down: 'ล่ม', warn: 'เตือน', ok: 'ปกติ' };
+const KIND_TH: Record<FeedEvent['kind'], string> = {
+  down: 'ใช้งานไม่ได้',
+  warn: 'ควรตรวจสอบ',
+  ok: 'ปกติ',
+};
 
 export function Feed({
   events,
@@ -38,7 +42,7 @@ export function Feed({
               onDismiss(e.id);
               if (names.has(e.device)) onGo(e.device);
             }}
-            title={names.has(e.device) ? 'ไปที่อุปกรณ์ในภาพ 3D' : 'ไม่มีตำแหน่งในผัง'}
+            title={names.has(e.device) ? 'ไปที่อุปกรณ์ในภาพ 3D' : 'ยังไม่ระบุที่ตั้งในผัง'}
           >
             <span className={`ficon i ${e.kind}`}>{STATE_ICON[e.kind]}</span>
             <span className="ftext">

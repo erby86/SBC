@@ -11,18 +11,35 @@ import {
   type UnlocatedList,
 } from '@sbc-noc/shared';
 import { STATE_ICON, type UiState } from '@sbc-noc/ui';
-import type { LabModel } from '../scene/model.js';
+import { deviceKind, type LabModel } from '../scene/model.js';
+import { plainMessage } from './messages.js';
+
+/** What the device is, in words a teacher knows (shown before the location). */
+const KIND_SHORT: Record<string, string> = {
+  core: 'อุปกรณ์แกนกลาง',
+  main: 'สวิตช์หลักอาคาร',
+  access: 'สวิตช์ประจำชั้น',
+  ap: 'Wi-Fi',
+  nvr: 'เครื่องบันทึกกล้อง',
+};
 
 const MIN = 60_000;
-/** "เพิ่งเกิด", "12 นาที", "2 ชม. 5 นาที" (prototype fmtAgo). */
+/** "12 นาที", "2 ชม. 5 นาที", "3 วัน 4 ชม.", "149 วัน" — days once it is past a day. */
+function minutesTxt(m: number): string {
+  if (m < 60) return `${m} นาที`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} ชม. ${m % 60} นาที`;
+  const d = Math.floor(h / 24);
+  return d < 7 && h % 24 ? `${d} วัน ${h % 24} ชม.` : `${d} วัน`;
+}
+/** "เพิ่งเกิด", "12 นาที", "2 ชม. 5 นาที", "149 วัน" (prototype fmtAgo). */
 export function fmtAgo(iso: string, now = Date.now()): string {
   const m = Math.max(0, Math.round((now - Date.parse(iso)) / MIN));
-  return m < 1 ? 'เพิ่งเกิด' : m < 60 ? `${m} นาที` : `${Math.floor(m / 60)} ชม. ${m % 60} นาที`;
+  return m < 1 ? 'เพิ่งเกิด' : minutesTxt(m);
 }
 export function durTxt(a: string, b: string | number): string {
   const end = typeof b === 'number' ? b : Date.parse(b);
-  const m = Math.max(1, Math.round((end - Date.parse(a)) / MIN));
-  return m < 60 ? `${m} นาที` : `${Math.floor(m / 60)} ชม. ${m % 60} นาที`;
+  return minutesTxt(Math.max(1, Math.round((end - Date.parse(a)) / MIN)));
 }
 /** Clock time, "เมื่อวาน hh:mm" for yesterday (prototype hhmm). */
 export function hhmm(iso: string, now = new Date()): string {
@@ -47,9 +64,15 @@ export function makeNames(layout: Layout | undefined) {
     },
     where: (code: string) => {
       const d = dev.get(code);
-      if (!d) return 'ไม่มีตำแหน่ง';
-      if (!d.building) return isWan(code) ? 'อินเทอร์เน็ต' : 'ไม่มีตำแหน่ง';
+      if (!d) return 'ยังไม่ระบุที่ตั้ง';
+      if (!d.building) return isWan(code) ? 'อินเทอร์เน็ต' : 'ยังไม่ระบุที่ตั้ง';
       return `${bName.get(d.building) ?? d.building}${d.floor ? ` ชั้น ${d.floor}` : ''}`;
+    },
+    /** "สวิตช์หลักอาคาร · " — empty for internet links and unknown kinds. */
+    kind: (code: string) => {
+      const d = dev.get(code);
+      const k = d ? deviceKind(d) : null;
+      return k && KIND_SHORT[k] ? `${KIND_SHORT[k]} · ` : '';
     },
     building: (code: string) => dev.get(code)?.building ?? null,
     buildingName: (code: string) => bName.get(code) ?? code,
@@ -95,12 +118,12 @@ export function Incidents({
         <div className="incsum">
           {downs > 0 && (
             <span className="pill down">
-              {STATE_ICON.down} ล่ม {downs}
+              {STATE_ICON.down} ใช้งานไม่ได้ {downs}
             </span>
           )}
           {warns > 0 && (
             <span className="pill warn">
-              {STATE_ICON.warn} เตือน {warns}
+              {STATE_ICON.warn} ควรตรวจสอบ {warns}
             </span>
           )}
           {onNext && (
@@ -138,8 +161,9 @@ export function Incidents({
               <span className={`i ${i.severity}`}>{STATE_ICON[i.severity]}</span>{' '}
               {names.name(i.device)}
             </h3>
-            <p>
-              {names.where(i.device)} · {i.message}
+            <p title={plainMessage(i.message) !== i.message ? i.message : undefined}>
+              {names.kind(i.device)}
+              {names.where(i.device)} · {plainMessage(i.message)}
             </p>
             <div className="meta">
               <span title={`เริ่มเมื่อ ${fullTime(i.since)}`}>
@@ -195,7 +219,10 @@ export function Incidents({
   );
 }
 
-const EVT_TH: Record<HistoryEvent['severity'], string> = { down: 'ล่ม', warn: 'เตือน' };
+const EVT_TH: Record<HistoryEvent['severity'], string> = {
+  down: 'ใช้งานไม่ได้',
+  warn: 'ควรตรวจสอบ',
+};
 
 export function History({
   history,
@@ -234,7 +261,7 @@ export function History({
         list.map((h, k) => {
           const known = h.device !== null && names.has(h.device);
           const nm = known ? names.name(h.device as string) : h.host;
-          const where = known ? names.where(h.device as string) : 'ไม่มีตำแหน่ง';
+          const where = known ? names.where(h.device as string) : 'ยังไม่ระบุที่ตั้ง';
           return (
             <div
               key={`${h.host}:${h.start}:${k}`}
@@ -252,7 +279,7 @@ export function History({
               <span className="tx">
                 {nm} · {EVT_TH[h.severity]}
                 <small>
-                  {where} · {h.message} ·{' '}
+                  {where} · {plainMessage(h.message)} ·{' '}
                   {h.end ? (
                     `กลับมาปกติ หลัง ${durTxt(h.start, h.end)}`
                   ) : (

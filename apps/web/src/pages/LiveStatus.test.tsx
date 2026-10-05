@@ -71,7 +71,7 @@ describe('LiveStatus (M16)', () => {
     expect(screen.getByTestId('live-incidents').textContent).toContain(
       'm-s8: Unavailable by ICMP ping (กระทบ 3)',
     );
-    expect(screen.getByTestId('live-changes').textContent).toContain('m-s8 → ล่ม');
+    expect(screen.getByTestId('live-changes').textContent).toContain('m-s8 → ใช้งานไม่ได้');
     expect(screen.getByTestId('live-counts').textContent).toContain('ล่ม 1');
   });
 
