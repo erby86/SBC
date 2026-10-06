@@ -178,12 +178,14 @@ const GEO: Record<DeviceKind | 'lab', () => THREE.BufferGeometry> = {
   ap: () => new THREE.CylinderGeometry(0.28, 0.28, 0.07, 16),
 };
 
+/** Normal cables share one quiet colour (the building edges): colour on the map means a state
+ * (yellow / red / grey) or a fibre's own colour, never a cable kind. */
 const LINK_COLOR: Record<Exclude<LinkModel['kind'], 'fiber'>, PaletteKey> = {
-  core: 'core',
-  copper: 'main',
-  riser: 'access',
-  wan: 'wan',
-  ap: 'ap',
+  core: 'edge',
+  copper: 'edge',
+  riser: 'edge',
+  wan: 'edge',
+  ap: 'edge',
   planned: 'planned',
 };
 
@@ -974,14 +976,14 @@ export class NocScene {
       const curve = curveOf(m.points);
       const len = curve.getLength() || 1;
       if (m.kind === 'ap') {
-        const color = C.ap.clone();
+        const color = C[LINK_COLOR.ap].clone();
         const v: LinkView = {
           m,
           curve,
           len,
           line: null,
           mat: { color, opacity: 0.3, transparent: true },
-          base: () => this.C.ap,
+          base: () => this.C[LINK_COLOR.ap],
           baseOpacity: 0.3,
           dots: [],
           speed: 0,

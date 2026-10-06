@@ -10,14 +10,15 @@ export const STATE_ICON: Record<UiState, string> = {
   maint: '◆',
 };
 
-/** Map layers of the 3D view and their colour token. */
+/** Map layers of the 3D view and the colour of their switch in the menu: one neutral tick for
+ * all (devices and cables are coloured by state), except labs, whose plates stay purple. */
 export const LAYERS = [
-  { key: 'net', label: 'เครือข่าย', color: 'var(--main)' },
-  { key: 'ap', label: 'Wi-Fi', color: 'var(--ap)' },
+  { key: 'net', label: 'เครือข่าย', color: 'var(--ink-2)' },
+  { key: 'ap', label: 'Wi-Fi', color: 'var(--ink-2)' },
   { key: 'lab', label: 'ห้องคอมฯ', color: 'var(--lab)' },
-  { key: 'nvr', label: 'CCTV', color: 'var(--nvr)' },
-  { key: 'wan', label: 'อินเทอร์เน็ต', color: 'var(--wan)' },
-  { key: 'planned', label: 'controller (วางแผน)', color: 'var(--planned)' },
+  { key: 'nvr', label: 'CCTV', color: 'var(--ink-2)' },
+  { key: 'wan', label: 'อินเทอร์เน็ต', color: 'var(--ink-2)' },
+  { key: 'planned', label: 'controller (วางแผน)', color: 'var(--ink-2)' },
 ] as const;
 export type LayerKey = (typeof LAYERS)[number]['key'];
 
