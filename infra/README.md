@@ -1,6 +1,6 @@
 # infra/
 
-**หน้าที่:** ไฟล์ปฏิบัติการ — `compose/` (Docker Compose), `zabbix/` (template/discovery), `scripts/` (สคริปต์ backup, deploy)
+**หน้าที่:** ไฟล์ปฏิบัติการ — `compose/` (Docker Compose), `zabbix/` (template/discovery), `mikrotik/` (script บนเราเตอร์ เช่น M35 เฝ้าตัวเอง), `scripts/` (สคริปต์ backup, deploy)
 
 **โมดูลที่จะเติม:** M02 / M17 (compose, image), โมดูล Zabbix
 

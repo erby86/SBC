@@ -17,9 +17,10 @@ import {
   type StatusSnapshot,
 } from '@sbc-noc/shared';
 import { z } from 'zod';
-import { registerMetrics } from './metrics.js';
+import { registerMetrics, type SelfMonSource } from './metrics.js';
 import { demoRoutes } from './routes/demo.js';
 import { statusExtraRoutes, statusRoutes, type StatusExtras } from './routes/status.js';
+import { authRoutes, type AuthDeps } from './routes/auth.js';
 import { liveRoutes, type LiveHub } from './routes/live.js';
 import { registryEditRoutes, type RegistryEditor } from './routes/registry-edit.js';
 import { registryRoutes, type RegistryReader } from './routes/registry.js';
@@ -43,8 +44,12 @@ export interface AppDeps {
   statusExtras?: StatusExtras;
   /** M16 live status hub (WebSocket /status/ws). */
   live?: LiveHub;
-  /** M21 registry editor; only with REGISTRY_EDIT=true (dev until login, ADR-0020). */
+  /** M23 login (ADR-0023). Without it no protected route is registered. */
+  auth?: AuthDeps;
+  /** M21 registry editor; registered only together with auth (admin role). */
   registryEdit?: RegistryEditor;
+  /** M35 self-monitoring gauges on /metrics (worker heartbeat, queue, sync jobs). */
+  selfmon?: SelfMonSource;
   /** M22 URL templates of the Zabbix/Grafana/GLPI buttons (LINK_*_URL); null = no button. */
   links?: OutLinks;
 }
@@ -94,7 +99,8 @@ export async function buildApp(
       tags: [
         { name: 'ops', description: 'สถานะของระบบ' },
         { name: 'registry', description: 'ทะเบียนอุปกรณ์และพื้นที่' },
-        { name: 'registry-edit', description: 'แก้ทะเบียน (เฉพาะ dev จนกว่าจะมีการเข้าสู่ระบบ)' },
+        { name: 'auth', description: 'เข้าสู่ระบบด้วยบัญชีในเครื่อง (ADR-0023)' },
+        { name: 'registry-edit', description: 'แก้ทะเบียน (ต้องเข้าสู่ระบบ บทบาท admin)' },
         { name: 'status', description: 'สถานะเครือข่ายจาก Zabbix (คำนวณทุก 30 วินาที)' },
         { name: 'demo', description: 'โหมดสาธิต — ข้อมูลสมมติ ไม่ใช่สถานะจริง (dev/staging)' },
       ],
@@ -102,7 +108,7 @@ export async function buildApp(
     transform: jsonSchemaTransform,
   });
   await app.register(fastifySwaggerUi, { routePrefix: '/docs' });
-  registerMetrics(app);
+  registerMetrics(app, deps.selfmon);
   // Weak ETag from the body hash; clients revalidate every time (no stale registry data).
   await app.register(fastifyEtag, { weak: true });
   app.addHook('onSend', async (req, reply) => {
@@ -181,7 +187,16 @@ export async function buildApp(
   if (deps.status) statusRoutes(app, deps.status);
   if (deps.statusExtras) statusExtraRoutes(app, deps.statusExtras);
   if (deps.live) await liveRoutes(app, deps.live);
-  if (deps.registryEdit) registryEditRoutes(app, deps.registryEdit);
+  if (deps.auth) {
+    const { requireRole } = authRoutes(app, deps.auth);
+    const editor = deps.registryEdit;
+    if (editor) {
+      await app.register(async (scope) => {
+        scope.addHook('preHandler', requireRole('admin'));
+        registryEditRoutes(scope, editor);
+      });
+    }
+  }
 
   return app;
 }

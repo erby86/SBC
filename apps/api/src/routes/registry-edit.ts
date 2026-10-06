@@ -1,6 +1,6 @@
-// M21 registry editor endpoints (ADR-0020). Registered only with REGISTRY_EDIT=true — dev until
-// login (M23) exists. Writes need the X-Noc-Editor header (who is editing); the actor stored in the
-// audit trail is "web:<editor>@<client ip>".
+// M21 registry editor endpoints (ADR-0020). Since M23 (ADR-0023) they need a session with the
+// admin role (guard added by buildApp); the actor stored in the audit trail is
+// "web:<staff code or email>@<client ip>".
 import { RegistryEditError } from '@sbc-noc/db';
 import {
   deviceCreateSchema,
@@ -8,7 +8,6 @@ import {
   devicePatchSchema,
   editErrorSchema,
   editOptionsSchema,
-  editorSchema,
   historyEntrySchema,
   locationCreateSchema,
   locationEditSchema,
@@ -29,6 +28,7 @@ import {
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
+import { clientIp } from './auth.js';
 
 export interface RegistryEditor {
   options(): Promise<EditOptions>;
@@ -48,24 +48,8 @@ const errors = { 400: editErrorSchema, 404: editErrorSchema, 409: editErrorSchem
 const tags = ['registry-edit'];
 
 function actorOf(req: FastifyRequest): string {
-  let raw = String(req.headers['x-noc-editor'] ?? '');
-  try {
-    raw = decodeURIComponent(raw); // the web client encodes Thai names for the header
-  } catch {
-    // keep as sent
-  }
-  const editor = editorSchema.safeParse(raw);
-  if (!editor.success) {
-    throw new RegistryEditError(
-      'invalid',
-      'ใส่ชื่อผู้แก้ก่อนบันทึก (ยังไม่มีระบบเข้าสู่ระบบ)',
-      'editor',
-    );
-  }
-  const forwarded = String(req.headers['x-forwarded-for'] ?? '')
-    .split(',')[0]
-    ?.trim();
-  return `web:${editor.data}@${forwarded || req.ip}`;
+  if (!req.user) throw new Error('registry edit without a session user'); // guard runs first
+  return `web:${req.user.label}@${clientIp(req)}`;
 }
 
 function sendError(reply: FastifyReply, err: unknown) {

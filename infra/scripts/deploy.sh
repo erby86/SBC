@@ -88,7 +88,7 @@ deploy_staging() {
   fi
 
   step "build"
-  "${compose[@]}" build --pull
+  "${compose[@]}" build --pull --build-arg OS_REFRESH="$(date +%F)"
 
   step "Trivy scan"
   mkdir -p /opt/sbc-noc/sbom
@@ -98,7 +98,7 @@ deploy_staging() {
   step "migrate + start"
   "${compose[@]}" up -d
   wait_healthy sbc-noc-dev-api sbc-noc-dev-web sbc-noc-dev-worker || exit 1
-  echo; echo "staging OK — http://noc-dev.sbc.lan/api/health"
+  echo; echo "staging OK — https://noc-dev.sbc.lan/api/health"
 }
 
 prod_compose() { # tag args…
@@ -157,7 +157,8 @@ deploy_prod() {
   step "build images $tag"
   local app
   for app in "${APPS[@]}"; do
-    docker build --pull -f "apps/$app/Dockerfile" -t "${prefix}sbc-noc-$app:$tag" \
+    docker build --pull --build-arg OS_REFRESH="$(date +%F)" -f "apps/$app/Dockerfile" \
+      -t "${prefix}sbc-noc-$app:$tag" \
       --label "org.opencontainers.image.version=$version" \
       --label "org.opencontainers.image.revision=$(git rev-parse HEAD)" .
   done
@@ -200,7 +201,7 @@ SQL
   fi
   record_release "$tag" deploy
   echo
-  echo "prod OK: $tag — check http://noc.sbc.lan/api/health from the management network"
+  echo "prod OK: $tag — check https://noc.sbc.lan/api/health from the management network"
   [ -n "$previous" ] && echo "rollback if needed: infra/scripts/deploy.sh prod --rollback $previous"
   return 0
 }

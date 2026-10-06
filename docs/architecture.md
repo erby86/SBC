@@ -20,7 +20,7 @@ sbc-noc คือระบบ NOC แสดงผังเครือข่า�
 | ส่วน                       | หน้าที่                                                                                                                                                      |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `apps/web`                 | หน้า 3D แสดงอาคาร ตู้ อุปกรณ์ และสถานะ                                                                                                                       |
-| `apps/api`                 | REST API, auth (OIDC + บัญชีฉุกเฉิน ADR-0011), `GET /health`                                                                                                 |
+| `apps/api`                 | REST API, auth (บัญชีในเครื่อง ADR-0023), `GET /health`                                                                                                      |
 | `apps/worker`              | ดึงสถานะจาก Zabbix, งานตามเวลา, `/metrics` (ADR-0010)                                                                                                        |
 | PostgreSQL 16 `sbc-noc-db` | ข้อมูลหลักตาม schema v1.1 / design v1.2: `core`, `catalog`, `asset`, `net`, `viz`, `auth`, `ops`, `sync`, `audit` และ view `api.*` สำหรับระบบอื่น (ADR-0018) |
 | Redis `sbc-redis`          | ใช้ร่วมกับระบบอื่น — key ทั้งหมดขึ้นต้น `noc:`                                                                                                               |
@@ -101,3 +101,4 @@ sbc-noc/
 - [ADR-0017: เวลา](adr/0017-time.md)
 - [ADR-0018: migration ฐานข้อมูล](adr/0018-db-migrations.md)
 - [ADR-0019: ผู้ใช้ Zabbix สำหรับงานซิงก์](adr/0019-zabbix-sync-user.md)
+- [ADR-0023: เข้าสู่ระบบด้วยบัญชีในเครื่อง](adr/0023-local-accounts.md)

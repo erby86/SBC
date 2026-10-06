@@ -5,6 +5,7 @@ import { Redis } from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { registryStats } from '../jobs/registry-stats.js';
 import type { JobDefinition } from '../jobs/types.js';
+import { writeQueueState } from '../heartbeat.js';
 import { startRuntime, type JobRuntime } from './queue.js';
 
 const dbUrl = process.env['TEST_DATABASE_URL'];
@@ -51,6 +52,8 @@ describe.skipIf(!dbUrl || !redisUrl)('worker runtime (BullMQ + sync.runs)', () =
     target.pathname = `/${dbName}`;
     db = createDbPool(target.toString());
     await migrate(db, await loadMigrations());
+    // A run left 'running' by a killed worker (M35).
+    await db.query(`INSERT INTO sync.runs (system_code, job) VALUES ('noc', 'orphan')`);
     runtime = await startRuntime({
       redisUrl: redisUrl ?? '',
       redisPrefix: prefix,
@@ -103,5 +106,35 @@ describe.skipIf(!dbUrl || !redisUrl)('worker runtime (BullMQ + sync.runs)', () =
     const keys = await r.keys(`${prefix}bull:*`);
     await r.quit();
     expect(keys.length).toBeGreaterThan(0);
+  });
+
+  it('marks runs left running by a previous worker as interrupted (M35)', async () => {
+    const res = await db.query(`SELECT status, finished_at FROM sync.runs WHERE job = 'orphan'`);
+    expect(res.rows).toHaveLength(1);
+    expect(res.rows[0]).toMatchObject({ status: 'interrupted' });
+    expect(res.rows[0].finished_at).not.toBeNull();
+  });
+
+  it('records a --fail-test run as one failed attempt without running the job (M35)', async () => {
+    await runtime.queue.add('ticker', { failTest: true }, { attempts: 1 });
+    const failed = await waitFor(async () => {
+      const res = await db.query<{ error: string }>(
+        `SELECT detail->>'error' AS error FROM sync.runs WHERE job = 'ticker' AND status = 'failed'`,
+      );
+      return res.rows.length ? res.rows : undefined;
+    });
+    expect(failed).toEqual([{ error: 'self-test failure (run-job-cli --fail-test)' }]);
+  });
+
+  it('reads queue counters from the live queue (M35)', async () => {
+    const stored: Record<string, string> = {};
+    const state = await writeQueueState(
+      { set: async (k: string, v: string) => (stored[k] = v) },
+      runtime.queue,
+      90,
+    );
+    expect(state.counts).toHaveProperty('wait');
+    expect(state.counts).toHaveProperty('delayed');
+    expect(JSON.parse(stored['worker:queue'] ?? '{}')).toEqual(state);
   });
 });

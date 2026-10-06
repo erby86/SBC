@@ -149,6 +149,9 @@ jobs:
       REDIS_URL: redis://redis:6379/0
       REDIS_PREFIX: 'noc:e2e:'
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      # M23: throwaway account in the job's own database (not a real credential)
+      E2E_EMAIL: e2e@sbc.lan
+      E2E_PASSWORD: e2e-ci-only-password
     steps:
       - uses: actions/checkout@v4
 
@@ -169,18 +172,21 @@ jobs:
           done
           echo "postgres did not start"; exit 1
 
-      - name: Migrate and seed (M03, M04, M19 positions)
+      - name: Migrate, seed (M03, M04, M19 positions) and e2e account (M23)
         working-directory: packages/db
         run: |
           node dist/migrate-cli.js
           node dist/seed-cli.js ../../infra/seed
           node dist/routes-cli.js ../../infra/seed
+          printf '%s\n' "$E2E_PASSWORD" | node ../../apps/api/dist/user-cli.js add "$E2E_EMAIL" admin --stdin
 
       - name: Start api (demo mode, no Zabbix)
         working-directory: apps/api
         env:
           DEMO_MODE: 'true'
           LOG_LEVEL: warn
+          # the preview serves http; login over http is allowed only here and on dev before https
+          SESSION_COOKIE_SECURE: 'false'
         run: |
           nohup node dist/server.js > /tmp/api.log 2>&1 &
           for i in $(seq 1 30); do

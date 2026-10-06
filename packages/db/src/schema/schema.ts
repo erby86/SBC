@@ -1059,6 +1059,8 @@ export const usersInAuth = auth.table(
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .defaultNow()
       .notNull(),
+    passwordHash: text('password_hash'),
+    passwordChangedAt: timestamp('password_changed_at', { withTimezone: true, mode: 'string' }),
   },
   (table) => [
     foreignKey({
@@ -1067,6 +1069,7 @@ export const usersInAuth = auth.table(
       name: 'users_staff_id_fkey',
     }),
     unique('users_email_key').on(table.email),
+    check('users_email_lower', sql`(email = lower(email))`),
   ],
 );
 

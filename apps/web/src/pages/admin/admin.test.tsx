@@ -33,26 +33,36 @@ const dev: DeviceEdit = {
   rowVersion: 7,
 };
 
-let calls: { method: string; url: string; body?: unknown; editor?: string | null }[] = [];
+let calls: { method: string; url: string; body?: unknown }[] = [];
 let patchStatus = 200;
+const admin = { email: 'a@sb-school.ac.th', label: 'STF-01', roles: ['admin'] };
+let sessionUser: object | null = admin;
 
 beforeEach(() => {
   calls = [];
   patchStatus = 200;
-  localStorage.setItem('noc-editor', 'ครูเอ');
+  sessionUser = admin;
   vi.stubGlobal('WebSocket', FakeWebSocket);
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string, init?: RequestInit) => {
       const method = init?.method ?? 'GET';
-      const headers = (init?.headers ?? {}) as Record<string, string>;
-      calls.push({
-        method,
-        url,
-        body: init?.body ? JSON.parse(String(init.body)) : undefined,
-        editor: headers['X-Noc-Editor'] ?? null,
-      });
+      calls.push({ method, url, body: init?.body ? JSON.parse(String(init.body)) : undefined });
       const json = (v: unknown, status = 200) => new Response(JSON.stringify(v), { status });
+      if (url === '/api/auth/session') return json({ user: sessionUser });
+      if (url === '/api/auth/login') {
+        const b = JSON.parse(String(init?.body)) as { password: string };
+        if (b.password !== 'right-password-1')
+          return json({ message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' }, 401);
+        sessionUser = admin;
+        return json({ user: admin });
+      }
+      if (url === '/api/auth/logout') {
+        sessionUser = null;
+        return new Response(null, { status: 204 });
+      }
+      if (sessionUser === null && url.startsWith('/api/registry/edit/'))
+        return json({ message: 'เข้าสู่ระบบก่อน' }, 401);
       if (url === '/api/registry/edit/options') return json(options);
       if (url === '/api/registry/edit/devices/m-s8' && method === 'GET') return json(dev);
       if (url === '/api/registry/edit/devices/m-s8' && method === 'PATCH') {
@@ -88,7 +98,7 @@ afterEach(() => {
 });
 
 describe('back office (M21)', () => {
-  it('sends only the changed fields with the loaded row_version and the editor name', async () => {
+  it('sends only the changed fields with the loaded row_version', async () => {
     renderAt('/admin/devices/m-s8', <App />);
     const name = await screen.findByDisplayValue('8 เซียน main');
     fireEvent.change(name, { target: { value: '8 เซียน main (SG3428)' } });
@@ -101,7 +111,6 @@ describe('back office (M21)', () => {
     await screen.findByText(/บันทึกแล้ว/);
     const patch = calls.find((c) => c.method === 'PATCH');
     expect(patch?.body).toEqual({ rowVersion: 7, name: '8 เซียน main (SG3428)' });
-    expect(decodeURIComponent(patch?.editor ?? '')).toBe('ครูเอ');
   });
 
   it('explains a conflict and offers to reload', async () => {
@@ -128,5 +137,42 @@ describe('back office (M21)', () => {
     const post = calls.find((c) => c.method === 'POST');
     expect(post?.url).toBe('/api/registry/edit/unplaced/unifi/aa%3Abb%3Acc%3Add%3Aee%3Aff');
     expect(post?.body).toEqual({ building: 'bb', floor: 4, locCode: null, no: null });
+  });
+});
+
+describe('back office login (M23)', () => {
+  it('asks for login, refuses a wrong password, then opens the pages', async () => {
+    sessionUser = null;
+    renderAt('/admin/devices/m-s8', <App />);
+    const email = await screen.findByLabelText('อีเมล');
+    fireEvent.change(email, { target: { value: 'a@sb-school.ac.th' } });
+    fireEvent.change(screen.getByLabelText('รหัสผ่าน'), { target: { value: 'wrong' } });
+    fireEvent.click(screen.getByRole('button', { name: 'เข้าสู่ระบบ' }));
+    await screen.findByText('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+    expect(calls.some((c) => c.url.startsWith('/api/registry/edit/'))).toBe(false);
+
+    fireEvent.change(screen.getByLabelText('รหัสผ่าน'), { target: { value: 'right-password-1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'เข้าสู่ระบบ' }));
+    await screen.findByDisplayValue('8 เซียน main');
+    expect(screen.getByTestId('whoami').textContent).toContain('STF-01');
+
+    fireEvent.click(screen.getByRole('button', { name: 'ออกจากระบบ' }));
+    await screen.findByLabelText('อีเมล');
+  });
+
+  it('tells an operator the page needs the admin role', async () => {
+    sessionUser = { email: 'op@sb-school.ac.th', label: 'op@sb-school.ac.th', roles: ['operator'] };
+    renderAt('/admin/devices', <App />);
+    await screen.findByText(/ไม่มีสิทธิ์จัดการทะเบียน/);
+    expect(calls.some((c) => c.url.startsWith('/api/registry/edit/'))).toBe(false);
+  });
+
+  it('returns to the login form when the session ends mid-edit', async () => {
+    renderAt('/admin/devices/m-s8', <App />);
+    fireEvent.change(await screen.findByDisplayValue('8 เซียน main'), { target: { value: 'x' } });
+    sessionUser = null; // expired on the server
+    fireEvent.click(screen.getByRole('button', { name: 'บันทึก' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'ยืนยันบันทึก' }));
+    await screen.findByLabelText('อีเมล');
   });
 });

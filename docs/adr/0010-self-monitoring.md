@@ -16,3 +16,9 @@
 
 - worker ต้องเปิด endpoint `/metrics`
 - มีช่องทางแจ้งเตือนที่ไม่พึ่ง sbc-noc
+
+## ปรับใน M35 (2026-10-05)
+
+- `/metrics` อยู่ที่ api (`/api/metrics` ผ่าน NPM) แทน worker เพราะ worker ไม่มีพอร์ต HTTP และ M17 ปิดพอร์ตที่เปิดตรงทั้งหมด; worker เขียน heartbeat และตัวนับคิวลง Redis ส่วน api อ่านค่านี้พร้อมกับ `sync.runs`
+- ฝั่งเราเตอร์ใช้ script + scheduler ทุก 30 วินาที (`infra/mikrotik/noc-watch.rsc`) แทนการตั้ง Netwatch เพื่อให้ตรวจ `/api/health/ready` ทั้ง URL และเนื้อหา และคุมการส่ง Telegram ครั้งเดียวต่อเหตุได้ในที่เดียว
+- ช่องทางแจ้งเตือนจากเราเตอร์เป็น Discord webhook แทน Telegram (ผู้ใช้เลือก 2026-10-06): ไม่ต้องมี bot และ chat id; URL ของ webhook เก็บบนเราเตอร์เท่านั้น

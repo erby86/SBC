@@ -1,4 +1,8 @@
 import {
+  findLoginCandidate,
+  getActiveUser,
+  logUserAction,
+  markLogin,
   createDevice,
   createLocation,
   deleteDevice,
@@ -21,6 +25,7 @@ import {
   listLinks,
   listLocations,
   pingDatabase,
+  readSyncHealth,
   runRegistryChecks,
   search,
 } from '@sbc-noc/db';
@@ -31,10 +36,14 @@ import {
   statusHistorySchema,
   statusSnapshotSchema,
   unlocatedListSchema,
+  WORKER_HEARTBEAT_KEY,
+  WORKER_QUEUE_KEY,
+  workerQueueSchema,
 } from '@sbc-noc/shared';
 import { Redis } from 'ioredis';
 import { z } from 'zod';
 import { buildApp } from './app.js';
+import { redisLoginLimiter, redisSessionStore } from './auth/session.js';
 import { createLiveHub } from './routes/live.js';
 
 const env = parseEnv(
@@ -42,7 +51,8 @@ const env = parseEnv(
     PORT: z.coerce.number().int().positive().default(3001),
     HOST: z.string().default('0.0.0.0'),
     DEMO_MODE: z.stringbool().default(false),
-    REGISTRY_EDIT: z.stringbool().default(false),
+    // M23 (ADR-0023): Secure cookie + login only over https. false only on dev before https is set up.
+    SESSION_COOKIE_SECURE: z.stringbool().default(true),
     // M22 out-links (templates, see packages/shared/src/links.ts); empty = no button
     LINK_ZABBIX_URL: optionalLinkTemplateSchema,
     LINK_GRAFANA_URL: optionalLinkTemplateSchema,
@@ -113,28 +123,41 @@ const app = await buildApp(
       glpi: env.LINK_GLPI_URL ?? null,
     },
     status: readSnapshot,
+    // M35: read on every /metrics scrape (Zabbix, once a minute)
+    selfmon: {
+      heartbeat: () => redis.get(WORKER_HEARTBEAT_KEY),
+      queue: readJson(WORKER_QUEUE_KEY, (v) => workerQueueSchema.parse(v)),
+      snapshotAt: async () => (await readSnapshot())?.generatedAt ?? null,
+      syncJobs: () => readSyncHealth(pool),
+    },
     statusExtras: {
       history: readJson('status:history', (v) => statusHistorySchema.parse(v)),
       unlocated: readJson('status:unlocated', (v) => unlocatedListSchema.parse(v)),
     },
-    ...(env.REGISTRY_EDIT
-      ? {
-          registryEdit: {
-            options: () => getEditOptions(pool),
-            device: (code) => getDeviceEdit(pool, code),
-            updateDevice: (code, patch, actor) => updateDevice(pool, code, patch, actor),
-            createDevice: (input, actor) => createDevice(pool, input, actor),
-            deleteDevice: (code, rv, actor) => deleteDevice(pool, code, rv, actor),
-            location: (loc) => getLocationEdit(pool, loc),
-            updateLocation: (loc, patch, actor) => updateLocation(pool, loc, patch, actor),
-            createLocation: (input, actor) => createLocation(pool, input, actor),
-            unplaced: () => listUnplacedAps(pool),
-            placeAp: (system, mac, where, actor) =>
-              placeUnplacedAp(pool, system, mac, where, actor),
-            history: (kind, code) => getHistory(pool, kind, code),
-          },
-        }
-      : {}),
+    auth: {
+      secure: env.SESSION_COOKIE_SECURE,
+      sessions: redisSessionStore(redis),
+      limiter: redisLoginLimiter(redis),
+      accounts: {
+        findLogin: (email) => findLoginCandidate(pool, email),
+        byId: (id) => getActiveUser(pool, id),
+        markLogin: (id) => markLogin(pool, id),
+        log: (a) => logUserAction(pool, a),
+      },
+    },
+    registryEdit: {
+      options: () => getEditOptions(pool),
+      device: (code) => getDeviceEdit(pool, code),
+      updateDevice: (code, patch, actor) => updateDevice(pool, code, patch, actor),
+      createDevice: (input, actor) => createDevice(pool, input, actor),
+      deleteDevice: (code, rv, actor) => deleteDevice(pool, code, rv, actor),
+      location: (loc) => getLocationEdit(pool, loc),
+      updateLocation: (loc, patch, actor) => updateLocation(pool, loc, patch, actor),
+      createLocation: (input, actor) => createLocation(pool, input, actor),
+      unplaced: () => listUnplacedAps(pool),
+      placeAp: (system, mac, where, actor) => placeUnplacedAp(pool, system, mac, where, actor),
+      history: (kind, code) => getHistory(pool, kind, code),
+    },
     live,
     registryChecks: () => runRegistryChecks(pool),
     registry: {
@@ -164,8 +187,8 @@ async function shutdown(signal: string): Promise<void> {
 process.once('SIGTERM', () => void shutdown('SIGTERM'));
 process.once('SIGINT', () => void shutdown('SIGINT'));
 
-if (env.REGISTRY_EDIT)
-  app.log.warn('REGISTRY_EDIT on: registry editor without login (ADR-0020, dev only)');
+if (!env.SESSION_COOKIE_SECURE)
+  app.log.warn('SESSION_COOKIE_SECURE=false: login over http (dev only, ADR-0023)');
 if (env.DEMO_MODE) app.log.warn('DEMO_MODE on: /demo/* serves demo scenarios (ADR-0014)');
 
 try {
