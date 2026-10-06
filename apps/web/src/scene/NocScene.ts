@@ -209,7 +209,12 @@ export class NocScene {
   private composer: EffectComposer | null = null;
   private bloom: UnrealBloomPass | null = null;
   private C: Palette;
-  private readonly reduce: boolean;
+  private readonly reduceUser: boolean;
+  /** Data not fresh (UI ลูกเล่น รอบ 2): hold every animation, like reduced motion. */
+  private still = false;
+  private get reduce(): boolean {
+    return this.reduceUser || this.still;
+  }
   private eco: boolean;
   private autoEco: boolean;
 
@@ -282,7 +287,7 @@ export class NocScene {
     private readonly opts: SceneOptions,
     private readonly cb: SceneCallbacks = {},
   ) {
-    this.reduce = opts.reducedMotion ?? false;
+    this.reduceUser = opts.reducedMotion ?? false;
     this.eco = opts.eco ?? false;
     this.autoEco = opts.autoEco ?? false;
     this.C = readPalette();
@@ -465,6 +470,12 @@ export class NocScene {
   topView(on: boolean): void {
     if (on) this.flyTo(new THREE.Vector3(0, 150, 20.1), new THREE.Vector3(0, 0, 20));
     else this.flyTo(HOME.pos.clone(), HOME.tgt.clone());
+  }
+
+  /** Stop the scene's motion while the data is not fresh; stillness says "this is not live". */
+  setStill(on: boolean): void {
+    this.still = on;
+    this.controls.autoRotate = this.controls.autoRotate && !on;
   }
 
   setEco(on: boolean): void {

@@ -47,19 +47,9 @@
   position: relative;
   z-index: 30; /* the menu and search results open over the columns below */
 }
-#top::before {
-  content: '';
-  position: absolute;
-  left: 0.9rem;
-  right: 0.9rem;
-  top: -1px;
-  height: 2px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  opacity: 0.45;
-}
-#app:has(.num.down b.hot) #top::before {
-  background: linear-gradient(90deg, transparent, var(--down), transparent);
+/* a P1 nobody has taken: the top bar's upper edge turns red (still, no sweep) */
+#app:has(.num.down b.hot) #top {
+  border-top-color: var(--down);
 }
 #top > * {
   min-width: 0;
@@ -242,12 +232,13 @@
 #fresh.f-demo .dot {
   background: var(--warn);
 }
+/* not fresh is grey + dashed, never the device red (UI ลูกเล่น รอบ 2) */
 #fresh.stale {
-  color: var(--down-ink);
-  border-color: var(--down);
+  color: var(--ink);
+  border: 1px dashed var(--muted);
 }
 #fresh.stale .dot {
-  background: var(--down);
+  background: var(--muted);
 }
 #fresh {
   margin-left: auto;
@@ -841,24 +832,89 @@
   margin-right: 0.5rem;
   vertical-align: middle;
 }
-#app.stale #scene {
-  filter: grayscale(0.9) brightness(0.75);
+/* Not live (UI ลูกเล่น รอบ 2): everything below the band fades; grey + hatching, never the
+   device red. The scene stops its own motion (Scene3D `still`). */
+#app.stale #scene,
+#app.stale #left,
+#app.stale #right,
+#app.stale #first,
+#app.stale .tline {
+  filter: saturate(0.2) brightness(0.85);
+  transition: filter 0.5s ease;
 }
-#staleBar {
+#staleBand {
   position: absolute;
   top: 0.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 5;
-  width: max-content;
-  max-width: calc(100% - 1rem);
-  padding: 0.35rem 0.9rem;
-  border-radius: 0.4rem;
-  background: var(--alert-bg);
-  color: #fff;
-  font-size: 0.9rem;
-  text-align: center;
+  left: 0.5rem;
+  right: 0.5rem;
+  z-index: 6;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 1rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--muted);
+  background-color: #1c2636;
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0 10px,
+    rgba(255, 255, 255, 0.045) 10px 12px
+  );
+  color: #e3ecf5;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  animation: sbIn 0.4s ease-out backwards;
 }
+@keyframes sbIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+#staleBand .sb-icon {
+  width: 1.4rem;
+  height: 1.4rem;
+  flex: none;
+  color: #c9d3df;
+}
+#staleBand .sb-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 18rem;
+  min-width: 0;
+  line-height: 1.35;
+}
+#staleBand .sb-text b {
+  font-size: 1rem;
+}
+#staleBand .sb-text span,
+#staleBand .sb-age {
+  font-size: max(12px, 0.8rem);
+  color: #c9d3df;
+}
+#staleBand .sb-age {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+#staleBand .sb-age b {
+  color: #fff;
+  font-family: var(--font-body);
+}
+#staleBand .sb-btn {
+  min-height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.9rem;
+  border: 1px solid var(--muted);
+  border-radius: 0;
+  background: #101a2b;
+  color: #e3ecf5;
+  font-weight: 600;
+  text-decoration: none;
+}
+#staleBand .sb-btn:hover {
+  background: #1b2f4b;
+}
+
 .tline {
   flex: none;
   padding: 0.45rem 0.85rem 0.6rem;
@@ -1480,8 +1536,12 @@
   text-overflow: ellipsis;
   z-index: 5;
 }
+/* the not-live band is two lines tall: messages below the map heading move under it */
 #app.stale #hlBar {
-  top: 2.6rem;
+  top: 5.2rem;
+}
+#app.stale #toast {
+  top: 8rem;
 }
 .hnote {
   font-size: max(12px, 0.78rem);
@@ -2385,4 +2445,64 @@ button.primary {
   .toastok {
     animation: none;
   }
+}
+
+/* ── HUD panels (UI ลูกเล่น รอบ 2): chamfered top-right and bottom-left corners, the diagonal
+   edges drawn by ::after. Not on #top: its menu and search results open outside it. ── */
+#left,
+#miniBox,
+#center,
+#right,
+#first,
+.fibers-box {
+  position: relative;
+  border-radius: 0;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--chamfer)) 0,
+    100% var(--chamfer),
+    100% 100%,
+    var(--chamfer) 100%,
+    0 calc(100% - var(--chamfer))
+  );
+}
+#left::after,
+#miniBox::after,
+#center::after,
+#right::after,
+#first::after,
+.fibers-box::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+  --d: calc(var(--chamfer) * 0.7071);
+  background:
+    linear-gradient(
+        225deg,
+        transparent var(--d),
+        var(--line) var(--d) calc(var(--d) + 1.2px),
+        transparent calc(var(--d) + 1.2px)
+      )
+      top right / var(--chamfer) var(--chamfer) no-repeat,
+    linear-gradient(
+        45deg,
+        transparent var(--d),
+        var(--line) var(--d) calc(var(--d) + 1.2px),
+        transparent calc(var(--d) + 1.2px)
+      )
+      bottom left / var(--chamfer) var(--chamfer) no-repeat;
+}
+#top {
+  border-radius: 4px;
+}
+/* host names, IPs and log-like lines read as data */
+.mono,
+.ip,
+code {
+  font-family: var(--font-mono);
+}
+#first::after {
+  --line: color-mix(in srgb, var(--down) 50%, #24364f);
 }

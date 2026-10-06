@@ -53,6 +53,7 @@ import {
 import { Scene3D, saveEco, savedEco, useHint } from './Scene3D.js';
 import { buildIndex, stateGetter, type SearchEntry } from './search.js';
 import { SearchBox } from './Search.js';
+import { StaleBand, staleCause } from './stale.js';
 import { useTheme } from './theme.js';
 import { tvParam, useTvMode } from './tv.js';
 
@@ -112,6 +113,7 @@ function TopBar({
   demo,
   search,
   menu,
+  notLive,
   onBigNum,
   onGo,
 }: {
@@ -122,6 +124,8 @@ function TopBar({
   demo: React.ReactNode;
   search: React.ReactNode;
   menu: React.ReactNode;
+  /** The screen is not live for any reason (offline, server, Zabbix): grey chip. */
+  notLive: boolean;
   onBigNum: () => void;
   onGo: (code: string) => void;
 }) {
@@ -201,7 +205,7 @@ function TopBar({
         {search}
       </div>
       <span
-        className={`chip fresh ${!snap ? 'f-wait' : snap.stale ? 'stale' : `f-${mode}`}`}
+        className={`chip fresh ${!snap ? 'f-wait' : notLive ? 'stale' : `f-${mode}`}`}
         id="fresh"
         data-testid="fresh"
         title={
@@ -215,7 +219,7 @@ function TopBar({
         <i className="dot" aria-hidden="true" />
         {!snap ? (
           'รอข้อมูล…'
-        ) : snap.stale ? (
+        ) : notLive ? (
           `ข้อมูลค้าง · ${timeTh(snap.lastUpdate)}`
         ) : (
           <>
@@ -875,6 +879,18 @@ export function NocShell() {
         })
       : null;
   };
+  const cause = isDemo
+    ? snap?.stale
+      ? 'zabbix'
+      : null
+    : staleCause({ online: live.online, link: live.link, stale: snap?.stale });
+  const zabbixHome = useMemo(() => {
+    try {
+      return outLinks.zabbix ? new URL(outLinks.zabbix.replace(/\{[^}]*\}/g, '0')).origin : null;
+    } catch {
+      return null;
+    }
+  }, [outLinks.zabbix]);
   const unlCount = unlocatedCount(unlocated, unplaced);
   const feed = useIncidentFeed(snap, isDemo ? `demo:${demoName}` : 'live');
   const now = useNow();
@@ -1152,12 +1168,7 @@ export function NocShell() {
   return (
     <div
       id="app"
-      className={[
-        snap?.stale ? 'stale' : '',
-        tv.on ? 'tv' : '',
-        isDemo ? 'demo' : '',
-        eco ? 'calm' : '',
-      ]
+      className={[cause ? 'stale' : '', tv.on ? 'tv' : '', isDemo ? 'demo' : '', eco ? 'calm' : '']
         .filter(Boolean)
         .join(' ')}
     >
@@ -1166,6 +1177,7 @@ export function NocShell() {
           snap={snap}
           layout={layout.data}
           mode={isDemo ? 'demo' : live.mode}
+          notLive={!!cause}
           view={view}
           demo={
             demoName && (
@@ -1289,16 +1301,22 @@ export function NocShell() {
               onSelect={onSelect}
               onFps={setFps}
               onInteract={hint.hide}
+              still={!!cause}
               onAutoEco={(f) => {
                 setEco(true);
                 setToast(`เปิดโหมดประหยัดอัตโนมัติ เพราะภาพกระตุก (${Math.round(f)} เฟรม/วินาที)`);
               }}
             />
-            {snap?.stale && (
-              <div id="staleBar" role="alert">
-                ข้อมูลค้าง — ไม่ได้รับข้อมูลใหม่จาก Zabbix ตั้งแต่ {timeTh(snap.lastUpdate)}{' '}
-                สถานะที่เห็นอาจไม่ตรงความจริง
-              </div>
+            {cause && (
+              <StaleBand
+                cause={cause}
+                lastUpdate={snap?.lastUpdate}
+                lastTime={snap ? timeTh(snap.lastUpdate) : null}
+                now={now}
+                tries={live.tries}
+                zabbixHome={zabbixHome}
+                onRetry={live.retry}
+              />
             )}
             {hl && (
               <div id="hlBar" className="panel" data-testid="hl-bar">

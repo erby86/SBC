@@ -11,6 +11,8 @@ import { useEffect, useRef, useState } from 'react';
 export const POLL_MS = 30_000;
 
 export type LiveMode = 'connecting' | 'live' | 'poll';
+/** Can this browser reach the NOC server? `down` = the last fetch or socket attempt failed. */
+export type LinkState = 'ok' | 'down';
 interface Change {
   at: string;
   text: string;
@@ -29,7 +31,22 @@ export function useLiveStatus(wsUrl: string | null) {
   const [snapshot, setSnapshot] = useState<StatusSnapshot | null>(null);
   const [mode, setMode] = useState<LiveMode>('connecting');
   const [changes, setChanges] = useState<Change[]>([]);
+  const [link, setLink] = useState<LinkState>('ok');
+  const [online, setOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine);
+  const [tries, setTries] = useState(0);
   const current = useRef<StatusSnapshot | null>(null);
+  const kick = useRef<() => void>(() => undefined);
+
+  useEffect(() => {
+    const up = () => setOnline(true);
+    const down = () => setOnline(false);
+    addEventListener('online', up);
+    addEventListener('offline', down);
+    return () => {
+      removeEventListener('online', up);
+      removeEventListener('offline', down);
+    };
+  }, []);
 
   useEffect(() => {
     if (wsUrl === null) return; // demo mode (M20): no live data at all
@@ -49,11 +66,17 @@ export function useLiveStatus(wsUrl: string | null) {
     };
     const fetchOnce = () =>
       fetch('/api/status')
-        .then((r) => (r.ok ? r.json() : null))
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
         .then((body: unknown) => {
-          if (body) show(statusSnapshotSchema.parse(body), null);
+          setLink('ok');
+          setTries(0);
+          show(statusSnapshotSchema.parse(body), null);
         })
-        .catch(() => undefined);
+        .catch(() => {
+          setLink('down');
+          setTries((n) => n + 1);
+        });
+    kick.current = () => void fetchOnce();
     const startPolling = () => {
       setMode('poll');
       if (!poll) {
@@ -71,6 +94,8 @@ export function useLiveStatus(wsUrl: string | null) {
           poll = undefined;
         }
         setMode('live');
+        setLink('ok');
+        setTries(0);
         if (msg.type === 'snapshot') {
           show(msg.snapshot, null);
         } else if (current.current) {
@@ -95,5 +120,7 @@ export function useLiveStatus(wsUrl: string | null) {
     };
   }, [wsUrl]);
 
-  return { snapshot, mode, changes };
+  /** Try the server now (the "ลองเชื่อมต่อตอนนี้" button) instead of waiting for the next poll. */
+  const retry = () => kick.current();
+  return { snapshot, mode, changes, link, online, tries, retry };
 }

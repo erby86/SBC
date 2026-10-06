@@ -15,6 +15,12 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M3 13l9 5 9-5" opacity=".55" />
     </>
   ),
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </>
+  ),
   home: (
     <>
       <path d="M4 11 12 4l8 7" />

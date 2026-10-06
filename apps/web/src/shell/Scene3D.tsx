@@ -54,6 +54,8 @@ export interface Scene3DProps {
   onAutoEco: (fps: number) => void;
   /** First drag/zoom on the scene (hides the controls hint). */
   onInteract: () => void;
+  /** The data is not fresh: hold the scene's motion. */
+  still?: boolean;
 }
 
 export function Scene3D(p: Scene3DProps) {
@@ -116,6 +118,9 @@ export function Scene3D(p: Scene3DProps) {
   useEffect(() => {
     scene?.setLayers(p.layers);
   }, [scene, p.layers, p.model]);
+  useEffect(() => {
+    scene?.setStill(!!p.still);
+  }, [scene, p.still]);
   useEffect(() => {
     scene?.setMiniMap(p.mini);
   }, [scene, p.mini, p.model]);

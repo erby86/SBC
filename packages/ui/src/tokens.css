@@ -1,25 +1,26 @@
-/* Design tokens from the prototype (docs/prototype/sb-noc-3d-baseline-v3.html), M18.
+/* Design tokens from the prototype (docs/prototype/sb-noc-3d-baseline-v3.html), M18; dark palette
+   retuned to the formal HUD look (UI ลูกเล่น รอบ 2, canvas "มาตรฐานหน้าจอ NOC").
    Colours: dark by default, light with prefers-color-scheme or data-theme on <html>. */
 :root {
-  --bg: #0d1726;
-  --ground: #111d2f;
-  --grid: #1c2b42;
-  --slab: #1b2a40;
-  --edge: #5d80a8;
-  --ink: #eef3f9;
-  --ink-2: #9aabbf;
-  --panel: rgba(20, 32, 50, 0.9);
-  --line: #26384f;
+  --bg: #0b1220;
+  --ground: #0e1828;
+  --grid: #18273d;
+  --slab: #16253b;
+  --edge: #4a6d94;
+  --ink: #e3ecf5;
+  --ink-2: #9db3c9;
+  --panel: #101a2b;
+  --line: #24364f;
   --core: #f2c14e;
-  --main: #4cc38a;
+  --main: #4cbf86;
   --access: #6cb8ff;
   --lab: #b9a7ff;
   --nvr: #ef7fc4;
-  --wan: #5fb3f0;
+  --wan: #5bb4dc;
   --ap: #c6e86b;
   --planned: #7d8ca0;
-  --down: #ef5b6b;
-  --muted: #4a5a6e;
+  --down: #e5484d;
+  --muted: #55657d;
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -48,25 +49,25 @@
   }
 }
 :root[data-theme='dark'] {
-  --bg: #0d1726;
-  --ground: #111d2f;
-  --grid: #1c2b42;
-  --slab: #1b2a40;
-  --edge: #5d80a8;
-  --ink: #eef3f9;
-  --ink-2: #9aabbf;
-  --panel: rgba(20, 32, 50, 0.9);
-  --line: #26384f;
+  --bg: #0b1220;
+  --ground: #0e1828;
+  --grid: #18273d;
+  --slab: #16253b;
+  --edge: #4a6d94;
+  --ink: #e3ecf5;
+  --ink-2: #9db3c9;
+  --panel: #101a2b;
+  --line: #24364f;
   --core: #f2c14e;
-  --main: #4cc38a;
+  --main: #4cbf86;
   --access: #6cb8ff;
   --lab: #b9a7ff;
   --nvr: #ef7fc4;
-  --wan: #5fb3f0;
+  --wan: #5bb4dc;
   --ap: #c6e86b;
   --planned: #7d8ca0;
-  --down: #ef5b6b;
-  --muted: #4a5a6e;
+  --down: #e5484d;
+  --muted: #55657d;
 }
 :root[data-theme='light'] {
   --bg: #eef2f7;
@@ -90,22 +91,26 @@
   --muted: #aab6c4;
 }
 :root {
-  --warn: #e9b44c;
-  --accent: #6cb8ff;
+  --warn: #e0a43a;
+  --accent: #5bb4dc;
   --on-accent: #0b1422;
   /* Text-on-panel variants of the status colours (WCAG AA 4.5:1). The scene keeps the bright
      tokens above; text and status glyphs use these. */
   --ok-ink: var(--main);
   --warn-ink: var(--warn);
-  --down-ink: var(--down);
+  --down-ink: #f08a8e;
   --maint-ink: var(--planned);
   --cut-ink: #7a8ca3;
   --link: var(--wan);
   --alert-bg: #c8102e;
   --font-body: 'Noto Sans Thai Variable', 'Noto Sans Thai', Tahoma, 'Leelawadee UI', sans-serif;
   --font-display: 'Chakra Petch', var(--font-body);
+  /* host names, IPs, log lines, traceroute */
+  --font-mono: 'IBM Plex Mono', 'Noto Sans Thai Variable', ui-monospace, Menlo, monospace;
+  /* HUD panels: chamfered top-right and bottom-left corners */
+  --chamfer: 10px;
   /* solid surface for native popups (<option>) — they ignore translucent panels */
-  --surface: #16243a;
+  --surface: #101a2b;
   /* native controls (select popups, scrollbars, date pickers) follow the theme */
   color-scheme: dark;
   font-size: clamp(13px, 0.3vw + 9.5px, 16px);
@@ -126,14 +131,14 @@
   }
 }
 :root[data-theme='dark'] {
-  --surface: #16243a;
+  --surface: #101a2b;
   color-scheme: dark;
-  --warn: #e9b44c;
-  --accent: #6cb8ff;
+  --warn: #e0a43a;
+  --accent: #5bb4dc;
   --on-accent: #0b1422;
   --ok-ink: var(--main);
   --warn-ink: var(--warn);
-  --down-ink: var(--down);
+  --down-ink: #f08a8e;
   --maint-ink: var(--planned);
   --cut-ink: #7a8ca3;
   --link: var(--wan);
@@ -227,12 +232,7 @@ a {
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 0.9rem;
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
-  backdrop-filter: blur(12px) saturate(140%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 0.5rem 1.5rem rgba(0, 0, 0, 0.18);
+  border-radius: 6px;
   max-width: 100%;
 }
 .chips {

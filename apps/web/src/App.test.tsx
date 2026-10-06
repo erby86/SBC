@@ -135,7 +135,9 @@ describe('NOC screen (M18 frame, M19 scene)', () => {
         data: JSON.stringify({ type: 'snapshot', version: 1, snapshot: snapshot(true) }),
       }),
     );
-    expect(screen.getByRole('alert').textContent).toContain('ข้อมูลค้าง');
+    // the band names the cause (UI ลูกเล่น รอบ 2): here Zabbix stopped sending, not the browser or server
+    expect(screen.getByRole('alert').textContent).toContain('Zabbix ไม่ส่งข้อมูลใหม่');
+    expect(screen.getByTestId('stale-band').dataset['cause']).toBe('zabbix');
     expect(screen.getByTestId('fresh').textContent).toContain('ข้อมูลค้าง');
   });
 
