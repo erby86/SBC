@@ -150,6 +150,8 @@ interface Label {
   h: number;
   /** Device the label names (ISP): hidden while that device has a problem badge. */
   device?: string;
+  /** ISP name: shown only when the menu turns ISP names on. */
+  wan?: boolean;
   /** A problem building's label: lifted out of the way first. */
   major?: () => boolean;
   /** Never hidden (red and amber buildings). */
@@ -276,6 +278,8 @@ export class NocScene {
   /** Search results highlighted in the view (M20); null = no highlight. */
   private hl: Set<string> | null = null;
   private selected: Selection | null = null;
+  /** ISP names on the map (menu ☰); off by default, the building names lead. */
+  private wanNames = false;
   /** Camera is on (or flying to) the home view: it follows the card size until someone moves it. */
   private atHome = true;
   private fly: {
@@ -414,6 +418,10 @@ export class NocScene {
     this.applyStatus();
   }
 
+  setWanNames(on: boolean): void {
+    this.wanNames = on;
+  }
+
   setLayers(on: Record<LayerKey, boolean>): void {
     this.layerOn = { ...on };
     this.applyVisibility();
@@ -452,6 +460,7 @@ export class NocScene {
   /** Highlight a device or lab (null clears) and fly to it. */
   select(sel: Selection | null, fly = true): void {
     this.selected = sel;
+    this.syncBadges();
     for (const d of this.devs.values()) {
       d.scale = 1;
       d.mesh?.scale.setScalar(1);
@@ -735,7 +744,7 @@ export class NocScene {
         state: 'ok',
       };
       const label = this.addLabel(
-        `<span class="ring"></span>${escapeHtml(m.name)}<small>${m.floors} ชั้น</small>`,
+        `<span class="ring"></span>${escapeHtml(m.name)}<small></small>`,
         new THREE.Vector3(m.x, h + 0.8, m.z),
         () => (view.state !== 'ok' ? 0 : 1),
       );
@@ -908,14 +917,15 @@ export class NocScene {
         maxOpacity: mat.opacity,
       });
       if (m.kind === 'wan') {
+        // above the globe: below it the names ran into the building names under the ISPs
         const l = this.addLabel(
           escapeHtml(m.name),
-          new THREE.Vector3(m.pos.x, m.pos.y - 1.6, m.pos.z),
+          new THREE.Vector3(m.pos.x, m.pos.y + 1.2, m.pos.z),
           () => 2,
-          true,
         );
         l.device = m.code;
-        l.el.classList.add('quiet');
+        l.wan = true;
+        l.el.classList.add('quiet', 'wan');
       }
     }
     if (this.apList.length) {
@@ -1216,9 +1226,11 @@ export class NocScene {
     for (const b of this.blds.values()) {
       let st: UiState = 'ok';
       let out = 0;
+      let bad = 0;
       for (const d of this.devs.values()) {
         if (d.m.building !== b.m.code || d.m.kind === 'planned') continue;
         if (d.state === 'cut') out += 1;
+        if (d.state === 'down' || d.state === 'warn') bad += 1;
         if (d.state === 'down') st = 'down';
         else if (d.state === 'cut' && st !== 'down') st = 'cut';
         else if (d.state === 'warn' && st !== 'down' && st !== 'cut') st = 'warn';
@@ -1230,7 +1242,15 @@ export class NocScene {
       b.label.classList.toggle('quiet', st === 'ok' || st === 'maint');
       b.label.classList.toggle('cut', st === 'cut');
       const small = b.label.querySelector('small');
-      if (small) small.textContent = st === 'cut' ? `ดับตาม ${out}` : `${b.m.floors} ชั้น`;
+      // the name leads; a problem adds its symbol and count (the alert panel has the devices)
+      if (small) {
+        small.textContent =
+          st === 'cut'
+            ? `ดับตาม ${out}`
+            : st === 'down' || st === 'warn'
+              ? `${STATE_ICON[st]} ${bad}`
+              : '';
+      }
     }
     for (const l of this.labelsList) l.w = l.h = 0; // label sizes change with the style
     this.syncFx();
@@ -1310,8 +1330,10 @@ export class NocScene {
     }
   }
 
+  /** A device's own tag only while it is selected: the building label already says where. */
   private syncBadges() {
-    const incs = this.incidents();
+    const pick = this.selected?.kind === 'device' ? this.selected.code : null;
+    const incs = this.incidents().filter((i) => i.device === pick);
     const want = new Set(incs.map((i) => i.device));
     for (const [code, el] of this.badges) {
       if (!want.has(code)) {
@@ -1698,6 +1720,7 @@ export class NocScene {
       if (
         v.z > 1 ||
         (!!l.device && this.badges.has(l.device)) ||
+        (l.wan && !this.wanNames) ||
         (this.atHome && l.el.classList.contains('area'))
       ) {
         l.el.style.visibility = 'hidden';

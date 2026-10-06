@@ -52,7 +52,7 @@ import {
   unlocatedCount,
   type Names,
 } from './panels.js';
-import { Scene3D, saveEco, savedEco, useHint } from './Scene3D.js';
+import { Scene3D, saveEco, savedEco, saveWanNames, savedWanNames, useHint } from './Scene3D.js';
 import { buildIndex, stateGetter, type SearchEntry } from './search.js';
 import { SearchBox } from './Search.js';
 import { StaleBand, staleCause } from './stale.js';
@@ -800,6 +800,7 @@ export function NocShell() {
   const [sel, setSel] = useState<Selection | null>(null);
   const [top, setTop] = useState(false);
   const [eco, setEco] = useState(savedEco);
+  const [wanNames, setWanNames] = useState(savedWanNames);
   const [fps, setFps] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [help, setHelp] = useState(false);
@@ -1218,6 +1219,7 @@ export function NocShell() {
               eco={view.eco}
               dark={theme.theme === 'dark'}
               layers={layers}
+              wanNames={wanNames}
               fibers={fibers.length}
               unlocated={unlCount}
               onTop={view.onTop}
@@ -1225,6 +1227,10 @@ export function NocShell() {
               onEco={view.onEco}
               onTheme={theme.toggle}
               onLayer={(k) => setLayers({ ...layers, [k]: !layers[k] })}
+              onWanNames={() => {
+                saveWanNames(!wanNames);
+                setWanNames(!wanNames);
+              }}
               onUnlocated={() => {
                 setRightTab('unl');
                 reveal('right');
@@ -1303,6 +1309,7 @@ export function NocShell() {
               model={model}
               snapshot={snap}
               layers={layers}
+              wanNames={wanNames}
               mini={mini}
               onReady={setScene}
               onSelect={onSelect}

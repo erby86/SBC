@@ -632,12 +632,20 @@
   color: var(--ink-2);
   margin-left: 0.3rem;
 }
+.blabel small:empty {
+  display: none;
+}
+/* buildings without a problem: the name as large as a problem one, without the box */
 .blabel.quiet {
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  border-color: transparent;
+}
+/* ISP names and open areas stay small */
+.blabel.quiet.wan,
+.blabel.quiet.area {
   font-weight: 500;
   font-size: max(12px, 0.75rem);
   color: var(--ink-2);
-  background: color-mix(in srgb, var(--bg) 55%, transparent);
-  border-color: transparent;
 }
 .blabel.quiet small,
 .blabel.quiet .ring {
