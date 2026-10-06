@@ -14,16 +14,17 @@ Design canvas (artifact ส่วนตัวของผู้ใช้): https
 
 ## ทำแล้ว (commit)
 
-| ข้อ | เรื่อง                                                                         | commit               | ที่อยู่หลัก                                                         |
-| --- | ------------------------------------------------------------------------------ | -------------------- | ------------------------------------------------------------------- |
-| 1–3 | สีชุดใหม่ + IBM Plex Mono, แผงตัดมุม, แถบข้อมูลไม่สด 3 สาเหตุ                  | `9914cd5`            | `packages/ui/src/tokens.css`, `shell/stale.tsx`                     |
-| —   | "วิธีใช้" เป็น modal มีฉากหลัง (เมนูทับไม่ได้)                                 | `21749ca`            | `shell/Help.tsx`, `.helpScrim`                                      |
-| 4   | รวมเหตุตามต้นเหตุ (`root` ใน incident), การ์ดต้นเหตุ, ตึก/ไฟเบอร์ดับตามเป็นเทา | `1632bb1`            | `packages/shared/src/status.ts`, `shell/console.ts`, `panels.tsx`   |
-| 5   | บันทึกเหตุการณ์แบบ syslog ใต้ผัง (แทนแถบ 24 ชม.)                               | `ae47ea3`            | `shell/evlog.tsx`, `logLines`                                       |
-| 6   | ป้ายบนผังหลบกัน + มุมบ้านพอดีกรอบ                                              | `9b4b3ea`            | `scene/labels.ts` (`placeTags`), `NocScene.homeView`                |
-| 7   | "เส้นทางจาก core" ในการ์ดแรก                                                   | `e261e86`            | `tracePath` ใน `shell/console.ts`                                   |
-| 8   | การเคลื่อนไหวตามมาตรฐาน                                                        | `581ef61`            | `MOTION` ใน `NocScene.ts`, `--t-in/--t-out/--t-press` ใน tokens.css |
-| 9   | e2e `02b-storm`, `02c-stale` + demo `storm` (M38)                              | `4e12e8f`, `1632bb1` | `tests/e2e/specs/screens.spec.ts`, `packages/shared/src/demo/`      |
+| ข้อ | เรื่อง                                                                              | commit               | ที่อยู่หลัก                                                           |
+| --- | ----------------------------------------------------------------------------------- | -------------------- | --------------------------------------------------------------------- |
+| 1–3 | สีชุดใหม่ + IBM Plex Mono, แผงตัดมุม, แถบข้อมูลไม่สด 3 สาเหตุ                       | `9914cd5`            | `packages/ui/src/tokens.css`, `shell/stale.tsx`                       |
+| —   | "วิธีใช้" เป็น modal มีฉากหลัง (เมนูทับไม่ได้)                                      | `21749ca`            | `shell/Help.tsx`, `.helpScrim`                                        |
+| 4   | รวมเหตุตามต้นเหตุ (`root` ใน incident), การ์ดต้นเหตุ, ตึก/ไฟเบอร์ดับตามเป็นเทา      | `1632bb1`            | `packages/shared/src/status.ts`, `shell/console.ts`, `panels.tsx`     |
+| 5   | บันทึกเหตุการณ์แบบ syslog ใต้ผัง (แทนแถบ 24 ชม.)                                    | `ae47ea3`            | `shell/evlog.tsx`, `logLines`                                         |
+| 6   | ป้ายบนผังหลบกัน + มุมบ้านพอดีกรอบ                                                   | `9b4b3ea`            | `scene/labels.ts` (`placeTags`), `NocScene.homeView`                  |
+| 7   | "เส้นทางจาก core" ในการ์ดแรก                                                        | `e261e86`            | `tracePath` ใน `shell/console.ts`                                     |
+| 8   | การเคลื่อนไหวตามมาตรฐาน                                                             | `581ef61`            | `MOTION` ใน `NocScene.ts`, `--t-in/--t-out/--t-press` ใน tokens.css   |
+| 9   | e2e `02b-storm`, `02c-stale` + demo `storm` (M38)                                   | `4e12e8f`, `1632bb1` | `tests/e2e/specs/screens.spec.ts`, `packages/shared/src/demo/`        |
+| —   | ภาพ 3D ชัด: MSAA 4x ใน composer, มุมบ้านพอดีเฉพาะตึก, ประหยัดอัตโนมัติไม่จำข้ามหน้า | `208146f` + ถัดไป    | `NocScene` (`homeView`, `watchFps`), `shell/Scene3D.tsx` `noc-eco-v2` |
 
 รายละเอียดกติกาแต่ละข้ออยู่ในแถว "UI ลูกเล่น รอบ 2" ของ `CLAUDE.md` และ commit message
 
@@ -41,7 +42,6 @@ lint, depcruise, typecheck, test, format ผ่านทั้ง repo · e2e 30
 ## เรื่องที่ผู้ใช้ยังต้องตัดสิน
 
 - ทีวียังวนไปเหตุที่ยังไม่มีคนรับทุก 10 วิ (กติกา M20) — มาตรฐานบอก "กล้องขยับเฉพาะตอนคนกด" จะให้นิ่งเลยไหม
-- โดมอเนกประสงค์อยู่ในกรอบคำนวณผัง (สระ/สนามไม่อยู่) — ตัดออกเพื่อซูมตึกใหญ่ขึ้นไหม
 - เมนู/วิธีใช้/กล่องยืนยันเปิด 0.18 วิ (ไม่ใช่ 0.6) · ยังไม่มีแอนิเมชันตอนออก (token 0.3 วิเตรียมไว้)
 - log นับ "+N ตัว" เฉพาะตัวที่ Zabbix ส่งปัญหาเอง (storm = +6) ส่วนการ์ดนับรวมตัวที่ขาดจากต้นทาง (21)
 
@@ -53,6 +53,9 @@ lint, depcruise, typecheck, test, format ผ่านทั้ง repo · e2e 30
 - หน้าพอร์ตสวิตช์, มือถือกดค้างรับเรื่อง, สรุปส่งเวร, เสียง P1 ซ้ำทุก 2 นาที (แผ่น 5 ของแคนวาส)
 
 ## กับดักที่เจอ (session ถัดไปอ่านก่อน)
+
+- ภาพ 3D ไม่ชัด: ดู 3 อย่าง — composer ไม่มี MSAA (แก้แล้ว), โหมดประหยัด (pixel ratio 1) เคยถูกเปิดเองแล้วจำถาวร (เปลี่ยน key เป็น `noc-eco-v2`), กรอบมุมบ้านรวมโดม/สนามทำให้ตึกเล็ก (ตัดออกแล้ว)
+- PostgreSQL ในเครื่อง: role `noc` ต้องเป็น SUPERUSER (migration `0002_roles` สร้าง role)
 
 - อย่าใส่ `animation-play-state: paused` ทั้งหน้า: การ์ดที่มี entrance แบบ `backwards` ค้างมองไม่เห็น
 - `clip-path` ตัดมุมตัด popover ที่ล้นออก — ห้ามใส่ใน `#top`

@@ -287,6 +287,7 @@ export class NocScene {
   private fpsStart = 0;
   private fpsFrames = 0;
   private fpsWindows = 0;
+  private fpsLast = 0;
   private readonly ro: ResizeObserver | null;
   private readonly cleanups: (() => void)[] = [];
   private readonly tmp = {
@@ -1408,8 +1409,8 @@ export class NocScene {
     const dir = HOME.pos.clone().sub(HOME.tgt).normalize();
     const cam = this.camera.clone();
     cam.updateProjectionMatrix();
-    // every building corner at the ground and at its own roof, open areas at the ground
-    // (pool and field stay out, as in the bounds)
+    // every building corner at the ground and at its own roof; open areas (dome, field, pool,
+    // playground) stay out so the buildings, where the devices are, fill the card
     const pts: THREE.Vector3[] = [];
     const corners = (
       r: { x: number; z: number; width: number; depth: number; rotation: number },
@@ -1430,7 +1431,6 @@ export class NocScene {
       }
     };
     for (const x of m.buildings) corners(x, [0, x.floors * x.floorHeight + 1]);
-    for (const a of m.areas) if (a.kind !== 'pool' && a.kind !== 'field') corners(a, [0]);
     const v = new THREE.Vector3();
     const place = (d: number) => {
       cam.position.copy(tgt).addScaledVector(dir, d);
@@ -1736,6 +1736,14 @@ export class NocScene {
       return;
     }
     if (now < this.fpsStart) return;
+    // a hidden tab or a stalled frame loop is not a slow GPU: start the window again
+    if (document.hidden || now - this.fpsLast > 1000) {
+      this.fpsLast = now;
+      this.fpsFrames = 0;
+      this.fpsStart = now;
+      return;
+    }
+    this.fpsLast = now;
     this.fpsFrames += 1;
     const span = now - this.fpsStart;
     if (span < 5000) return;

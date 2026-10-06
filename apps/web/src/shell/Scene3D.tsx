@@ -23,7 +23,8 @@ const store = {
   },
 };
 
-export const ECO_KEY = 'noc-eco';
+// v2: earlier builds saved automatic eco too and left screens blurry; start everyone from auto again
+export const ECO_KEY = 'noc-eco-v2';
 export const savedEco = () => store.get(ECO_KEY) === '1';
 export const saveEco = (on: boolean) => store.set(ECO_KEY, on ? '1' : '0');
 
@@ -90,10 +91,9 @@ export function Scene3D(p: Scene3DProps) {
           {
             onSelect: (s) => cb.current.onSelect(s),
             onFps: (f) => cb.current.onFps(f),
-            onAutoEco: (f) => {
-              saveEco(true);
-              cb.current.onAutoEco(f);
-            },
+            // automatic eco lasts for this page only: a slow moment must not keep the scene
+            // blurry (pixel ratio 1, no bloom) on every visit; only the menu choice is saved
+            onAutoEco: (f) => cb.current.onAutoEco(f),
           },
         );
         setScene(made);
