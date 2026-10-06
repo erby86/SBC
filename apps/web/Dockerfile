@@ -15,7 +15,9 @@ RUN pnpm turbo run build --filter=@sbc-noc/web...
 FROM nginxinc/nginx-unprivileged:1.29-alpine AS runtime
 # Pull Alpine security fixes newer than the base image (Trivy gate in deploy.sh).
 USER root
-RUN apk upgrade --no-cache
+# OS_REFRESH: see apps/api/Dockerfile — rebuild this layer daily so new Alpine fixes are picked up.
+ARG OS_REFRESH=
+RUN echo "os refresh: ${OS_REFRESH}" && apk upgrade --no-cache
 ENV API_UPSTREAM=http://noc-dev-api:3001
 # The checkout on the server may be 0600 (umask 077) and nginx runs as 101, so set modes here.
 # Not COPY --chmod: BuildKit applies that mode to the parent dir it creates too (0644, no +x).
