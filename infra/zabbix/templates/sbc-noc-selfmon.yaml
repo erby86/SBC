@@ -1,7 +1,8 @@
 # M35 self-monitoring (ADR-0010). Import in Zabbix 7.0: Data collection > Templates > Import,
-# then link "SBC NOC self-monitoring" to host sbc-noc. Reads http://noc.sbc.lan/api/metrics once a
-# minute (one HTTP request; every other item is dependent). No token: /api/metrics is open to the
-# management network only (NPM access list sbc-noc-mgmt).
+# then link "SBC NOC self-monitoring" to host sbc-noc. Reads http://sbc-noc-web/api/metrics once a
+# minute (one HTTP request; every other item is dependent) over the docker network sbc-net that
+# Zabbix and sbc-noc-web share: through NPM (noc.sbc.lan) Zabbix arrives from a docker address and
+# the access list sbc-noc-mgmt answers 403. No token: the metrics hold no secrets.
 zabbix_export:
   version: '7.0'
   template_groups:
@@ -244,5 +245,5 @@ zabbix_export:
           value: software
       macros:
         - macro: '{$NOC.URL}'
-          value: 'http://noc.sbc.lan'
-          description: 'ที่อยู่ NOC ที่ Zabbix เข้าถึง (prod); host staging ใช้ http://noc-dev.sbc.lan'
+          value: 'http://sbc-noc-web'
+          description: 'ที่อยู่ NOC ที่ Zabbix เข้าถึงผ่าน docker network sbc-net (prod) ไม่ผ่าน NPM'

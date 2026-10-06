@@ -125,7 +125,10 @@ services:
     environment:
       API_UPSTREAM: http://noc-api:3001
     # NPM forwards noc.sbc.lan → sbc-noc-web:80 on the proxy network (access list sbc-noc-mgmt).
-    networks: [internal, proxy]
+    # M35: also on the Loki network (sbc-net), where Zabbix runs, so Zabbix reads
+    # http://sbc-noc-web/api/metrics and /api/health/ready directly: through NPM it arrives from a
+    # docker address and the access list answers 403. No port is published either way.
+    networks: [internal, proxy, loki]
     logging: *logging
     deploy:
       resources:
@@ -161,6 +164,7 @@ networks:
     external: true
     name: ${SBC_PROXY_NETWORK:?set SBC_PROXY_NETWORK in the env file}
   # Existing network from which Loki is reachable (its own network, or the one it publishes on).
+  # sbc-net on sbc-ubuntu; Zabbix is on it too (M35).
   loki:
     external: true
     name: ${SBC_LOKI_NETWORK:?set SBC_LOKI_NETWORK in the env file}
