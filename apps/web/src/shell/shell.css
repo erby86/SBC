@@ -1640,21 +1640,41 @@
   box-shadow: none;
   cursor: pointer;
 }
-/* fixed to the window: the stacked layout scrolls, help stays in view */
-#help {
+/* help is modal: a dim scrim over everything (top bar included, z 30), the dialog centred in it.
+   Only the body scrolls; the title and the close button stay at the top. */
+.helpScrim {
   position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: min(40rem, calc(100vw - 1rem));
+  inset: 0;
+  z-index: 55;
+  display: grid;
+  place-items: center;
+  padding: 1rem 0.5rem;
+  background: rgba(2, 6, 14, 0.62);
+}
+#help {
+  position: relative;
+  width: min(40rem, 100%);
   max-height: calc(100dvh - 2rem);
   overflow: auto;
-  padding: 1rem 1.2rem;
-  z-index: 20;
+  padding: 0 1.2rem 1rem;
+  animation: dlgin 0.18s ease-out;
+}
+#help .helpHead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 -1.2rem 0.4rem;
+  padding: 0.75rem 1.2rem 0.6rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
 }
 #help h2 {
   font-size: 1.15rem;
-  margin: 0 0 0.6rem;
+  margin: 0;
 }
 #help h3 {
   font-size: 0.95rem;
@@ -1679,9 +1699,7 @@
   vertical-align: middle;
 }
 #help .close {
-  position: absolute;
-  top: 0.7rem;
-  right: 0.7rem;
+  flex: none;
 }
 #help kbd {
   border: 1px solid var(--line);
