@@ -79,7 +79,9 @@ export function Menu(p: MenuProps) {
   useEffect(() => {
     if (!open) return;
     const away = (e: PointerEvent) => {
-      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
+      // outside the menu, or on its dim layer (.menu::before, whose target is the menu box)
+      if (box.current && (!box.current.contains(e.target as Node) || e.target === box.current))
+        setOpen(false);
     };
     const key = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;

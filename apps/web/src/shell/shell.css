@@ -2987,3 +2987,25 @@ code {
     transparent 5px 9px
   );
 }
+
+/* menu open: a dim layer over the whole page under the panel, so the panel reads as the layer on
+   top (no half-visible right column beside it); a click on it closes the menu (Menu.tsx) */
+.menu::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 44;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--t-out) ease-in;
+}
+.menu:has(.mbtn[aria-expanded='true'])::before {
+  opacity: 1;
+  pointer-events: auto;
+  transition-duration: 0.18s;
+}
+.menu .mbtn {
+  position: relative;
+  z-index: 46;
+}
