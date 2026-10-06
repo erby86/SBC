@@ -4,6 +4,9 @@
 # script on the router only (System > Scripts > noc-watch): never into git (ADR-0005) — anyone with
 # the URL can post to the channel.
 #
+# The Discord post is written out at both call sites (no local function): it logs
+# "noc-watch: discord sent" or "noc-watch: discord failed", so a silent no-op cannot hide.
+#
 # Alerts: after 2 failed checks in a row (about 1 minute), once per outage; one message on recovery.
 # - server: 3 pings to 192.168.1.6 all lost
 # - noc: http://noc.sbc.lan/api/health/ready does not answer 200 with "status":"ok"
@@ -19,11 +22,6 @@ add name=noc-watch dont-require-permissions=no policy=read,write,test source={
   :if ([:typeof $nocWatchFails] != "num") do={ :set nocWatchFails 0 }
   :if ([:typeof $nocWatchAlerted] != "bool") do={ :set nocWatchAlerted false }
 
-  :local send do={
-    /tool fetch url=$w http-method=post http-header-field="Content-Type: application/json" \
-      http-data=("{\"content\":\"" . $m . "\"}") output=none check-certificate=yes
-  }
-
   :local problem ""
   :if ([/ping $server count=3] = 0) do={
     :set problem ("SBC NOC: server " . $server . " does not answer ping")
@@ -38,7 +36,11 @@ add name=noc-watch dont-require-permissions=no policy=read,write,test source={
 
   :if ($problem = "") do={
     :if ($nocWatchAlerted) do={
-      :do { $send w=$webhook m="SBC NOC: back to normal" } on-error={ :log warning "noc-watch: discord failed" }
+      :do {
+        /tool fetch url=$webhook http-method=post http-header-field="Content-Type: application/json" \
+          http-data="{\"content\":\"SBC NOC: back to normal\"}" output=none check-certificate=yes
+        :log info "noc-watch: discord sent (back to normal)"
+      } on-error={ :log error "noc-watch: discord failed" }
     }
     :set nocWatchFails 0
     :set nocWatchAlerted false
@@ -47,8 +49,10 @@ add name=noc-watch dont-require-permissions=no policy=read,write,test source={
     :log warning ("noc-watch: " . $problem)
     :if (($nocWatchFails >= 2) && (!$nocWatchAlerted)) do={
       :do {
-        $send w=$webhook m=$problem
+        /tool fetch url=$webhook http-method=post http-header-field="Content-Type: application/json" \
+          http-data=("{\"content\":\"" . $problem . "\"}") output=none check-certificate=yes
         :set nocWatchAlerted true
+        :log info "noc-watch: discord sent"
       } on-error={ :log error "noc-watch: discord failed" }
     }
   }
