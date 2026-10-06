@@ -51,6 +51,24 @@ test('demo: one root cause takes 21 devices with it (storm)', async ({ page }, i
   await checkScreen(page, info, '02b-storm');
 });
 
+test('demo: data not fresh (stale): band names the cause, log says it, nothing loops', async ({
+  page,
+}, info) => {
+  await openNoc(page, '/?demo=stale');
+  await expect(page.getByTestId('stale-band')).toHaveAttribute('data-cause', 'zabbix');
+  await expect(page.locator('#app')).toHaveClass(/\bstale\b/);
+  // the log says it first; its cursor stops blinking (blinking = live)
+  await expect(page.getByTestId('event-log').locator('.eline').first()).toHaveClass(/\bsys\b/);
+  const looping = await page.evaluate(() =>
+    document
+      .getAnimations()
+      .filter((a) => a.effect?.getTiming().iterations === Infinity)
+      .map((a) => (a as CSSAnimation).animationName),
+  );
+  expect(looping).toEqual([]);
+  await checkScreen(page, info, '02c-stale');
+});
+
 test('demo: device details with Zabbix/Grafana/GLPI buttons', async ({ page }, info) => {
   await page.route('**/api/config/links', (r) => r.fulfill({ json: LINKS }));
   await openNoc(page, '/?demo=mixed');
