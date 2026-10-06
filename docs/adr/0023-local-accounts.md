@@ -15,12 +15,12 @@
 
 1. **ดูอย่างเดียวไม่ต้องล็อกอิน:** หน้าผัง แจ้งเตือน ค้นหา โหมดทีวี และ API แบบอ่าน (GET) เปิดให้เฉพาะวงที่ NPM access list `sbc-noc-mgmt` อนุญาต เหมือนปัจจุบัน ไม่มี token เฉพาะจอทีวี ถ้าจอทีวีอยู่นอกวงนี้ ให้เพิ่ม IP ของจอใน access list
 2. **การกระทำต้องล็อกอิน:** แก้ทะเบียน (M21), รับเรื่อง (M24), งานเปลี่ยนแปลง (M25), จัดการ API client (M26)
-3. **บัญชีในเครื่อง:** ใช้ `auth.users` (อีเมลโรงเรียนเป็นชื่อล็อกอิน ไม่ส่งอีเมลจริง) เพิ่มคอลัมน์ `password_hash` ด้วย migration ไฟล์ใหม่ (ADR-0018) hash แบบ argon2id รหัสผ่านยาวอย่างน้อย 12 ตัวอักษร ยังไม่มี TOTP
+3. **บัญชีในเครื่อง:** ใช้ `auth.users` (อีเมลโรงเรียนเป็นชื่อล็อกอิน ไม่ส่งอีเมลจริง) เพิ่มคอลัมน์ `password_hash` ด้วย migration ไฟล์ใหม่ (ADR-0018) hash แบบ argon2id รหัสผ่านยาวอย่างน้อย 12 ตัวอักษร ยังไม่มี TOTP — ทบทวนเมื่อเปิดล็อกอินจากวงอื่นนอก management, ผู้ใช้เกินราว 10 คน หรือผู้ตรวจสอบกำหนด; ถ้าทำ เริ่มที่ `admin` ด้วย migration ไฟล์ใหม่
 4. **บทบาท 2 แบบ:** `operator` รับเรื่องและสร้างงานเปลี่ยนแปลงได้; `admin` ทำได้ทุกอย่าง (แก้ทะเบียน อนุมัติงานเปลี่ยนแปลง จัดการ API client) บทบาท viewer ไม่ต้องมีเพราะการดูไม่ต้องล็อกอิน; registry_admin/change_manager รวมเข้า admin; `scope_building_id` เว้นว่าง (ทุกอาคาร)
 5. **สร้างบัญชีและรีเซ็ตรหัส:** ผ่านคำสั่ง CLI บนเซิร์ฟเวอร์เท่านั้น (เพิ่ม, ตั้งรหัส, ปิดบัญชี, กำหนดบทบาท) ไม่มีหน้าสมัครหรือลืมรหัสบนเว็บ
 6. **session:** id สุ่ม 32 ไบต์ เก็บใน Redis (`noc:<env>:session:<sha256 ของ id>`) อายุ 12 ชั่วโมงนับจากล็อกอิน (ADR-0011) cookie `noc_session` แบบ HttpOnly, SameSite=Strict, Secure; ออกจากระบบหรือปิดบัญชีแล้วลบ session ทันที
 7. **กันเดารหัส:** จำกัดล็อกอินผิด 5 ครั้งต่อ 15 นาทีต่อ IP + บัญชี; คำขอที่เขียนข้อมูลต้องเป็น JSON และมาจาก cookie SameSite=Strict (กัน CSRF)
-8. **https ก่อนเปิดล็อกอินบน prod:** NPM ใช้ใบรับรองจาก CA ภายใน (ADR-0008) และติดตั้ง root CA บนเครื่องของ STF; dev ใช้ http ได้ชั่วคราวโดยตั้ง `SESSION_COOKIE_SECURE=false` (ค่าตั้งต้น `true`)
+8. **https ผ่าน NPM ด้วย CA ภายใน (ADR-0008) ก่อนเปิดล็อกอินบน prod:** root CA `SBC Internal CA` (EC P-256, 10 ปี, nameConstraints จำกัดเฉพาะ `sbc.lan` และห้ามออกใบให้ IP) key เข้ารหัสด้วย passphrase และเก็บนอกเซิร์ฟเวอร์; ใบของ NOC (`noc.sbc.lan`, `noc-dev.sbc.lan`) อายุ 1 ปี อัปโหลดเป็น Custom SSL ใน NPM เฉพาะ proxy host ของ NOC, เปิด Force SSL, ไม่เปิด HSTS แบบ includeSubdomains; ติดตั้ง root CA บนเครื่อง STF, จอทีวี และ CCR2116 (script `noc-watch` ตรวจผ่าน https) — ขั้นตอนใน `docs/runbooks/internal-ca.md`; API เชื่อ `X-Forwarded-Proto` จาก NPM และ prod ปฏิเสธการล็อกอินที่ไม่ได้มาทาง https; ก่อนตั้ง https เสร็จ dev ใช้ http ได้โดยตั้ง `SESSION_COOKIE_SECURE=false` (ค่าตั้งต้น `true`)
 9. **audit:** บันทึกล็อกอินสำเร็จ ล็อกอินล้ม และออกจากระบบใน `audit.user_actions`; การแก้ทะเบียนใช้ผู้ใช้จาก session แทน header `X-Noc-Editor`; เลิกใช้ `REGISTRY_EDIT` และ prod เปิดหน้าแก้ไขได้ตาม ADR-0020
 10. **secret:** password hash ไม่ใช่ secret ของระบบภายนอก จึงเก็บในฐานได้โดยไม่ขัด ADR-0005; repo ไม่มีรหัสผ่านใดๆ
 

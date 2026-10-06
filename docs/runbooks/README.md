@@ -7,3 +7,4 @@
 **ห้ามทำ:** ห้ามใส่รหัสผ่านของบัญชีผู้ใช้ NOC (ADR-0023) หรือ secret อื่น — อ้างที่เก็บแทน
 
 - [github-to-gitea.md](github-to-gitea.md) — ส่งงานจาก GitHub (Claude Code) เข้า Gitea และอัปเดต dev
+- [internal-ca.md](internal-ca.md) — CA ภายใน + https ผ่าน NPM, ติดตั้ง root CA บนเครื่อง/เราเตอร์, ต่ออายุใบทุกปี (ADR-0023)

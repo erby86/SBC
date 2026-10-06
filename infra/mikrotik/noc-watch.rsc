@@ -11,7 +11,9 @@
 # recovery. The failure count is kept in the comment of the noc-watch script (a global variable
 # set from the scheduler did not survive between runs on this router). Every failed check logs
 # why: "does not answer ping", "fetch error" (no HTTP answer, 403 from the NPM access list, DNS)
-# or "not ok" with the start of the body. Every post logs "discord sent" or "discord failed".
+# or "not ok" with the start of the body. The NOC URL is https: the router trusts the internal CA
+# (docs/runbooks/internal-ca.md, ADR-0023); a certificate problem also shows as "fetch error".
+# Every post logs "discord sent" or "discord failed".
 
 /system scheduler remove [find where on-event~"noc-watch"]
 /system script remove [find where name=noc-watch]
@@ -19,7 +21,7 @@
 
 /system script add name=noc-watch dont-require-permissions=no policy=read,write,test comment=0 source={
 :local server 192.168.1.6
-:local url "http://noc.sbc.lan/api/health/ready"
+:local url "https://noc.sbc.lan/api/health/ready"
 :local self [/system script find where name=noc-watch]
 :local fails [:tonum [/system script get $self comment]]
 :if ([:typeof $fails] != "num") do={ :set fails 0 }
@@ -30,7 +32,7 @@
 :if ($problem = "") do={
   :local body ""
   :local fetched false
-  :do { :set body ([/tool fetch url=$url output=user as-value]->"data"); :set fetched true } on-error={}
+  :do { :set body ([/tool fetch url=$url output=user check-certificate=yes as-value]->"data"); :set fetched true } on-error={}
   :if ($fetched = false) do={ :set detail "fetch error" } else={
     :if ([:typeof [:find $body "\"status\":\"ok\""]] != "num") do={ :set detail ("not ok: " . [:pick $body 0 80]) }
   }

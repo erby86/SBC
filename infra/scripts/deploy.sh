@@ -98,7 +98,7 @@ deploy_staging() {
   step "migrate + start"
   "${compose[@]}" up -d
   wait_healthy sbc-noc-dev-api sbc-noc-dev-web sbc-noc-dev-worker || exit 1
-  echo; echo "staging OK — http://noc-dev.sbc.lan/api/health"
+  echo; echo "staging OK — https://noc-dev.sbc.lan/api/health"
 }
 
 prod_compose() { # tag args…
@@ -201,7 +201,7 @@ SQL
   fi
   record_release "$tag" deploy
   echo
-  echo "prod OK: $tag — check http://noc.sbc.lan/api/health from the management network"
+  echo "prod OK: $tag — check https://noc.sbc.lan/api/health from the management network"
   [ -n "$previous" ] && echo "rollback if needed: infra/scripts/deploy.sh prod --rollback $previous"
   return 0
 }
