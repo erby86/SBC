@@ -8,10 +8,19 @@ const inc = (device: string, severity: 'down' | 'warn') => ({
   since: '2026-10-05T04:00:00Z',
   message: 'x',
   impacted: 0,
+  root: null,
   ack: null,
 });
-const snap = (incidents: ReturnType<typeof inc>[], stale = false) =>
-  ({ stale, incidents }) as unknown as StatusSnapshot;
+const snap = (incidents: ReturnType<typeof inc>[], stale = false, cut = 0) =>
+  ({
+    stale,
+    incidents,
+    counts: {
+      down: incidents.filter((i) => i.severity === 'down').length,
+      cut,
+      warn: incidents.filter((i) => i.severity === 'warn').length,
+    },
+  }) as unknown as StatusSnapshot;
 
 describe('tab status', () => {
   it('names the worst state first', () => {
@@ -27,6 +36,9 @@ describe('tab status', () => {
     expect(tabTitle(snap([inc('a', 'warn'), inc('b', 'down'), inc('c', 'down')]), false)).toBe(
       '(2) ✕ ใช้งานไม่ได้ · ▲ 1 · ศูนย์ดูแลเครือข่าย',
     );
+    // devices out: the root cause, a follower Zabbix also sees down, and 3 cut off
+    const storm = [inc('core', 'down'), { ...inc('m', 'down'), root: 'core' } as never];
+    expect(tabTitle(snap(storm, false, 3), false)).toBe('(5) ✕ ใช้งานไม่ได้ · ศูนย์ดูแลเครือข่าย');
     expect(tabTitle(snap([inc('a', 'warn')]), true)).toBe(
       '[สาธิต] (1) ▲ ควรตรวจสอบ · ศูนย์ดูแลเครือข่าย',
     );

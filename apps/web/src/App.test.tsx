@@ -75,6 +75,7 @@ const snapshot = (stale: boolean): StatusSnapshot => ({
       since: '2026-10-05T02:58:00.000Z',
       message: 'Unavailable by ICMP ping',
       impacted: 3,
+      root: null,
       ack: null,
     },
   ],

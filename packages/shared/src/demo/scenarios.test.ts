@@ -1,4 +1,4 @@
-// M38: the four prototype scenarios with their expected results. M15 runs its engine through the
+// M38: the demo scenarios with their expected results. M15 runs its engine through the
 // same fixtures; any change of the status rules must keep these results (or change them on purpose).
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -52,11 +52,28 @@ describe('demo scenarios (prototype → fixtures)', () => {
         since: minAgo(3),
         message: 'ไม่ตอบ ping · ไฟเบอร์จากอาคาร 2',
         impacted: 4,
+        root: null,
         ack: null,
       },
     ]);
     expect(r.counts).toMatchObject({ down: 1, cut: 4, ok: 46 });
     expect(r.labOnline).toMatchObject({ 'LOC-045': 0, 'LOC-049': 0, 'LOC-050': 0 });
+  });
+
+  it('storm: CCR1036 down takes 22 devices with it; the mains Zabbix also sees down follow it', () => {
+    const r = run('storm');
+    const roots = r.incidents.filter((i) => i.severity === 'down' && i.root === null);
+    expect(roots.map((i) => [i.device, i.impacted])).toEqual([['c1036', 22]]);
+    const followers = r.incidents.filter((i) => i.root !== null);
+    expect(followers.map((i) => [i.device, i.root]).sort()).toEqual(
+      ['m-b1', 'm-b2', 'm-i1', 'm-i2', 'm-s8', 'm-sp3'].map((d) => [d, 'c1036']),
+    );
+    expect(r.counts).toMatchObject({ down: 7, cut: 16, warn: 1 });
+    // MainB hangs off MainA, so its warning is a separate incident
+    expect(r.incidents.find((i) => i.device === 'mainB')).toMatchObject({
+      severity: 'warn',
+      root: null,
+    });
   });
 
   it('stale: same events as mixed but data is 6 minutes old', () => {
@@ -130,10 +147,28 @@ describe('status rules', () => {
   it('a device that is down itself below a root cause stays down and is its own incident', () => {
     const r = computeStatus(topo, input({ signals: [down('main', 5), down('ap', 2)] }), NOW);
     expect(r.states).toEqual({ main: 'down', sw: 'cut', ap: 'down' });
-    expect(r.incidents.map((i) => [i.device, i.impacted])).toEqual([
-      ['main', 2],
-      ['ap', 0],
+    expect(r.incidents.map((i) => [i.device, i.impacted, i.root])).toEqual([
+      ['main', 2, null],
+      ['ap', 0, 'main'],
     ]);
+  });
+
+  it('a follower points at the topmost down device above it', () => {
+    const r = computeStatus(
+      topo,
+      input({ signals: [down('core', 9), down('sw', 3), down('ap', 2)] }),
+      NOW,
+    );
+    expect(Object.fromEntries(r.incidents.map((i) => [i.device, i.root]))).toEqual({
+      core: null,
+      sw: 'core',
+      ap: 'core',
+    });
+  });
+
+  it('a follower still down after its root recovers becomes its own root cause', () => {
+    const r = computeStatus(topo, input({ signals: [down('sw', 3)] }), NOW);
+    expect(r.incidents.map((i) => [i.device, i.root])).toEqual([['sw', null]]);
   });
 
   it('a warning below a down device shows as cut, not warn', () => {
@@ -156,6 +191,9 @@ describe('status rules', () => {
     const r = computeStatus(loop, input({ signals: [down('a'), down('ghost')] }), NOW);
     expect(r.states).toEqual({ a: 'down', b: 'cut' });
     expect(r.incidents.map((i) => i.device)).toEqual(['a']);
+    // both down in a loop: no topmost device, so neither hides behind the other
+    const both = computeStatus(loop, input({ signals: [down('a'), down('b')] }), NOW);
+    expect(both.incidents.map((i) => i.root)).toEqual([null, null]);
   });
 
   it('is stale only after more than 2 minutes without data', () => {

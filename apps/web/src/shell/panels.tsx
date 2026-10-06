@@ -13,7 +13,16 @@ import {
 import { STATE_ICON, type UiState } from '@sbc-noc/ui';
 import { useState } from 'react';
 import { deviceKind, type LabModel } from '../scene/model.js';
-import { firstToHandle, priority, PRIORITY_TH, splitIncidents, STALE_DAYS } from './console.js';
+import {
+  firstToHandle,
+  ownCards,
+  priority,
+  PRIORITY_TH,
+  rootGroup,
+  splitIncidents,
+  STALE_DAYS,
+  type RootGroup,
+} from './console.js';
 import { plainMessage } from './messages.js';
 
 /** What the device is, in words a teacher knows (shown before the location). */
@@ -115,8 +124,17 @@ export function Incidents({
     if (d.uplink) children.set(d.uplink, [...(children.get(d.uplink) ?? []), d.code]);
   const go = (code: string) => (names.has(code) ? onGo(code) : undefined);
   const inBuilding = (code: string) => !building || names.building(code) === building;
+  // followers sit inside their root cause's group; a group shows in every building it reaches
+  const devices = layout?.devices ?? [];
+  const groups = new Map(
+    ownCards(snap.incidents)
+      .filter((i) => i.severity === 'down' && i.impacted > 0)
+      .map((i) => [i.device, rootGroup(snap, devices, i.device)]),
+  );
+  const reaches = (code: string) =>
+    inBuilding(code) || (groups.get(code)?.buildings.some((b) => b.code === building) ?? false);
   const { main, stale } = splitIncidents(
-    snap.incidents.filter((i) => inBuilding(i.device)),
+    ownCards(snap.incidents).filter((i) => reaches(i.device)),
     now,
   );
   const maint = snap.maintenance.filter((m) => inBuilding(m.device));
@@ -166,7 +184,11 @@ export function Incidents({
             </p>
             {(i.impacted > 0 || isFresh(i.device)) && (
               <div className="meta">
-                {i.impacted > 0 && <span className="impact">กระทบ {i.impacted} อุปกรณ์</span>}
+                {groups.get(i.device)?.dark.length ? (
+                  <span className="impact">{darkTxt(groups.get(i.device) as RootGroup)}</span>
+                ) : (
+                  i.impacted > 0 && <span className="impact">กระทบ {i.impacted} อุปกรณ์</span>
+                )}
                 {isFresh(i.device) && <span className="newtag">ใหม่</span>}
               </div>
             )}
@@ -242,9 +264,15 @@ export function Incidents({
   );
 }
 
-/** "ทำอะไรก่อน": the first down incident nobody has taken, with where to go and how to take it. */
+/** "ดับตาม 21 ตัว ใน 6 อาคาร" */
+const darkTxt = (g: RootGroup) =>
+  `ดับตาม ${g.dark.length} ตัว${g.buildings.length > 1 ? ` ใน ${g.buildings.length} อาคาร` : ''}`;
+
+/** "ทำอะไรก่อน": the first down root cause nobody has taken, with where to go and how to take it.
+ * A root cause with devices out behind it shows them per building and as a folded list. */
 export function FirstCard({
   snap,
+  layout,
   names,
   demo,
   now = Date.now(),
@@ -252,6 +280,7 @@ export function FirstCard({
   onGo,
 }: {
   snap: StatusSnapshot | null;
+  layout: Layout | undefined;
   names: Names;
   demo: boolean;
   now?: number;
@@ -259,24 +288,67 @@ export function FirstCard({
   zabbixUrl: (code: string) => string | null;
   onGo: (code: string) => void;
 }) {
+  const [listOpen, setListOpen] = useState(false);
   const i = snap ? firstToHandle(snap.incidents) : null;
-  if (!i) return null;
+  if (!snap || !i) return null;
   const p = priority(i);
   const url = zabbixUrl(i.device);
+  const g = rootGroup(snap, layout?.devices ?? [], i.device);
+  const group = g.dark.length > 0;
   return (
-    <section id="first" className="panel" aria-label="ทำอะไรก่อน" data-testid="first">
+    <section
+      id="first"
+      className="panel"
+      aria-label="ทำอะไรก่อน"
+      data-testid="first"
+      data-group={group ? g.dark.length : undefined}
+    >
       <p className="fhead">
         <span className={`prio ${p}`} title={PRIORITY_TH[p]}>
           {p} {p === 'P1' ? 'วิกฤต' : 'สูง'}
         </span>
-        <span className="lbl">ทำอะไรก่อน</span>
+        <span className="lbl">{group ? 'ต้นเหตุ ทำอันนี้ก่อน' : 'ทำอะไรก่อน'}</span>
       </p>
       <h3>{names.name(i.device)} ใช้งานไม่ได้</h3>
       <p className="line">
         {names.kind(i.device)}
         {names.where(i.device)} · {plainMessage(i.message)} · {fmtAgo(i.since, now)}
-        {i.impacted > 0 ? ` · กระทบ ${i.impacted} อุปกรณ์` : ''}
+        {!group && i.impacted > 0 ? ` · กระทบ ${i.impacted} อุปกรณ์` : ''}
       </p>
+      {group && (
+        <div className="grp" data-testid="root-group">
+          <p className="gnote">{darkTxt(g)} — แก้ที่ต้นเหตุแล้วจะกลับมาเอง</p>
+          <ul className="gchips">
+            {g.buildings.map((b) => (
+              <li key={b.code ?? '-'}>
+                <span>{b.code ? names.buildingName(b.code) : 'ไม่ระบุอาคาร'}</span>
+                <b className="mono">{b.n}</b>
+              </li>
+            ))}
+          </ul>
+          <button
+            className="gtoggle"
+            aria-expanded={listOpen}
+            onClick={() => setListOpen(!listOpen)}
+          >
+            {listOpen ? 'ซ่อนรายชื่อ' : `ดูรายชื่อ ${g.dark.length} ตัว`}
+          </button>
+          {listOpen && (
+            <ul className="glist mono">
+              {g.dark.map((c) => (
+                <li key={c}>
+                  <button data-go={c} onClick={() => onGo(c)} title="ไปที่อุปกรณ์ในภาพ 3D">
+                    <span>{names.name(c)}</span>
+                    <span className="gb">
+                      {snap.states[c] === 'down' ? 'ล่ม' : 'ขาดจากต้นทาง'} · {names.where(c)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       <div className="btns">
         {names.has(i.device) && (
           <button className="primary" onClick={() => onGo(i.device)}>
@@ -284,8 +356,14 @@ export function FirstCard({
           </button>
         )}
         {url && !demo && (
-          <a className="btnlink" href={url} target="_blank" rel="noopener noreferrer">
-            รับเรื่องใน Zabbix ↗
+          <a
+            className="btnlink"
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={group ? 'รับเรื่องที่ต้นเหตุ ทั้งกลุ่มนับว่ามีคนรับแล้ว' : undefined}
+          >
+            {group ? 'รับเรื่องทั้งกลุ่มใน Zabbix ↗' : 'รับเรื่องใน Zabbix ↗'}
           </a>
         )}
       </div>

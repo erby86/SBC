@@ -9,13 +9,14 @@ describe('demo mode (M38)', () => {
     await app.close();
   });
 
-  it('lists the four prototype scenarios, labelled as demo data', async () => {
+  it('lists the demo scenarios, labelled as demo data', async () => {
     const app = await buildApp({}, { demo: true });
     const res = await app.inject({ method: 'GET', url: '/demo/scenarios' });
     expect(res.json()).toMatchObject({ demo: true, label: DEMO_LABEL });
     expect(res.json<{ scenarios: { name: string }[] }>().scenarios.map((s) => s.name)).toEqual([
       'mixed',
       's8down',
+      'storm',
       'stale',
       'normal',
     ]);

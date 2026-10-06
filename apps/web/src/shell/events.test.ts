@@ -7,6 +7,7 @@ const inc = (device: string, severity: 'down' | 'warn') => ({
   since: '2026-10-05T04:00:00Z',
   message: 'x',
   impacted: 0,
+  root: null,
   ack: null,
 });
 

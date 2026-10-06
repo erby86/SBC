@@ -32,7 +32,7 @@ import { buildSceneModel, deviceKind, type SceneModel } from '../scene/model.js'
 import type { NocScene, Selection } from '../scene/NocScene.js';
 import { useIncidentFeed, useNow } from './events.js';
 import { useTabStatus } from './tab.js';
-import { timelineBars, type TimelineBar } from './console.js';
+import { ownCards, shownState, timelineBars, topCounts, type TimelineBar } from './console.js';
 import { Feed } from './feed.js';
 import { Help, Tour, tourSeen } from './Help.js';
 import { Icon } from './icons.js';
@@ -129,9 +129,11 @@ function TopBar({
   onBigNum: () => void;
   onGo: (code: string) => void;
 }) {
-  const incs = snap?.incidents ?? [];
-  const downs = incs.filter((i) => i.severity === 'down').length;
-  const open = incs.filter((i) => !i.ack).length;
+  const known = new Set((layout?.devices ?? []).map((d) => d.code));
+  const tc = snap ? topCounts(snap, layout ? (c) => known.has(c) : undefined) : null;
+  const downs = tc?.out ?? 0;
+  const warns = tc?.warn ?? 0;
+  const open = tc?.open ?? 0;
   const wans = (layout?.devices ?? []).filter((d) => deviceKind(d) === 'wan');
   const wanSt = wans.map((d) => ({ d, st: stateOfDevice(snap, d.code) }));
   const wanBad = wanSt.filter((w) => w.st !== 'ok' && w.st !== 'maint');
@@ -153,12 +155,25 @@ function TopBar({
         </span>
       </h1>
       <div className="nums" aria-live="polite">
-        <button className="num down" onClick={onBigNum} title="อุปกรณ์ที่ใช้งานไม่ได้ (ต้นเหตุ)">
+        <button
+          className="num down"
+          onClick={onBigNum}
+          title={
+            tc && tc.roots > 1
+              ? `อุปกรณ์ที่ใช้งานไม่ได้ (รวมที่ดับตาม) จากต้นเหตุ ${tc.roots} จุด`
+              : 'อุปกรณ์ที่ใช้งานไม่ได้ (รวมที่ดับตามต้นเหตุ)'
+          }
+        >
           <b className={downs ? 'hot' : ''}>{snap ? downs : '–'}</b>
           <span>ใช้งานไม่ได้</span>
         </button>
+        {tc?.oneRoot && (
+          <span className="oneroot" data-testid="one-root">
+            จากต้นเหตุเดียว
+          </span>
+        )}
         <button className="num warn" onClick={onBigNum} title="เหตุที่ควรตรวจสอบ">
-          <b className={incs.length - downs ? 'hot' : ''}>{snap ? incs.length - downs : '–'}</b>
+          <b className={warns ? 'hot' : ''}>{snap ? warns : '–'}</b>
           <span>ควรตรวจสอบ</span>
         </button>
         <button
@@ -249,14 +264,17 @@ interface BState {
 }
 
 /** Worst state of the devices in each building (prototype bStatus) and how many are usable. */
+/** Per building: down when a root cause is in it, cut (grey) when its devices only went out
+ * behind a root cause elsewhere, then warn, maintenance. */
 function buildingStates(layout: Layout | undefined, snap: StatusSnapshot | null) {
   const out = new Map<string, BState>();
   for (const d of layout?.devices ?? []) {
     if (!d.building || d.layer === 'planned') continue;
-    const st = stateOfDevice(snap, d.code);
+    const st: UiState = shownState(snap, d.code);
     const cur = out.get(d.building) ?? { st: 'ok' as UiState, n: 0, up: 0, total: 0 };
-    if (st === 'down' || st === 'cut') cur.st = 'down';
-    else if (st === 'warn' && cur.st !== 'down') cur.st = 'warn';
+    if (st === 'down') cur.st = 'down';
+    else if (st === 'cut' && cur.st !== 'down') cur.st = 'cut';
+    else if (st === 'warn' && cur.st !== 'down' && cur.st !== 'cut') cur.st = 'warn';
     else if (st === 'maint' && cur.st === 'ok') cur.st = 'maint';
     if (st === 'down' || st === 'cut' || st === 'warn') cur.n += 1;
     if (st !== 'maint') {
@@ -268,8 +286,9 @@ function buildingStates(layout: Layout | undefined, snap: StatusSnapshot | null)
   return out;
 }
 
-const RANK: Record<UiState, number> = { down: 0, cut: 0, warn: 1, maint: 2, ok: 3 };
-const bad = (s: BState | undefined) => !!s && (s.st === 'down' || s.st === 'warn');
+const RANK: Record<UiState, number> = { down: 0, cut: 1, warn: 2, maint: 3, ok: 4 };
+const bad = (s: BState | undefined) =>
+  !!s && (s.st === 'down' || s.st === 'cut' || s.st === 'warn');
 
 /** Buildings with a problem first (worst first, layout order otherwise). */
 function sortedBuildings(layout: Layout, states: Map<string, BState>) {
@@ -483,7 +502,7 @@ function FiberHealth({
   const fibers = (model?.links ?? []).filter((l) => l.kind === 'fiber');
   if (!fibers.length || !snap) return null;
   const badOnes = fibers
-    .map((f) => ({ f, st: stateOfDevice(snap, f.b) }))
+    .map((f) => ({ f, st: shownState(snap, f.b) }))
     .filter(({ st }) => st === 'down' || st === 'cut');
   if (!badOnes.length) return null; // all fine: nothing to say (declutter)
   const text = (key: string) => rows.find((r) => r.key === key)?.text ?? key;
@@ -499,7 +518,7 @@ function FiberHealth({
       {badOnes.map(({ f, st }) => (
         <button
           key={f.key}
-          className="fbad"
+          className={`fbad ${st}`}
           onClick={() => onGo(f.b)}
           title={`${text(f.key)} · ปลายทาง ${nm(f.b)} ${DEVICE_STATE_TH[st]}`}
         >
@@ -508,7 +527,7 @@ function FiberHealth({
             {text(f.key)}
             {f.cable && <small>{f.cable}</small>}
           </span>
-          <span className="st">{st === 'cut' ? 'ขาด' : 'ไม่ตอบ'}</span>
+          <span className="st">{st === 'cut' ? 'หลังต้นเหตุ' : 'ไม่ตอบ'}</span>
         </button>
       ))}
     </section>
@@ -862,7 +881,7 @@ export function NocShell() {
   const stateOf = useMemo(() => stateGetter(snap), [snap]);
   const bStates = useMemo(() => buildingStates(layout.data, snap), [layout.data, snap]);
   const fibers = useMemo(() => fiberRows(model, layout.data), [model, layout.data]);
-  const incCount = snap?.incidents.length ?? 0;
+  const incCount = ownCards(snap?.incidents ?? []).length;
   const outLinks = useOutLinks();
   const zabbixUrl = (code: string) => {
     const d = layout.data?.devices.find((x) => x.code === code);
@@ -1014,7 +1033,7 @@ export function NocShell() {
 
   /** Unacked incidents first (worst first, as listed), then the acked ones; wraps around. */
   const nextIncident = () => {
-    const list = snap?.incidents ?? [];
+    const list = ownCards(snap?.incidents ?? []);
     const order = [...list.filter((i) => !i.ack), ...list.filter((i) => i.ack)]
       .map((i) => i.device)
       .filter((d) => names.has(d));
@@ -1362,6 +1381,7 @@ export function NocShell() {
         <div id="rightcol">
           <FirstCard
             snap={snap}
+            layout={layout.data}
             names={names}
             demo={isDemo}
             now={now}

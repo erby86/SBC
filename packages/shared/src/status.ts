@@ -2,6 +2,7 @@
 // the demo mode (M38, ADR-0014) and the web client:
 //   maintenance (a device and everything below it) > down > cut off from upstream > warn > ok.
 // Only down/warn become incidents; a down device's impact is everything below it in the uplink tree.
+// A down device below another down device follows it (root cause = the topmost down one above).
 import { z } from 'zod';
 
 export const deviceStateSchema = z.enum(['ok', 'warn', 'down', 'cut', 'maint']);
@@ -52,6 +53,9 @@ export const incidentSchema = z.object({
   message: z.string(),
   /** Devices below this one that lost their path (down only). */
   impacted: z.number().int().nonnegative(),
+  /** Topmost down device above this one (down only): the incident follows that root cause and is
+   * grouped under it. Null = a root cause itself. Older snapshots have none. */
+  root: z.string().nullable().default(null),
   ack: z.object({ by: z.string(), note: z.string(), at: z.iso.datetime() }).nullable(),
 });
 export type Incident = z.infer<typeof incidentSchema>;
@@ -171,6 +175,19 @@ export function computeStatus(
     if (st !== 'ok') states[d.code] = st;
   }
 
+  // topmost down ancestor; null when there is none or the uplinks loop
+  const parent = new Map(topology.map((d) => [d.code, d.uplink]));
+  const rootOf = (code: string): string | null => {
+    const seen = new Set([code]);
+    let root: string | null = null;
+    for (let p = parent.get(code); p; p = parent.get(p)) {
+      if (seen.has(p)) return null;
+      seen.add(p);
+      if (stateOf(p) === 'down') root = p;
+    }
+    return root;
+  };
+
   const acks = new Map(input.acks.map((a) => [a.device, a]));
   const incidents: Incident[] = [];
   for (const [code, s] of signals) {
@@ -183,6 +200,7 @@ export function computeStatus(
       since: s.since,
       message: s.message,
       impacted: st === 'down' ? downstreamOf(children, code).size : 0,
+      root: st === 'down' ? rootOf(code) : null,
       ack: a ? { by: a.by, note: a.note, at: a.at } : null,
     });
   }

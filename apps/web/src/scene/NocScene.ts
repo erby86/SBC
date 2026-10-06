@@ -1137,8 +1137,14 @@ export class NocScene {
   private applyStatus() {
     if (!this.model) return;
     const C = this.C;
+    // a down device behind a down root cause went out with it: grey like the cut-off ones, so
+    // only the root cause is red
+    const follows = new Set(
+      (this.snap?.incidents ?? []).filter((i) => i.root !== null).map((i) => i.device),
+    );
     for (const d of this.devs.values()) {
       d.state = d.m.kind === 'planned' ? 'ok' : this.stateOf(d.m.code);
+      if (d.state === 'down' && follows.has(d.m.code)) d.state = 'cut';
       const c = this.colorOf(d.m.kind, d.state);
       d.mat.color.copy(c);
       d.mat.emissive.copy(c);
@@ -1153,7 +1159,7 @@ export class NocScene {
       l.mat.emissive.copy(c);
     }
     for (const l of this.links) {
-      l.state = this.stateOf(l.m.b);
+      l.state = this.devs.get(l.m.b)?.state ?? this.stateOf(l.m.b);
       const base = l.base();
       const st = l.state;
       l.mat.color.copy(
@@ -1165,13 +1171,15 @@ export class NocScene {
         for (const t of d.tail) t.color.copy(mm.color);
       }
     }
-    // buildings take their worst device state
+    // buildings take their worst device state: a root cause = down (red), only devices out
+    // behind a root cause elsewhere = cut (grey, dashed)
     for (const b of this.blds.values()) {
       let st: UiState = 'ok';
       for (const d of this.devs.values()) {
         if (d.m.building !== b.m.code || d.m.kind === 'planned') continue;
-        if (d.state === 'down' || d.state === 'cut') st = 'down';
-        else if (d.state === 'warn' && st !== 'down') st = 'warn';
+        if (d.state === 'down') st = 'down';
+        else if (d.state === 'cut' && st !== 'down') st = 'cut';
+        else if (d.state === 'warn' && st !== 'down' && st !== 'cut') st = 'warn';
         else if (d.state === 'maint' && st === 'ok') st = 'maint';
       }
       b.state = st;
@@ -1185,8 +1193,9 @@ export class NocScene {
     this.applyVisibility();
   }
 
+  /** Incidents with a beam, ring and badge: root causes and single ones (not their followers). */
   private incidents() {
-    return (this.snap?.incidents ?? []).filter((i) => this.devs.has(i.device));
+    return (this.snap?.incidents ?? []).filter((i) => i.root === null && this.devs.has(i.device));
   }
 
   private beamMat(c: THREE.Color, op: number) {

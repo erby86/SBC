@@ -62,6 +62,7 @@ describe('LiveStatus (M16)', () => {
             since: '2026-10-05T03:00:00.000Z',
             message: 'Unavailable by ICMP ping',
             impacted: 3,
+            root: null,
             ack: null,
           },
         ],

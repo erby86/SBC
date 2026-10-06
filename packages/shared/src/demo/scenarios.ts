@@ -1,4 +1,4 @@
-// The four prototype scenarios (docs/prototype/sb-noc-3d-baseline-v3.html, loadScenario) as fixtures
+// The prototype scenarios (+ storm, root-cause grouping) (docs/prototype/sb-noc-3d-baseline-v3.html, loadScenario) as fixtures
 // (M38, ADR-0014). Times are minutes before "now" so a scenario can be replayed at any moment.
 // Used by: status-engine tests (M15), the demo mode of the api/web (dev/staging/admins only), e2e.
 import type { StatusInput } from '../status.js';
@@ -86,6 +86,28 @@ export const DEMO_SCENARIOS: DemoScenario[] = [
     maintenance: [],
     labOnline: { 'LOC-045': 0, 'LOC-049': 0, 'LOC-050': 0, 'LOC-158': 24 },
     unlocated: unlocated(true),
+    history: HISTORY,
+  },
+  {
+    name: 'storm',
+    title: 'CCR1036 ล่ม ดับตามทั้งโรงเรียน',
+    description:
+      'CCR1036 ห้อง server ไม่ตอบ อุปกรณ์ 22 ตัวใน 6 อาคารดับตาม (Zabbix เห็น main ล่มด้วย 6 ตัว) อาคาร A กับ B ยังปกติเพราะต่อผ่าน MainA',
+    lastUpdateMin: 0,
+    signals: [
+      { device: 'c1036', severity: 'down', sinceMin: 6, message: 'ไม่ตอบ ping' },
+      ...['m-i2', 'm-s8', 'm-sp3', 'm-b1', 'm-b2', 'm-i1'].map((device) => ({
+        device,
+        severity: 'down' as const,
+        sinceMin: 5,
+        message: 'ไม่ตอบ ping',
+      })),
+      { device: 'mainB', severity: 'warn', sinceMin: 42, message: 'SFP 25 CRC +412 ใน 5 นาที' },
+    ],
+    acks: [],
+    maintenance: [],
+    labOnline: { 'LOC-045': 0, 'LOC-049': 0, 'LOC-050': 0, 'LOC-158': 0 },
+    unlocated: unlocated(false),
     history: HISTORY,
   },
   {

@@ -30,6 +30,20 @@ test('demo: incidents', async ({ page }, info) => {
   await checkScreen(page, info, '02-incidents');
 });
 
+test('demo: one root cause takes 21 devices with it (storm)', async ({ page }, info) => {
+  await openNoc(page, '/?demo=storm');
+  await expect(page.getByTestId('one-root')).toBeVisible();
+  // followers have no card of their own: the root cause and the separate warning only
+  await expect(panel(page).locator('.inc')).toHaveCount(2);
+  await expect(page.getByTestId('root-group')).toContainText('ดับตาม 21 ตัว ใน 6 อาคาร');
+  await page
+    .getByTestId('root-group')
+    .getByRole('button', { name: /ดูรายชื่อ/ })
+    .click();
+  await expect(page.getByTestId('root-group').locator('.glist li')).toHaveCount(21);
+  await checkScreen(page, info, '02b-storm');
+});
+
 test('demo: device details with Zabbix/Grafana/GLPI buttons', async ({ page }, info) => {
   await page.route('**/api/config/links', (r) => r.fulfill({ json: LINKS }));
   await openNoc(page, '/?demo=mixed');

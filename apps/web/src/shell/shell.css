@@ -156,10 +156,15 @@
   background: var(--warn);
   box-shadow: 0 0 0.45rem var(--warn);
 }
-.sdot.down,
-.sdot.cut {
+.sdot.down {
   background: var(--down);
   box-shadow: 0 0 0.45rem var(--down);
+}
+/* out behind a root cause elsewhere: grey, never red (only the root cause is red) */
+.sdot.cut {
+  background: transparent;
+  border: 1.5px dashed var(--cut-ink);
+  box-shadow: none;
 }
 .sdot.maint {
   background: var(--planned);
@@ -352,6 +357,13 @@
 .iss.warn {
   color: var(--warn-ink);
 }
+.iss.cut {
+  color: var(--cut-ink);
+}
+.bhot.cut {
+  outline: 1px dashed color-mix(in srgb, var(--cut-ink) 60%, transparent);
+  outline-offset: -1px;
+}
 .bhot .bar {
   flex: 1;
   margin: 0;
@@ -363,6 +375,9 @@
 }
 .bhot.down .bar i {
   background: var(--down);
+}
+.bhot.cut .bar i {
+  background: var(--muted);
 }
 .bhot .up {
   font-size: max(12px, 0.72rem);
@@ -444,6 +459,15 @@
   color: var(--down-ink);
   white-space: nowrap;
 }
+/* behind a root cause: grey dashed, not red */
+.fbad.cut {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--cut-ink) 55%, var(--line));
+  background: transparent;
+}
+.fbad.cut .st {
+  color: var(--cut-ink);
+}
 /* mini map only on the TV screen (declutter); the map card has its own home/top buttons */
 #miniBox {
   display: none;
@@ -512,6 +536,7 @@
   box-shadow: none;
 }
 .bchip.down,
+.bchip.cut,
 .bchip.warn,
 .bchip[aria-pressed='true'] {
   color: var(--ink);
@@ -645,6 +670,9 @@
 }
 .ring.maint {
   border-color: var(--planned);
+}
+.ring.cut {
+  border: 2px dashed var(--cut-ink);
 }
 @keyframes ringp {
   50% {
@@ -1017,6 +1045,88 @@
 }
 #first .hnote {
   margin: 0.55rem 0 0;
+}
+/* root-cause group: devices out with it per building, folded name list */
+#first .grp {
+  margin-top: 0.55rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--down) 30%, transparent);
+}
+#first .gnote {
+  margin: 0 0 0.4rem;
+  font-size: max(12px, 0.84rem);
+  color: var(--down-ink);
+}
+#first .gchips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+#first .gchips li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.2rem 0.45rem;
+  border: 1px dashed color-mix(in srgb, var(--cut-ink) 60%, transparent);
+  font-size: max(12px, 0.78rem);
+  color: var(--ink-2);
+}
+#first .gchips b {
+  color: var(--ink);
+}
+#first .gtoggle {
+  min-height: 2.75rem;
+  margin-top: 0.15rem;
+  padding: 0 0.1rem;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--down-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+#first .glist {
+  max-height: 9rem;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: max(12px, 0.78rem);
+}
+#first .glist button {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.25rem 0.1rem;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+  cursor: pointer;
+}
+#first .glist .gb {
+  margin-left: auto;
+  color: var(--ink-2);
+}
+/* top bar: everything out comes from one root cause */
+.oneroot {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  height: 1.6rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--down);
+  color: var(--down-ink);
+  font-size: max(12px, 0.78rem);
+  font-weight: 600;
+  white-space: nowrap;
 }
 #right {
   flex: 1 1 auto;

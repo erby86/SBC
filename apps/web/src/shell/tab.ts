@@ -3,6 +3,7 @@
 // while the tab is hidden makes the title blink until someone looks.
 import type { StatusSnapshot } from '@sbc-noc/shared';
 import { useEffect, useRef } from 'react';
+import { topCounts } from './console.js';
 import type { FeedEvent } from './events.js';
 
 export const APP_TITLE = 'ศูนย์ดูแลเครือข่าย';
@@ -20,8 +21,9 @@ export function tabState(snap: StatusSnapshot | null): TabState {
 export function tabTitle(snap: StatusSnapshot | null, demo: boolean): string {
   const pre = demo ? '[สาธิต] ' : '';
   const st = tabState(snap);
-  const down = snap?.incidents.filter((i) => i.severity === 'down').length ?? 0;
-  const warn = (snap?.incidents.length ?? 0) - down;
+  const tc = snap ? topCounts(snap) : null;
+  const down = tc?.out ?? 0;
+  const warn = tc?.warn ?? 0;
   if (st === 'stale') return `${pre}ข้อมูลค้าง · ${APP_TITLE}`;
   if (st === 'down')
     return `${pre}(${down}) ✕ ใช้งานไม่ได้${warn ? ` · ▲ ${warn}` : ''} · ${APP_TITLE}`;
@@ -64,11 +66,9 @@ export function useTabStatus(
 ): void {
   const title = tabTitle(snap, demo);
   const state = tabState(snap);
-  // same number as the title: devices down when any are, otherwise all incidents
-  const count =
-    state === 'down'
-      ? (snap?.incidents.filter((i) => i.severity === 'down').length ?? 0)
-      : (snap?.incidents.length ?? 0);
+  // same number as the title: devices out when any are, otherwise the warnings
+  const tc = snap ? topCounts(snap) : null;
+  const count = state === 'down' ? (tc?.out ?? 0) : (tc?.warn ?? 0);
   const titleRef = useRef(title);
   titleRef.current = title;
   const seen = useRef(new Set<string>());

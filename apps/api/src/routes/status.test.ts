@@ -14,6 +14,7 @@ const snap = (lastUpdate: string): StatusSnapshot => ({
       since: lastUpdate,
       message: 'ping',
       impacted: 1,
+      root: null,
       ack: null,
     },
   ],

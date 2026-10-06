@@ -1,7 +1,7 @@
-// Console rules of the decluttered layout: priority labels, the "do this first" incident, the
-// folded group of long-standing warnings, and the 24 h timeline bars under the map. Pure
+// Console rules of the decluttered layout: priority labels, the "do this first" incident, root-cause
+// groups, the folded group of long-standing warnings, and the 24 h timeline bars under the map. Pure
 // functions so the rules are tested without a browser.
-import type { StatusHistory, StatusSnapshot } from '@sbc-noc/shared';
+import { downstreamOf, type StatusHistory, type StatusSnapshot } from '@sbc-noc/shared';
 
 type Incident = StatusSnapshot['incidents'][number];
 
@@ -32,9 +32,83 @@ export function splitIncidents(list: readonly Incident[], now = Date.now()) {
   return { main, stale };
 }
 
-/** The incident to handle first: the first down one nobody has taken (list is worst first). */
+/** Incidents with a card of their own: root causes and single incidents. A down device behind
+ * another down device is listed inside its root cause's group instead. */
+export const ownCards = (list: readonly Incident[]): Incident[] =>
+  list.filter((i) => i.root === null);
+
+/** The incident to handle first: the first down root cause nobody has taken (list is worst first). */
 export const firstToHandle = (list: readonly Incident[]): Incident | null =>
-  list.find((i) => i.severity === 'down' && !i.ack) ?? null;
+  list.find((i) => i.severity === 'down' && i.root === null && !i.ack) ?? null;
+
+export interface GroupDevice {
+  code: string;
+  uplink: string | null;
+  building: string | null;
+}
+
+export interface RootGroup {
+  root: string;
+  /** Devices behind the root cause that are out with it (down or cut off), registry order. */
+  dark: string[];
+  /** Out devices per building (null = no building), most first. */
+  buildings: { code: string | null; n: number }[];
+}
+
+/** What went out with a down root cause: everything below it that is down or cut off now. */
+export function rootGroup(
+  snap: Pick<StatusSnapshot, 'states'>,
+  devices: readonly GroupDevice[],
+  root: string,
+): RootGroup {
+  const children = new Map<string, string[]>();
+  for (const d of devices)
+    if (d.uplink) children.set(d.uplink, [...(children.get(d.uplink) ?? []), d.code]);
+  const below = downstreamOf(children, root);
+  const dark = devices
+    .filter((d) => below.has(d.code))
+    .filter((d) => snap.states[d.code] === 'down' || snap.states[d.code] === 'cut');
+  const per = new Map<string | null, number>();
+  for (const d of dark) per.set(d.building, (per.get(d.building) ?? 0) + 1);
+  const buildings = [...per]
+    .map(([code, n]) => ({ code, n }))
+    .sort((a, b) => b.n - a.n || String(a.code).localeCompare(String(b.code)));
+  return { root, dark: dark.map((d) => d.code), buildings };
+}
+
+/** State as drawn: a down device behind a down root cause went out with it, so it shows grey
+ * (cut) like the devices cut off; only the root cause is red. */
+export function shownState(
+  snap: Pick<StatusSnapshot, 'states' | 'incidents'> | null,
+  code: string,
+): 'ok' | StatusSnapshot['states'][string] {
+  const st = snap?.states[code] ?? 'ok';
+  return st === 'down' && snap?.incidents.some((i) => i.device === code && i.root !== null)
+    ? 'cut'
+    : st;
+}
+
+/** Top bar numbers: devices out (down + cut off), how many root causes, warnings, not taken. */
+export function topCounts(
+  snap: Pick<StatusSnapshot, 'counts' | 'incidents' | 'states'>,
+  /** Devices on this screen (layout); without it every device of the snapshot counts. */
+  known?: (code: string) => boolean,
+) {
+  const own = ownCards(snap.incidents);
+  const out = known
+    ? Object.entries(snap.states).filter(([c, st]) => (st === 'down' || st === 'cut') && known(c))
+        .length
+    : snap.counts.down + snap.counts.cut;
+  const roots = own.filter((i) => i.severity === 'down').length;
+  return {
+    out,
+    roots,
+    /** Everything out comes from one root cause (badge "จากต้นเหตุเดียว"). */
+    oneRoot: roots === 1 && out > 1,
+    warn: own.filter((i) => i.severity === 'warn').length,
+    open: own.filter((i) => !i.ack).length,
+  };
+}
 
 export interface TimelineBar {
   device: string | null;

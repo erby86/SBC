@@ -3,6 +3,7 @@
 // beeps when a new device goes down. `/?tv` starts in TV mode (kiosk screens, M34).
 import type { StatusSnapshot } from '@sbc-noc/shared';
 import { useEffect, useRef, useState } from 'react';
+import { ownCards } from './console.js';
 
 export const TV_CYCLE_MS = 10_000;
 
@@ -60,7 +61,7 @@ export function useTvMode(opts: {
   useEffect(() => {
     if (!on) return;
     const step = () => {
-      const open = (cb.current.snap?.incidents ?? []).filter((i) => !i.ack);
+      const open = ownCards(cb.current.snap?.incidents ?? []).filter((i) => !i.ack);
       if (open.length)
         cb.current.onShow((open[idx.current++ % open.length] as { device: string }).device);
       else cb.current.onIdle();

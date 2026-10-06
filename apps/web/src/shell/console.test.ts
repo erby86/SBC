@@ -2,9 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   firstToHandle,
   isLongStanding,
+  ownCards,
   priority,
+  rootGroup,
+  shownState,
   splitIncidents,
   timelineBars,
+  topCounts,
 } from './console.js';
 
 const NOW = Date.parse('2026-10-05T12:00:00Z');
@@ -15,7 +19,8 @@ const inc = (
   days: number,
   impacted = 0,
   ack: { by: string; note: string; at: string } | null = null,
-) => ({ device, severity, since: daysAgo(days), message: 'x', impacted, ack });
+  root: string | null = null,
+) => ({ device, severity, since: daysAgo(days), message: 'x', impacted, ack, root });
 
 describe('priority', () => {
   it('P1 down with impact, P2 down, P3 warn', () => {
@@ -86,5 +91,77 @@ describe('timelineBars', () => {
         .bars,
     ).toEqual([]);
     expect(timelineBars(null, NOW).bars).toEqual([]);
+  });
+});
+
+describe('root-cause groups', () => {
+  // core → c1036 → (m-i2 → sw-i2), (m-s8 → fin); mainA → mainB
+  const devices = [
+    { code: 'core', uplink: null, building: 'b2' },
+    { code: 'c1036', uplink: 'core', building: 'b2' },
+    { code: 'm-i2', uplink: 'c1036', building: 'i2' },
+    { code: 'sw-i2', uplink: 'm-i2', building: 'i2' },
+    { code: 'm-s8', uplink: 'c1036', building: 's8' },
+    { code: 'fin', uplink: 'm-s8', building: 's8' },
+    { code: 'sw-i2-b', uplink: 'm-i2', building: 'i2' },
+    { code: 'mainA', uplink: 'core', building: 'ba' },
+    { code: 'mainB', uplink: 'mainA', building: 'bb' },
+  ];
+  const incidents = [
+    inc('c1036', 'down', 0.01, 6),
+    inc('m-i2', 'down', 0.01, 2, null, 'c1036'),
+    inc('m-s8', 'down', 0.01, 1, null, 'c1036'),
+    inc('mainB', 'warn', 0.02),
+  ];
+  const states = {
+    c1036: 'down',
+    'm-i2': 'down',
+    'm-s8': 'down',
+    'sw-i2': 'cut',
+    'sw-i2-b': 'cut',
+    fin: 'cut',
+    mainB: 'warn',
+  } as const;
+
+  it('followers have no card of their own and are never handled first', () => {
+    expect(ownCards(incidents).map((i) => i.device)).toEqual(['c1036', 'mainB']);
+    expect(firstToHandle([...incidents].reverse())?.device).toBe('c1036');
+  });
+
+  it('lists everything out behind the root cause, per building most first', () => {
+    const g = rootGroup({ states }, devices, 'c1036');
+    expect(g.dark).toEqual(['m-i2', 'sw-i2', 'm-s8', 'fin', 'sw-i2-b']);
+    expect(g.buildings).toEqual([
+      { code: 'i2', n: 3 },
+      { code: 's8', n: 2 },
+    ]);
+  });
+
+  it('top bar counts devices out, flags a single root cause, counts groups once', () => {
+    const counts = { ok: 2, warn: 1, down: 3, cut: 3, maint: 0 };
+    expect(topCounts({ counts, incidents, states })).toEqual({
+      out: 6,
+      roots: 1,
+      oneRoot: true,
+      warn: 1,
+      open: 2,
+    });
+    // only devices of this screen count when the layout is known
+    expect(topCounts({ counts, incidents, states }, (c) => c !== 'fin').out).toBe(5);
+    const single = topCounts({
+      counts: { ok: 8, warn: 0, down: 1, cut: 0, maint: 0 },
+      incidents: [inc('ap', 'down', 0.01)],
+      states: { ap: 'down' },
+    });
+    expect(single).toMatchObject({ out: 1, roots: 1, oneRoot: false });
+  });
+
+  it('draws a follower grey (cut), the root cause red', () => {
+    const snap = { states, incidents };
+    expect(shownState(snap, 'c1036')).toBe('down');
+    expect(shownState(snap, 'm-i2')).toBe('cut');
+    expect(shownState(snap, 'sw-i2')).toBe('cut');
+    expect(shownState(snap, 'core')).toBe('ok');
+    expect(shownState(null, 'core')).toBe('ok');
   });
 });
