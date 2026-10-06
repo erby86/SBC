@@ -868,18 +868,24 @@ export function NocShell() {
     (root: string) => (snap ? rootGroup(snap, layout.data?.devices ?? [], root).dark.length : 0),
     [snap, layout.data],
   );
-  // the not-live band sits over the top of the scene: scene labels keep below it
+  // what floats over the top of the scene (the map title from 1180 px, the not-live band):
+  // scene labels keep below it instead of hiding under it
   useEffect(() => {
     if (!scene) return;
+    const stage = document.querySelector<HTMLElement>('#center > .stage');
+    const head = document.querySelector<HTMLElement>('#center > .mhead');
     const band = cause ? document.getElementById('staleBand') : null;
-    if (!band) {
-      scene.setTopInset(0);
-      return;
-    }
-    const fit = () => scene.setTopInset(band.offsetTop + band.offsetHeight + 4);
+    const fit = () => {
+      const top = stage?.getBoundingClientRect().top ?? 0;
+      let inset = 0;
+      if (head && getComputedStyle(head).position === 'absolute')
+        inset = head.getBoundingClientRect().bottom - top;
+      if (band) inset = Math.max(inset, band.getBoundingClientRect().bottom - top + 4);
+      scene.setTopInset(inset);
+    };
     fit();
     const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(fit);
-    ro?.observe(band);
+    for (const el of [stage, head, band]) if (el) ro?.observe(el);
     return () => {
       ro?.disconnect();
       scene.setTopInset(0);

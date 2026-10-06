@@ -2941,3 +2941,49 @@ code {
   font-size: max(12px, 0.72rem);
   opacity: 0.85;
 }
+
+/* ── layout fit (2026-10-07): every column inside the window, nothing hidden under an overlay ── */
+@media (min-width: 980px) {
+  /* "ทำอะไรก่อน" may grow (a storm lists 6 buildings and the path) but never pushes the alerts
+     out of the window: it scrolls inside, the alerts keep at least a few cards */
+  #rightcol {
+    overflow: hidden;
+  }
+  #rightcol > #first {
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: 62%;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  #rightcol > #right {
+    flex: 1 1 9rem;
+    min-height: 9rem;
+  }
+}
+@media (min-width: 1180px) {
+  /* the floating map title: no dimming band over the scene (labels keep below it instead) */
+  #center > .mhead {
+    padding-bottom: 0.55rem;
+    background: none;
+  }
+  #center > .mhead .ptitle {
+    text-shadow: 0 1px 3px var(--bg);
+  }
+}
+/* 24 h strip: an incident still open since before the window is drawn as a dashed line, so a
+   long warning does not read as a filled progress bar */
+.tb.open {
+  background: repeating-linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--down) 70%, transparent) 0 5px,
+    transparent 5px 9px
+  );
+}
+.tb.warn.open {
+  background: repeating-linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--warn) 60%, transparent) 0 5px,
+    transparent 5px 9px
+  );
+}
