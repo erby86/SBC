@@ -35,8 +35,14 @@ export interface TagOut {
 type Rect = [number, number, number, number];
 
 /** Places the tags in a W×H box; the result is in input order. */
-export function placeTags(tags: readonly TagIn[], W: number, H: number): TagOut[] {
-  const placed: Rect[] = [];
+export function placeTags(
+  tags: readonly TagIn[],
+  W: number,
+  H: number,
+  /** Height kept clear at the top (a band over the scene); tags stay below it. */
+  top = 0,
+): TagOut[] {
+  const placed: Rect[] = top > 0 ? [[0, -1000, W, 1000 + top]] : [];
   const overlaps = (r: Rect) =>
     placed.some(
       (p) =>
@@ -51,11 +57,13 @@ export function placeTags(tags: readonly TagIn[], W: number, H: number): TagOut[
     .sort((a, b) => a.t.rank - b.t.rank || a.t.sy - b.t.sy);
   for (const { t, i } of order) {
     const { w, h } = t;
+    // a quiet name whose point is under the band has nothing to point at
+    if (t.sy < top && !(t.keep ?? t.major)) continue;
     const clampX = (cx: number) => Math.max(w / 2 + 4, Math.min(W - w / 2 - 4, cx));
-    const clampY = (cy: number) => Math.max(h + 4, Math.min(H - 4, cy));
+    const clampY = (cy: number) => Math.max(top + h + 4, Math.min(H - 4, cy));
     if (t.below) {
       const x = clampX(t.sx);
-      const y = Math.max(4, Math.min(H - h - 4, t.sy));
+      const y = Math.max(top + 4, Math.min(H - h - 4, t.sy));
       const r: Rect = [x - w / 2, y, w, h];
       if (overlaps(r)) continue;
       placed.push(r);

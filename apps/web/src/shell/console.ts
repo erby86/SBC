@@ -178,6 +178,9 @@ export function logLines(
   history: StatusHistory | null | undefined,
   snap: Pick<StatusSnapshot, 'stale' | 'lastUpdate' | 'incidents'> | null,
   max = 60,
+  /** Devices out behind a root cause, as its card counts them (rootGroup); without it the line
+   * counts only the followers Zabbix reported itself. */
+  outOf?: (root: string) => number,
 ): LogLine[] {
   const rootOf = new Map(
     (snap?.incidents ?? []).filter((i) => i.root !== null).map((i) => [i.device, i.root as string]),
@@ -211,16 +214,18 @@ export function logLines(
         outMin: Math.max(1, Math.round((Date.parse(e.end) - Date.parse(e.start)) / 60_000)),
       });
   }
-  for (const [root, f] of folded)
+  for (const [root, f] of folded) {
+    const n = Math.max(f.n, outOf?.(root) ?? 0);
     lines.push({
       at: f.at,
       level: 'down',
       device: root,
-      host: `+${f.n} ตัว`,
+      host: `+${n} ตัว`,
       message: root,
-      followers: f.n,
+      followers: n,
       root,
     });
+  }
   lines.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
   if (snap?.stale)
     lines.unshift({

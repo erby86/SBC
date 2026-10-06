@@ -1,9 +1,10 @@
 // Hamburger menu of the top bar: everything that is not needed every minute (view modes, layers,
 // fibre colours, devices without a position, help, back office). Esc or a click outside closes it.
 import { LAYERS, type LayerKey } from '@sbc-noc/ui';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { Icon, type IconName } from './icons.js';
+import { Leaving } from './leaving.js';
 
 export interface MenuProps {
   ready: boolean;
@@ -59,6 +60,21 @@ export function Menu(p: MenuProps) {
   const [open, setOpen] = useState(false);
   const [fib, setFib] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+
+  // the panel ends above the window's bottom edge whatever sits above the top bar (demo band),
+  // and scrolls inside when the window is short
+  useLayoutEffect(() => {
+    if (!open) return;
+    const fit = () => {
+      const el = panel.current;
+      if (!el) return;
+      el.style.maxHeight = `${Math.max(160, window.innerHeight - el.getBoundingClientRect().top - 12)}px`;
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -101,8 +117,8 @@ export function Menu(p: MenuProps) {
       >
         <Icon name="menu" />
       </button>
-      {open && (
-        <div id="menuPanel" className="panel" role="group" aria-label="เมนู">
+      <Leaving show={open}>
+        <div id="menuPanel" ref={panel} className="panel" role="group" aria-label="เมนู">
           <p className="mh">มุมมอง</p>
           <Item
             icon="top"
@@ -154,8 +170,8 @@ export function Menu(p: MenuProps) {
                   {p.fibers.map((f) => (
                     <span key={f.key}>
                       <i className="fl" style={{ background: f.color ?? undefined }} />
-                      {f.text}
-                      {f.cable ? <small> · {f.cable}</small> : null}
+                      <span className="ft">{f.text}</span>
+                      {f.cable ? <small>{f.cable}</small> : null}
                     </span>
                   ))}
                 </div>
@@ -175,7 +191,7 @@ export function Menu(p: MenuProps) {
             <span className="ml">จัดการทะเบียน</span>
           </Link>
         </div>
-      )}
+      </Leaving>
     </div>
   );
 }

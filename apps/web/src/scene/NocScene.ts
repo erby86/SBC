@@ -291,6 +291,7 @@ export class NocScene {
   private fpsFrames = 0;
   private fpsWindows = 0;
   private fpsLast = 0;
+  private topInset = 0;
   private readonly ro: ResizeObserver | null;
   private readonly cleanups: (() => void)[] = [];
   private readonly tmp = {
@@ -491,6 +492,11 @@ export class NocScene {
   topView(on: boolean): void {
     if (on) this.flyTo(new THREE.Vector3(0, 150, 20.1), new THREE.Vector3(0, 0, 20));
     else this.flyHome();
+  }
+
+  /** Pixels at the top of the scene covered by a band (the not-live band): labels stay below. */
+  setTopInset(px: number): void {
+    this.topInset = Math.max(0, Math.round(px));
   }
 
   /** Stop the scene's motion while the data is not fresh; stillness says "this is not live". */
@@ -1674,7 +1680,13 @@ export class NocScene {
     }
     for (const l of this.labelsList) {
       v.copy(l.pos).project(this.camera);
-      if (v.z > 1 || (!!l.device && this.badges.has(l.device))) {
+      // open areas (dome, field, pool, playground) are named only once someone moves in:
+      // at the whole-school view their names sit among the buildings and read as clutter
+      if (
+        v.z > 1 ||
+        (!!l.device && this.badges.has(l.device)) ||
+        (this.atHome && l.el.classList.contains('area'))
+      ) {
         l.el.style.visibility = 'hidden';
         continue;
       }
@@ -1692,7 +1704,7 @@ export class NocScene {
         below: l.below,
       });
     }
-    placeTags(tags, W, Hh).forEach((o, k) => {
+    placeTags(tags, W, Hh, this.topInset).forEach((o, k) => {
       const el = els[k] as HTMLElement;
       el.style.visibility = o.hidden ? 'hidden' : 'visible';
       if (o.hidden) return;

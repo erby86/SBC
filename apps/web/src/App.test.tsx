@@ -356,14 +356,14 @@ describe('NOC screen panels and modes (M20)', () => {
     expect(localStorage.getItem('noc-tour')).toBe('1');
   });
 
-  it('TV mode enlarges the page and shows the incidents nobody has taken', async () => {
+  it('TV mode enlarges the page and keeps the camera still on the whole school', async () => {
     renderAt('/', <App />);
     await loaded();
     push(snapshot(false));
     act(() => screen.getByTestId('menu').click());
     act(() => screen.getByTestId('tv').click());
     expect(document.documentElement.classList.contains('tv')).toBe(true);
-    expect(screen.getByTestId('info').textContent).toContain('8 เซียน main');
+    expect(screen.queryByTestId('info')).toBeNull();
     act(() => screen.getByTestId('menu').click());
     act(() => screen.getByTestId('tv').click());
     expect(document.documentElement.classList.contains('tv')).toBe(false);

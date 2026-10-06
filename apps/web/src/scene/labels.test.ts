@@ -84,4 +84,16 @@ describe('label placement', () => {
     );
     expect(out[1]?.hidden).toBe(true);
   });
+
+  it('a band over the top of the scene: labels stay below it, quiet ones under it hide', () => {
+    const [problem, quiet] = placeTags(
+      [tag(200, 40, { major: true, rank: 0, keep: true }), tag(500, 30, { rank: 4 })],
+      800,
+      600,
+      80,
+    );
+    expect(problem?.hidden).toBe(false);
+    expect((problem?.y ?? 0) - 20).toBeGreaterThanOrEqual(80);
+    expect(quiet?.hidden).toBe(true);
+  });
 });

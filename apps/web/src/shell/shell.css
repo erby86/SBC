@@ -2918,3 +2918,26 @@ code {
 #top .chip b {
   font-variant-numeric: tabular-nums;
 }
+
+/* exit motion wrapper (shell/leaving.tsx): no box of its own */
+.leaving {
+  display: contents;
+}
+
+/* fibre colours in the menu: route on one line, cable code under it, never split mid-code */
+#fiberLegend > span {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0;
+}
+#fiberLegend .ft {
+  min-width: 0;
+}
+#fiberLegend small {
+  grid-column: 2;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: max(12px, 0.72rem);
+  opacity: 0.85;
+}

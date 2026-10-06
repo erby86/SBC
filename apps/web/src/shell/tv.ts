@@ -1,11 +1,9 @@
-// M20 TV mode (prototype btnTV): full screen, larger text, panels for watching only; cycles the
-// incidents nobody has taken every 10 s, stays still on the whole school when there is none, and
-// beeps when a new device goes down. `/?tv` starts in TV mode (kiosk screens, M34).
+// M20 TV mode (prototype btnTV): full screen, larger text, panels for watching only; beeps when a
+// new device goes down. `/?tv` starts in TV mode (kiosk screens, M34). The camera stays on the
+// whole school: it moves only when someone presses (motion standard, Standard.dc.html) — the
+// incidents are on the scene's labels and in the panels. (Until 2026-10-07 it cycled every 10 s.)
 import type { StatusSnapshot } from '@sbc-noc/shared';
 import { useEffect, useRef, useState } from 'react';
-import { ownCards } from './console.js';
-
-export const TV_CYCLE_MS = 10_000;
 
 let audio: AudioContext | null = null;
 /** Two short 880 Hz beeps; silently nothing when audio is blocked. */
@@ -38,9 +36,7 @@ export const tvParam = (search: string) => new URLSearchParams(search).has('tv')
 export function useTvMode(opts: {
   initial: boolean;
   snap: StatusSnapshot | null;
-  /** Show one incident (fly + details). */
-  onShow: (device: string) => void;
-  /** Nothing to show: whole school, slow turn. */
+  /** Entering TV mode: whole school, nothing selected. */
   onIdle: () => void;
   /** Leaving TV mode. */
   onExit: () => void;
@@ -48,7 +44,6 @@ export function useTvMode(opts: {
   const [on, setOn] = useState(opts.initial);
   const cb = useRef(opts);
   cb.current = opts;
-  const idx = useRef(0);
   const known = useRef<Set<string> | null>(null);
 
   // page frame: larger text (tokens.css :root.tv) + body class for the layout
@@ -57,18 +52,9 @@ export function useTvMode(opts: {
     return () => document.documentElement.classList.remove('tv');
   }, [on]);
 
-  // the cycle
+  // entering TV mode: back to the whole school, then still
   useEffect(() => {
-    if (!on) return;
-    const step = () => {
-      const open = ownCards(cb.current.snap?.incidents ?? []).filter((i) => !i.ack);
-      if (open.length)
-        cb.current.onShow((open[idx.current++ % open.length] as { device: string }).device);
-      else cb.current.onIdle();
-    };
-    step();
-    const t = setInterval(step, TV_CYCLE_MS);
-    return () => clearInterval(t);
+    if (on) cb.current.onIdle();
   }, [on]);
 
   // beep on a new down device (not on the first snapshot after loading)
@@ -94,7 +80,6 @@ export function useTvMode(opts: {
       /* fullscreen not allowed */
     }
     if (next) {
-      idx.current = 0;
       beep(); // also unlocks audio for later alerts (user gesture)
     } else {
       cb.current.onExit();

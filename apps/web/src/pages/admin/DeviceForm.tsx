@@ -8,6 +8,7 @@ import { api, EditError, useDevices, useOptions, useRooms } from './editApi.js';
 import { Field, num, val } from './Field.js';
 import { History } from './History.js';
 import { ConfirmDialog, notify } from './popups.js';
+import { Leaving } from '../../shell/leaving.js';
 
 type Form = Omit<DeviceEdit, 'rowVersion' | 'managedBy'>;
 
@@ -315,7 +316,7 @@ export function DeviceForm({ code }: { code: string | null }) {
           )}
         </div>
       </form>
-      {ask === 'save' && (
+      <Leaving show={ask === 'save'}>
         <ConfirmDialog
           title={code === null ? 'ยืนยันเพิ่มอุปกรณ์' : `ยืนยันบันทึก ${code}`}
           confirmText={code === null ? 'เพิ่มอุปกรณ์' : 'ยืนยันบันทึก'}
@@ -347,8 +348,8 @@ export function DeviceForm({ code }: { code: string | null }) {
           </table>
           <p className="fhint">บันทึกพร้อมชื่อผู้แก้และ IP ในประวัติ</p>
         </ConfirmDialog>
-      )}
-      {ask === 'delete' && code !== null && (
+      </Leaving>
+      <Leaving show={ask === 'delete' && code !== null}>
         <ConfirmDialog
           title={`ลบ ${code}?`}
           confirmText="ลบอุปกรณ์"
@@ -359,7 +360,7 @@ export function DeviceForm({ code }: { code: string | null }) {
         >
           <p>เก็บประวัติไว้ และรหัสนี้จะไม่นำกลับมาใช้อีก</p>
         </ConfirmDialog>
-      )}
+      </Leaving>
       {code !== null && <History kind="device" code={code} />}
     </div>
   );

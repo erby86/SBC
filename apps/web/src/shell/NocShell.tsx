@@ -32,8 +32,9 @@ import { buildSceneModel, deviceKind, type SceneModel } from '../scene/model.js'
 import type { NocScene, Selection } from '../scene/NocScene.js';
 import { useIncidentFeed, useNow } from './events.js';
 import { useTabStatus } from './tab.js';
-import { ownCards, shownState, topCounts } from './console.js';
+import { ownCards, rootGroup, shownState, topCounts } from './console.js';
 import { EventLog } from './evlog.js';
+import { Leaving } from './leaving.js';
 import { Feed } from './feed.js';
 import { Help, Tour, tourSeen } from './Help.js';
 import { Icon } from './icons.js';
@@ -862,6 +863,28 @@ export function NocShell() {
       ? 'zabbix'
       : null
     : staleCause({ online: live.online, link: live.link, stale: snap?.stale });
+  // "+N ตัว" in the log counts like the root-cause card: every device out behind the root
+  const outOf = useCallback(
+    (root: string) => (snap ? rootGroup(snap, layout.data?.devices ?? [], root).dark.length : 0),
+    [snap, layout.data],
+  );
+  // the not-live band sits over the top of the scene: scene labels keep below it
+  useEffect(() => {
+    if (!scene) return;
+    const band = cause ? document.getElementById('staleBand') : null;
+    if (!band) {
+      scene.setTopInset(0);
+      return;
+    }
+    const fit = () => scene.setTopInset(band.offsetTop + band.offsetHeight + 4);
+    fit();
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(fit);
+    ro?.observe(band);
+    return () => {
+      ro?.disconnect();
+      scene.setTopInset(0);
+    };
+  }, [scene, cause]);
   const zabbixHome = useMemo(() => {
     try {
       return outLinks.zabbix ? new URL(outLinks.zabbix.replace(/\{[^}]*\}/g, '0')).origin : null;
@@ -961,11 +984,6 @@ export function NocShell() {
   const tv = useTvMode({
     initial: tvParam(loc.search),
     snap,
-    onShow: (device) => {
-      tvIdle.current = false;
-      scene?.setAutoRotate(false);
-      go(device);
-    },
     onIdle: () => {
       if (tvIdle.current) return;
       tvIdle.current = true;
@@ -1334,7 +1352,7 @@ export function NocShell() {
               />
             )}
           </div>
-          <EventLog history={history} snap={snap} names={names} now={now} onGo={go} />
+          <EventLog history={history} snap={snap} names={names} now={now} outOf={outOf} onGo={go} />
         </main>
 
         <div id="rightcol">
@@ -1383,7 +1401,7 @@ export function NocShell() {
           </aside>
         </div>
 
-        {help && (
+        <Leaving show={help}>
           <Help
             fibers={fibers.map((f) => ({ color: f.color, text: f.text }))}
             demo={demoLabel}
@@ -1393,7 +1411,7 @@ export function NocShell() {
               setTour(true);
             }}
           />
-        )}
+        </Leaving>
         {tour && <Tour onDone={() => setTour(false)} />}
       </div>
     </div>

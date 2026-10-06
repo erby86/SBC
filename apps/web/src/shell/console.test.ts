@@ -225,6 +225,21 @@ describe('event log (syslog style)', () => {
     expect(lines[0]?.device).toBe('c1036');
   });
 
+  it('the "+N" line can count like the root-cause card (devices cut off included)', () => {
+    const snap = {
+      stale: false,
+      lastUpdate: at(0),
+      incidents: [inc('c1036', 'down', 0.01, 21), inc('m-i2', 'down', 0.01, 7, null, 'c1036')],
+    };
+    const lines = logLines(
+      history([ev('c1036', 'down', 6, null), ev('m-i2', 'down', 5, null)]),
+      snap,
+      60,
+      (root) => (root === 'c1036' ? 21 : 0),
+    );
+    expect(lines[0]).toMatchObject({ host: '+21 ตัว', followers: 21, root: 'c1036' });
+  });
+
   it('puts a system line on top when the data is not fresh', () => {
     const lines = logLines(history([ev('mainB', 'warn', 40, null)]), {
       stale: true,

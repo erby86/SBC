@@ -26,18 +26,21 @@ export function EventLog({
   snap,
   names,
   now,
+  outOf,
   onGo,
 }: {
   history: StatusHistory | null | undefined;
   snap: StatusSnapshot | null;
   names: Names;
   now: number;
+  /** Devices out behind a root cause, counted like its card. */
+  outOf?: (root: string) => number;
   onGo: (code: string) => void;
 }) {
   if (!history) return null;
   const { bars, from } = timelineBars(history, now);
   const nm = (b: TimelineBar) => (b.device && names.has(b.device) ? names.name(b.device) : b.host);
-  const lines = logLines(history, snap);
+  const lines = logLines(history, snap, 60, outOf);
   const today = new Date(now).toDateString();
   const text = (l: LogLine) => {
     if (l.level === 'sys') return `${l.message} แสดงสถานะ ณ ${hhmm(l.at, new Date(now))}`;
