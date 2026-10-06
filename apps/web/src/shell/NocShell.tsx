@@ -972,7 +972,7 @@ export function NocShell() {
       setSel(null);
       scene?.select(null, false);
       focus(null);
-      scene?.setAutoRotate(true);
+      // nothing wrong: the screen stays still (motion standard), no turning around the school
     },
     onExit: () => {
       tvIdle.current = false;

@@ -109,6 +109,12 @@
   --font-mono: 'IBM Plex Mono', 'Noto Sans Thai Variable', ui-monospace, Menlo, monospace;
   /* HUD panels: chamfered top-right and bottom-left corners */
   --chamfer: 10px;
+  /* motion standard: things come in slowing down, go out speeding up, buttons answer at once */
+  --t-in: 0.6s;
+  --ease-in: cubic-bezier(0.16, 0.84, 0.3, 1);
+  --t-out: 0.3s;
+  --ease-out: cubic-bezier(0.55, 0, 0.9, 0.4);
+  --t-press: 0.1s;
   /* solid surface for native popups (<option>) — they ignore translucent panels */
   --surface: #101a2b;
   /* native controls (select popups, scrollbars, date pickers) follow the theme */

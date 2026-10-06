@@ -1,5 +1,5 @@
 // M20 TV mode (prototype btnTV): full screen, larger text, panels for watching only; cycles the
-// incidents nobody has taken every 10 s, turns slowly around the school when there is none, and
+// incidents nobody has taken every 10 s, stays still on the whole school when there is none, and
 // beeps when a new device goes down. `/?tv` starts in TV mode (kiosk screens, M34).
 import type { StatusSnapshot } from '@sbc-noc/shared';
 import { useEffect, useRef, useState } from 'react';

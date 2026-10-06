@@ -51,6 +51,10 @@ export interface SceneOptions {
 // home view direction (and the view before the layout is loaded); the distance and centre are
 // fitted to the buildings and the card size (homeView)
 const HOME = { pos: new THREE.Vector3(-49, 56, 80), tgt: new THREE.Vector3(0, 2, 20) };
+/** Motion standard (canvas "มาตรฐานหน้าจอ NOC"): packets are the only thing that loops, one per
+ * link, released together every 2.4 s (4.8 s on a weak link, none when cut off or behind a root
+ * cause); the camera moves only when someone asks, in 0.9 s; selecting a problem ripples twice. */
+const MOTION = { packetMs: 2400, weakPacketMs: 4800, cameraS: 0.9, rippleMs: 1500, ripples: 2 };
 /** Room kept around the school in the home view (NDC): labels sit above the roofs. */
 const FIT = { x: 0.9, top: 0.72, bottom: -0.9 };
 const AUTO_ECO_FPS = 24;
@@ -152,8 +156,9 @@ interface Fx {
   severity: 'down' | 'warn';
   ring: THREE.Mesh;
   beam: THREE.Mesh | null;
-  phase: number;
   code: string;
+  /** When the selection ripple started (0 = none); it runs MOTION.ripples times, then stops. */
+  rippleAt: number;
 }
 
 const GEO: Record<DeviceKind | 'lab', () => THREE.BufferGeometry> = {
@@ -362,18 +367,7 @@ export class NocScene {
 
     this.resize();
     this.retheme();
-    if (!this.reduce) {
-      // fly in from high above, like the prototype's first frame
-      this.camera.position.set(-20, 260, 240);
-      this.fly = {
-        p0: this.camera.position.clone(),
-        t0: HOME.tgt.clone(),
-        p1: HOME.pos.clone(),
-        t1: HOME.tgt.clone(),
-        k: 0,
-        spd: 0.4,
-      };
-    }
+    // no fly-in: the camera moves only when someone asks (motion standard)
     this.raf = requestAnimationFrame(this.tick);
   }
 
@@ -450,6 +444,8 @@ export class NocScene {
       if (!d) return;
       d.scale = 1.6;
       if (d.mesh) d.mesh.scale.setScalar(1.6);
+      const f = this.fx.get(sel.code);
+      if (f) f.rippleAt = performance.now();
       p = new THREE.Vector3(d.m.pos.x, d.m.pos.y, d.m.pos.z);
       if (fly && d.m.building && d.m.building !== this.focusB) {
         const b = this.blds.get(d.m.building);
@@ -967,8 +963,8 @@ export class NocScene {
         this.content.add(line);
         const bright = fc.clone().lerp(new THREE.Color('#ffffff'), 0.55);
         const dots: Dot[] = [];
-        for (let i = 0; i < 7; i++) {
-          const back = i >= 5;
+        for (let i = 0; i < 1; i++) {
+          const back = false;
           const dm = new THREE.MeshBasicMaterial({
             color: back ? fc.clone() : bright.clone(),
             transparent: true,
@@ -989,8 +985,8 @@ export class NocScene {
           });
           dots.push({
             mesh,
-            t: back ? (i - 5) / 2 + 0.25 : i / 5,
-            dir: back ? -1 : 1,
+            t: 0,
+            dir: 1,
             base: dm.color.clone(),
             tail,
           });
@@ -1004,7 +1000,7 @@ export class NocScene {
           base: () => fc,
           baseOpacity: 1,
           dots,
-          speed: 7 / len,
+          speed: 0,
           state: 'ok',
           apIndex: -1,
           visible: true,
@@ -1030,7 +1026,7 @@ export class NocScene {
       );
       if (planned) line.computeLineDistances();
       this.content.add(line);
-      const n = planned ? 0 : m.kind === 'riser' ? 1 : m.kind === 'core' ? 4 : 2;
+      const n = planned ? 0 : 1;
       const dots: Dot[] = [];
       for (let i = 0; i < n; i++) {
         const mesh = new THREE.Mesh(
@@ -1049,7 +1045,7 @@ export class NocScene {
         base: () => this.C[key],
         baseOpacity: planned ? 0.7 : 0.85,
         dots,
-        speed: m.kind === 'wan' ? 0.25 : m.kind === 'riser' ? 0.35 : 0.18,
+        speed: 0,
         state: 'ok',
         apIndex: -1,
         visible: true,
@@ -1162,7 +1158,8 @@ export class NocScene {
       const c = this.colorOf(d.m.kind, d.state);
       d.mat.color.copy(c);
       d.mat.emissive.copy(c);
-      d.mat.emissiveIntensity = EMISSIVE;
+      // problems glow a little brighter, steadily (no pulsing)
+      d.mat.emissiveIntensity = d.state === 'down' ? 0.9 : d.state === 'warn' ? 0.7 : EMISSIVE;
     }
     const online = this.snap?.labOnline ?? {};
     for (const l of this.labs.values()) {
@@ -1246,7 +1243,7 @@ export class NocScene {
         this.fx.delete(code);
       }
     }
-    incs.forEach((i, k) => {
+    incs.forEach((i) => {
       const old = this.fx.get(i.device);
       if (old?.severity === i.severity) return;
       if (old) this.removeFx(old);
@@ -1266,7 +1263,7 @@ export class NocScene {
         beam.position.set(p.x, p.y + 20, p.z);
         this.content.add(beam);
       }
-      this.fx.set(i.device, { severity: i.severity, ring, beam, phase: k * 0.37, code: i.device });
+      this.fx.set(i.device, { severity: i.severity, ring, beam, code: i.device, rippleAt: 0 });
     });
     // red halo over buildings with a down device or devices cut off
     for (const b of this.blds.values()) {
@@ -1502,7 +1499,7 @@ export class NocScene {
       p1: pos,
       t1: tgt,
       k: 0,
-      spd: 1.4,
+      spd: 1 / MOTION.cameraS,
     };
   }
 
@@ -1589,63 +1586,49 @@ export class NocScene {
     }
   }
 
-  private animate(now: number, dt: number) {
-    const incs = this.incidents();
-    if (!this.reduce) {
+  private animate(now: number) {
+    if (!this.reduce && !this.still) {
+      // one packet per link, all released from the core side at the same moment
       for (const l of this.links) {
+        const weak = l.state === 'warn';
+        const on = l.visible && (l.state === 'ok' || weak);
+        const t =
+          (now % (weak ? MOTION.weakPacketMs : MOTION.packetMs)) /
+          (weak ? MOTION.weakPacketMs : MOTION.packetMs);
         for (const d of l.dots) {
-          const stop = l.state !== 'ok' && l.state !== 'warn';
-          d.mesh.visible = l.visible && !stop;
-          if (!d.mesh.visible) {
-            for (const t of d.tail) t.visible = false;
+          d.mesh.visible = on;
+          if (!on) {
+            for (const tl of d.tail) tl.visible = false;
             continue;
           }
-          d.t = (((d.t + dt * l.speed * (l.state === 'warn' ? 0.3 : 1) * d.dir) % 1) + 1) % 1;
-          l.curve.getPoint(d.t, d.mesh.position);
-          const on = !this.eco;
-          for (const t of d.tail) {
-            t.visible = on;
-            if (on) {
-              const tt = (((d.t - (d.dir * t.j * 0.5) / l.len) % 1) + 1) % 1;
-              l.curve.getPoint(tt, t.pos);
-            }
+          d.t = t;
+          l.curve.getPoint(t, d.mesh.position);
+          for (const tl of d.tail) {
+            tl.visible = !this.eco;
+            if (tl.visible) l.curve.getPoint(Math.max(0, t - (tl.j * 0.5) / l.len), tl.pos);
           }
         }
       }
     } else {
-      for (const l of this.links) for (const d of l.dots) d.mesh.visible = false;
+      for (const l of this.links)
+        for (const d of l.dots) {
+          d.mesh.visible = false;
+          for (const tl of d.tail) tl.visible = false;
+        }
     }
+    // problem marks stand still; a selected one ripples twice, then rests
     for (const f of this.fx.values()) {
       const vis = this.devs.get(f.code)?.visible ?? false;
-      const fr = (now / 1500 + f.phase) % 1;
+      const k = f.rippleAt ? (now - f.rippleAt) / MOTION.rippleMs : MOTION.ripples;
+      const rippling = !this.reduce && k >= 0 && k < MOTION.ripples;
+      const fr = rippling ? k % 1 : 0;
       f.ring.visible = vis;
-      f.ring.scale.setScalar(this.reduce ? 2.5 : 1 + fr * (f.severity === 'down' ? 6 : 3.5));
-      (f.ring.material as THREE.MeshBasicMaterial).opacity = this.reduce ? 0.4 : 0.65 * (1 - fr);
+      f.ring.scale.setScalar(rippling ? 1 + fr * (f.severity === 'down' ? 6 : 3.5) : 1.6);
+      (f.ring.material as THREE.MeshBasicMaterial).opacity = rippling ? 0.65 * (1 - fr) : 0.5;
       if (f.beam) {
         f.beam.visible = vis;
-        (f.beam.material as THREE.MeshBasicMaterial).opacity = this.reduce
-          ? 0.3
-          : 0.22 + 0.14 * Math.abs(Math.sin(now / 420 + f.phase));
+        (f.beam.material as THREE.MeshBasicMaterial).opacity = 0.3;
       }
-    }
-    for (const b of this.blds.values()) {
-      if (b.halo?.visible) {
-        (b.halo.material as THREE.MeshBasicMaterial).opacity = this.reduce
-          ? 0.07
-          : 0.04 + 0.05 * Math.abs(Math.sin(now / 600));
-      }
-    }
-    if (this.waterTex && !this.reduce) {
-      this.waterTex.offset.set((now / 40000) % 1, (now / 60000) % 1);
-    }
-    for (const i of incs) {
-      const d = this.devs.get(i.device);
-      if (!d) continue;
-      d.mat.emissiveIntensity = this.reduce
-        ? 0.8
-        : i.severity === 'down'
-          ? 0.35 + 0.65 * Math.abs(Math.sin(now / 300))
-          : 0.35 + 0.4 * Math.abs(Math.sin(now / 700));
     }
   }
 
@@ -1735,7 +1718,7 @@ export class NocScene {
         pos: (this.devs.get(i.device) as DevView).m.pos,
         severity: i.severity,
       })),
-      blink: this.reduce ? 1 : 0.55 + 0.45 * Math.abs(Math.sin(now / 300)),
+      blink: 1,
     });
   }
 
@@ -1772,7 +1755,7 @@ export class NocScene {
       if (f.k >= 1) this.fly = null;
     }
     this.controls.update();
-    this.animate(now, dt);
+    this.animate(now);
     this.syncInstances();
     this.drawMini(now);
     if (this.bloom) this.bloom.enabled = this.useBloom();
