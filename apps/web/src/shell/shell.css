@@ -596,9 +596,34 @@
   background: var(--panel);
   border: 1px solid var(--line);
   color: var(--ink);
+}
+/* the text carries the ellipsis; the label itself carries the leader line (::after) */
+.blabel .lt,
+.badge > span {
+  display: block;
   max-width: 14rem;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.blabel::after,
+.badge::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 1px;
+  height: var(--lead, 0);
+  background: color-mix(in srgb, currentColor 45%, transparent);
+  pointer-events: none;
+}
+.blabel.below::after {
+  display: none;
+}
+/* only devices out behind a root cause elsewhere: grey, dashed */
+.blabel.cut {
+  color: var(--cut-ink);
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--cut-ink) 70%, transparent);
 }
 .blabel.below {
   transform: translate(-50%, 0);
@@ -639,9 +664,6 @@
   background: var(--panel);
   border: 1px solid currentColor;
   box-shadow: none;
-  max-width: 16rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .badge.down {
   color: var(--down-ink);

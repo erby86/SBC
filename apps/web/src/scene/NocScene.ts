@@ -16,6 +16,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { placeTags, type TagIn } from './labels.js';
 import { MiniMap } from './minimap.js';
 import {
   childrenOf,
@@ -47,8 +48,11 @@ export interface SceneOptions {
   reducedMotion?: boolean;
 }
 
-// the map card is smaller than the old full-screen scene, so home sits closer
+// home view direction (and the view before the layout is loaded); the distance and centre are
+// fitted to the buildings and the card size (homeView)
 const HOME = { pos: new THREE.Vector3(-49, 56, 80), tgt: new THREE.Vector3(0, 2, 20) };
+/** Room kept around the school in the home view (NDC): labels sit above the roofs. */
+const FIT = { x: 0.9, top: 0.72, bottom: -0.9 };
 const AUTO_ECO_FPS = 24;
 const EMISSIVE = 0.35;
 /** Wireframe buildings: bright outlines and floor lines, near-clear slabs and glass. */
@@ -138,6 +142,10 @@ interface Label {
   h: number;
   /** Device the label names (ISP): hidden while that device has a problem badge. */
   device?: string;
+  /** A problem building's label: lifted out of the way first. */
+  major?: () => boolean;
+  /** Never hidden (red and amber buildings). */
+  keep?: () => boolean;
 }
 
 interface Fx {
@@ -254,6 +262,8 @@ export class NocScene {
   /** Search results highlighted in the view (M20); null = no highlight. */
   private hl: Set<string> | null = null;
   private selected: Selection | null = null;
+  /** Camera is on (or flying to) the home view: it follows the card size until someone moves it. */
+  private atHome = true;
   private fly: {
     p0: THREE.Vector3;
     t0: THREE.Vector3;
@@ -305,6 +315,7 @@ export class NocScene {
     this.controls.autoRotateSpeed = 0.6;
     this.camera.position.copy(HOME.pos);
     this.controls.target.copy(HOME.tgt);
+    this.controls.addEventListener('start', () => (this.atHome = false));
 
     // lights ×π: three ≥ r155 uses physical light units, the prototype (r128) did not
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x334455, 0.9 * Math.PI));
@@ -381,6 +392,7 @@ export class NocScene {
       this.floorSel = null;
     }
     this.applyStatus();
+    this.refitHome();
   }
 
   setStatus(snap: StatusSnapshot | null): void {
@@ -406,7 +418,7 @@ export class NocScene {
     this.applyVisibility();
     if (!fly) return;
     if (!b) {
-      this.flyTo(HOME.pos.clone(), HOME.tgt.clone());
+      this.flyHome();
       return;
     }
     const m = b.m;
@@ -469,7 +481,7 @@ export class NocScene {
 
   topView(on: boolean): void {
     if (on) this.flyTo(new THREE.Vector3(0, 150, 20.1), new THREE.Vector3(0, 0, 20));
-    else this.flyTo(HOME.pos.clone(), HOME.tgt.clone());
+    else this.flyHome();
   }
 
   /** Stop the scene's motion while the data is not fresh; stillness says "this is not live". */
@@ -542,7 +554,7 @@ export class NocScene {
   private addLabel(html: string, pos: THREE.Vector3, prio: () => number, below = false) {
     const el = document.createElement('div');
     el.className = below ? 'blabel below' : 'blabel';
-    el.innerHTML = html;
+    el.innerHTML = `<span class="lt">${html}</span>`;
     this.opts.labels.appendChild(el);
     const l: Label = { el, pos, prio, below, w: 0, h: 0 };
     this.labelsList.push(l);
@@ -704,6 +716,8 @@ export class NocScene {
         new THREE.Vector3(m.x, h + 0.8, m.z),
         () => (view.state !== 'ok' ? 0 : 1),
       );
+      label.major = () => view.state !== 'ok' && view.state !== 'maint';
+      label.keep = () => view.state === 'down' || view.state === 'warn';
       view.label = label.el;
       view.ring = label.el.querySelector('.ring') as HTMLSpanElement;
       this.blds.set(m.code, view);
@@ -1175,8 +1189,10 @@ export class NocScene {
     // behind a root cause elsewhere = cut (grey, dashed)
     for (const b of this.blds.values()) {
       let st: UiState = 'ok';
+      let out = 0;
       for (const d of this.devs.values()) {
         if (d.m.building !== b.m.code || d.m.kind === 'planned') continue;
+        if (d.state === 'cut') out += 1;
         if (d.state === 'down') st = 'down';
         else if (d.state === 'cut' && st !== 'down') st = 'cut';
         else if (d.state === 'warn' && st !== 'down' && st !== 'cut') st = 'warn';
@@ -1186,6 +1202,9 @@ export class NocScene {
       b.ring.className = `ring ${st}`;
       // a building without a problem gets a small plain name (declutter); problems stand out
       b.label.classList.toggle('quiet', st === 'ok' || st === 'maint');
+      b.label.classList.toggle('cut', st === 'cut');
+      const small = b.label.querySelector('small');
+      if (small) small.textContent = st === 'cut' ? `ดับตาม ${out}` : `${b.m.floors} ชั้น`;
     }
     for (const l of this.labelsList) l.w = l.h = 0; // label sizes change with the style
     this.syncFx();
@@ -1290,7 +1309,10 @@ export class NocScene {
       }
       const d = this.devs.get(i.device) as DevView;
       el.className = `badge ${i.severity}`;
-      el.textContent = `${STATE_ICON[i.severity]} ${d.m.name}`;
+      // text in an inner span: it carries the ellipsis, the badge carries the leader line
+      if (!el.firstElementChild) el.appendChild(document.createElement('span'));
+      (el.firstElementChild as HTMLSpanElement).textContent =
+        `${STATE_ICON[i.severity]} ${d.m.name}`;
     }
   }
 
@@ -1371,7 +1393,109 @@ export class NocScene {
 
   // ---------- frame loop ----------
 
+  /** Home camera: same direction as HOME, centred on the school and as close as it can be with
+   * every building (roofs included) inside the card. Fitted by bisection on the distance. */
+  private homeView(): { pos: THREE.Vector3; tgt: THREE.Vector3 } {
+    const m = this.model;
+    if (!m?.buildings.length) return { pos: HOME.pos.clone(), tgt: HOME.tgt.clone() };
+    const b = m.bounds;
+    const tgt = new THREE.Vector3((b.x0 + b.x1) / 2, 2, (b.z0 + b.z1) / 2);
+    const dir = HOME.pos.clone().sub(HOME.tgt).normalize();
+    const cam = this.camera.clone();
+    cam.updateProjectionMatrix();
+    // every building corner at the ground and at its own roof, open areas at the ground
+    // (pool and field stay out, as in the bounds)
+    const pts: THREE.Vector3[] = [];
+    const corners = (
+      r: { x: number; z: number; width: number; depth: number; rotation: number },
+      ys: number[],
+    ) => {
+      const c = Math.cos(r.rotation);
+      const sn = Math.sin(r.rotation);
+      for (const [u, w] of [
+        [-1, -1],
+        [1, -1],
+        [1, 1],
+        [-1, 1],
+      ] as const) {
+        const dx = (u * r.width) / 2;
+        const dz = (w * r.depth) / 2;
+        for (const y of ys)
+          pts.push(new THREE.Vector3(r.x + dx * c - dz * sn, y, r.z + dx * sn + dz * c));
+      }
+    };
+    for (const x of m.buildings) corners(x, [0, x.floors * x.floorHeight + 1]);
+    for (const a of m.areas) if (a.kind !== 'pool' && a.kind !== 'field') corners(a, [0]);
+    const v = new THREE.Vector3();
+    const place = (d: number) => {
+      cam.position.copy(tgt).addScaledVector(dir, d);
+      cam.lookAt(tgt);
+      cam.updateMatrixWorld();
+    };
+    const fits = (d: number) => {
+      place(d);
+      return pts.every((p) => {
+        v.copy(p).project(cam);
+        return v.z < 1 && Math.abs(v.x) <= FIT.x && v.y <= FIT.top && v.y >= FIT.bottom;
+      });
+    };
+    const nearest = () => {
+      let lo = this.controls.minDistance;
+      let hi = this.controls.maxDistance;
+      if (!fits(hi)) return hi;
+      for (let k = 0; k < 20 && hi - lo > 0.25; k++) {
+        const mid = (lo + hi) / 2;
+        if (fits(mid)) hi = mid;
+        else lo = mid;
+      }
+      return hi;
+    };
+    // perspective puts the near side lower than the far side: centre what is seen, then refit
+    let hi = nearest();
+    for (let round = 0; round < 2; round++) {
+      place(hi);
+      let x0 = Infinity;
+      let x1 = -Infinity;
+      let y0 = Infinity;
+      let y1 = -Infinity;
+      for (const p of pts) {
+        v.copy(p).project(cam);
+        x0 = Math.min(x0, v.x);
+        x1 = Math.max(x1, v.x);
+        y0 = Math.min(y0, v.y);
+        y1 = Math.max(y1, v.y);
+      }
+      const halfH = hi * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
+      const right = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0);
+      const up = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 1);
+      tgt.addScaledVector(right, ((x0 + x1) / 2) * halfH * cam.aspect);
+      tgt.addScaledVector(up, ((y0 + y1) / 2 - (FIT.top + FIT.bottom) / 2) * halfH);
+      hi = nearest();
+    }
+    return { pos: tgt.clone().addScaledVector(dir, hi), tgt };
+  }
+
+  private flyHome() {
+    const h = this.homeView();
+    this.flyTo(h.pos, h.tgt);
+    this.atHome = true;
+  }
+
+  /** The card or the layout changed: keep the home view fitted unless someone moved the camera. */
+  private refitHome() {
+    if (!this.atHome) return;
+    const h = this.homeView();
+    if (this.fly) {
+      this.fly.p1 = h.pos;
+      this.fly.t1 = h.tgt;
+    } else {
+      this.camera.position.copy(h.pos);
+      this.controls.target.copy(h.tgt);
+    }
+  }
+
   private flyTo(pos: THREE.Vector3, tgt: THREE.Vector3) {
+    this.atHome = false;
     this.fly = {
       p0: this.camera.position.clone(),
       t0: this.controls.target.clone(),
@@ -1391,6 +1515,7 @@ export class NocScene {
     this.camera.fov = w < 720 ? 58 : 45;
     this.camera.updateProjectionMatrix();
     for (const l of this.labelsList) l.w = l.h = 0;
+    this.refitHome();
   }
 
   private retheme() {
@@ -1528,64 +1653,56 @@ export class NocScene {
     const W = this.opts.container.clientWidth;
     const Hh = this.opts.container.clientHeight;
     const v = this.tmp.v;
-    const placed: [number, number, number, number][] = [];
-    const overlaps = (r: [number, number, number, number]) =>
-      placed.some(
-        (p) =>
-          r[0] < p[0] + p[2] + 4 &&
-          r[0] + r[2] + 4 > p[0] &&
-          r[1] < p[1] + p[3] + 2 &&
-          r[1] + r[3] + 2 > p[1],
-      );
-    // problem badges first: they never hide; one that would cover another moves up a row
-    const bs = [...this.badges].flatMap(([code, el]) => {
+    const els: HTMLElement[] = [];
+    const tags: TagIn[] = [];
+    // problem badges (down before warn), then problem buildings, then the quiet names
+    for (const [code, el] of this.badges) {
       const d = this.devs.get(code);
-      if (!d) return [];
+      if (!d) continue;
       v.set(d.m.pos.x, d.m.pos.y + 1.3, d.m.pos.z).project(this.camera);
       if (v.z > 1 || !d.visible) {
         el.style.display = 'none';
-        return [];
+        continue;
       }
       el.style.display = 'block';
-      const down = el.classList.contains('down') ? 0 : 1;
-      return [{ el, sx: ((v.x + 1) / 2) * W, sy: ((1 - v.y) / 2) * Hh, down }];
-    });
-    bs.sort((a, b) => a.down - b.down || a.sy - b.sy);
-    for (const b of bs) {
-      const bw = b.el.offsetWidth || 90;
-      const bh = b.el.offsetHeight || 20;
-      const x = Math.max(bw / 2 + 4, Math.min(W - bw / 2 - 4, b.sx));
-      let y = Math.max(bh + 4, Math.min(Hh - 4, b.sy));
-      for (let k = 0; k < 4 && overlaps([x - bw / 2, y - bh, bw, bh]); k++) y -= bh + 3;
-      y = Math.max(bh + 4, y);
-      placed.push([x - bw / 2, y - bh, bw, bh]);
-      b.el.style.left = `${x}px`;
-      b.el.style.top = `${y}px`;
+      els.push(el);
+      tags.push({
+        sx: ((v.x + 1) / 2) * W,
+        sy: ((1 - v.y) / 2) * Hh,
+        w: el.offsetWidth || 90,
+        h: el.offsetHeight || 20,
+        rank: el.classList.contains('down') ? 0 : 1,
+        major: true,
+      });
     }
-    const items = this.labelsList.map((l) => {
+    for (const l of this.labelsList) {
       v.copy(l.pos).project(this.camera);
-      return { l, sx: ((v.x + 1) / 2) * W, sy: ((1 - v.y) / 2) * Hh, off: v.z > 1, p: l.prio() };
-    });
-    items.sort((a, b) => a.p - b.p);
-    for (const o of items) {
-      const el = o.l.el;
-      const w = o.l.w || (o.l.w = el.offsetWidth || 80);
-      const h = o.l.h || (o.l.h = el.offsetHeight || 20);
-      const rect: [number, number, number, number] = [
-        o.sx - w / 2,
-        o.l.below ? o.sy : o.sy - h,
-        w,
-        h,
-      ];
-      const hit = overlaps(rect);
-      const show = !o.off && !hit && !(o.l.device && this.badges.has(o.l.device));
-      el.style.visibility = show ? 'visible' : 'hidden';
-      if (show) {
-        placed.push(rect);
-        el.style.left = `${Math.max(w / 2 + 4, Math.min(W - w / 2 - 4, o.sx))}px`;
-        el.style.top = `${Math.max(o.l.below ? 4 : h + 4, Math.min(Hh - 4, o.sy))}px`;
+      if (v.z > 1 || (!!l.device && this.badges.has(l.device))) {
+        l.el.style.visibility = 'hidden';
+        continue;
       }
+      const major = l.major?.() ?? false;
+      els.push(l.el);
+      tags.push({
+        sx: ((v.x + 1) / 2) * W,
+        sy: ((1 - v.y) / 2) * Hh,
+        w: l.w || (l.w = l.el.offsetWidth || 80),
+        h: l.h || (l.h = l.el.offsetHeight || 20),
+        // red/amber buildings, then grey ones, then quiet names
+        rank: l.keep?.() ? 2 : major ? 2.5 : 3 + l.prio(),
+        major,
+        keep: l.keep?.() ?? false,
+        below: l.below,
+      });
     }
+    placeTags(tags, W, Hh).forEach((o, k) => {
+      const el = els[k] as HTMLElement;
+      el.style.visibility = o.hidden ? 'hidden' : 'visible';
+      if (o.hidden) return;
+      el.style.left = `${o.x}px`;
+      el.style.top = `${o.y}px`;
+      el.style.setProperty('--lead', `${o.lead}px`);
+    });
   }
 
   private drawMini(now: number) {
@@ -1679,6 +1796,7 @@ export class NocScene {
     const down = (e: PointerEvent) => {
       downAt = [e.clientX, e.clientY];
       this.fly = null;
+      this.atHome = false;
     };
     const up = (e: PointerEvent) => {
       if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 6) return;
