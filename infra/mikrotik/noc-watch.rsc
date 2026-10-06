@@ -1,7 +1,8 @@
 # M35 self-monitoring (ADR-0010): the CCR2116 checks sbc-ubuntu and the NOC itself every 30 s and
-# messages Telegram directly, so an alert still goes out when sbc-noc, Zabbix or the server is down.
-# RouterOS 7. Paste into the router terminal, then put the bot token and chat id into the script
-# on the router only (System > Scripts > noc-watch): never into git (ADR-0005).
+# posts to a Discord channel webhook directly, so an alert still goes out when sbc-noc, Zabbix or
+# the server is down. RouterOS 7. Paste into the router terminal, then put the webhook URL into the
+# script on the router only (System > Scripts > noc-watch): never into git (ADR-0005) — anyone with
+# the URL can post to the channel.
 #
 # Alerts: after 2 failed checks in a row (about 1 minute), once per outage; one message on recovery.
 # - server: 3 pings to 192.168.1.6 all lost
@@ -9,8 +10,7 @@
 
 /system script
 add name=noc-watch dont-require-permissions=no policy=read,write,test source={
-  :local token "PASTE_BOT_TOKEN"
-  :local chat "PASTE_CHAT_ID"
+  :local webhook "PASTE_DISCORD_WEBHOOK_URL"
   :local server 192.168.1.6
   :local url "http://noc.sbc.lan/api/health/ready"
 
@@ -20,10 +20,8 @@ add name=noc-watch dont-require-permissions=no policy=read,write,test source={
   :if ([:typeof $nocWatchAlerted] != "bool") do={ :set nocWatchAlerted false }
 
   :local send do={
-    /tool fetch url=("https://api.telegram.org/bot" . $t . "/sendMessage") http-method=post \
-      http-header-field="Content-Type: application/json" \
-      http-data=("{\"chat_id\":\"" . $c . "\",\"text\":\"" . $m . "\"}") \
-      output=none check-certificate=yes
+    /tool fetch url=$w http-method=post http-header-field="Content-Type: application/json" \
+      http-data=("{\"content\":\"" . $m . "\"}") output=none check-certificate=yes
   }
 
   :local problem ""
@@ -40,7 +38,7 @@ add name=noc-watch dont-require-permissions=no policy=read,write,test source={
 
   :if ($problem = "") do={
     :if ($nocWatchAlerted) do={
-      :do { $send t=$token c=$chat m="SBC NOC: back to normal" } on-error={ :log warning "noc-watch: telegram failed" }
+      :do { $send w=$webhook m="SBC NOC: back to normal" } on-error={ :log warning "noc-watch: discord failed" }
     }
     :set nocWatchFails 0
     :set nocWatchAlerted false
@@ -49,9 +47,9 @@ add name=noc-watch dont-require-permissions=no policy=read,write,test source={
     :log warning ("noc-watch: " . $problem)
     :if (($nocWatchFails >= 2) && (!$nocWatchAlerted)) do={
       :do {
-        $send t=$token c=$chat m=$problem
+        $send w=$webhook m=$problem
         :set nocWatchAlerted true
-      } on-error={ :log error "noc-watch: telegram failed" }
+      } on-error={ :log error "noc-watch: discord failed" }
     }
   }
 }
