@@ -60,7 +60,10 @@ const FIT = { x: 0.9, top: 0.72, bottom: -0.9 };
 const AUTO_ECO_FPS = 24;
 const EMISSIVE = 0.35;
 /** Wireframe buildings: bright outlines and floor lines, near-clear slabs and glass. */
-const WIRE = { edge: 0.95, floor: 0.5, slab: 0.06, fill: 0.03, mull: 0.12, shadow: 0.5 };
+// floor lines and glass mullions stay faint so outlines, devices and cables read first
+const WIRE = { edge: 0.95, floor: 0.3, slab: 0.06, fill: 0.03, mull: 0.05, shadow: 0.5 };
+/** Floor lines of the building in focus: brighter, so the selected building stands out. */
+const FOCUS_FLOOR = 0.6;
 
 type Mat = THREE.MeshLambertMaterial;
 
@@ -549,7 +552,7 @@ export class NocScene {
     this.grid = new THREE.GridHelper(180, 60, this.C.grid, this.C.grid);
     const m = this.grid.material as THREE.Material;
     m.transparent = true;
-    m.opacity = 0.35;
+    m.opacity = 0.2; // ground grid as a quiet reference, not a pattern
     this.grid.position.set(0, 0, 25);
     this.scene.add(this.grid);
   }
@@ -1349,7 +1352,7 @@ export class NocScene {
       const cut = b.m.code === focus && !!fs;
       b.slabMat.opacity = dim ? WIRE.slab / 3 : WIRE.slab;
       b.edgeMat.opacity = dim ? 0.18 : WIRE.edge;
-      b.floorMat.opacity = dim ? 0.1 : WIRE.floor;
+      b.floorMat.opacity = dim ? 0.08 : focus ? FOCUS_FLOOR : WIRE.floor;
       for (const s of b.slabs) s.mesh.visible = s.line.visible = !cut || s.floor <= (fs ?? 0) - 1;
       b.edges.visible = !cut;
       if (b.inner) b.inner.visible = !cut;

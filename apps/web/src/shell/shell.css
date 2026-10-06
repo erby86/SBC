@@ -2851,3 +2851,70 @@ code {
     max-height: 11rem;
   }
 }
+
+/* ── modern pass (2026-10-07): the 3D map is the hero; side columns and the log give it room ──
+   Layout only: same components, same data, same breakpoints (BREAKPOINTS). */
+@media (min-width: 1180px) {
+  /* map title + home button float over the scene instead of taking a row */
+  #center > .mhead {
+    position: absolute;
+    inset: 0 0 auto 0;
+    z-index: 6;
+    padding: 0.55rem 0.6rem 1.4rem 0.85rem;
+    background: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--bg) 85%, transparent),
+      transparent
+    );
+    pointer-events: none;
+  }
+  #center > .mhead > * {
+    pointer-events: auto;
+  }
+  #center > .stage {
+    border-top: 0;
+  }
+}
+@media (min-width: 1180px) and (max-width: 1500px) {
+  /* narrower side columns on laptops: the map gets the width */
+  #ui {
+    grid-template-columns: minmax(11.5rem, 13.5rem) minmax(0, 1fr) minmax(18rem, 21rem);
+  }
+}
+@media (min-width: 980px) and (max-height: 820px) {
+  /* short laptop screens: three log lines, scroll for more */
+  .elines {
+    max-height: 4.4rem;
+  }
+  .evlog {
+    padding-block: 0.35rem 0.4rem;
+  }
+}
+
+/* sidebar: compact rows, status readable at a glance */
+#leftcol > .panel {
+  padding: 0.65rem 0.6rem;
+}
+.bhot {
+  gap: 0.3rem;
+  padding: 0.4rem 0.55rem;
+}
+.bhot .bar {
+  height: 3px;
+}
+.bcalm {
+  padding-block: 0.2rem;
+}
+
+/* alerts: severity tint + numbers that line up when scanning */
+.inc.warn {
+  background: color-mix(in srgb, var(--warn) 4%, transparent);
+}
+.inc h3 .age,
+.srow .age,
+.eline .et,
+.bhot .up,
+.bcalm .fl,
+#top .chip b {
+  font-variant-numeric: tabular-nums;
+}
