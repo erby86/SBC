@@ -1,4 +1,4 @@
-// M19: React host of the 3D scene, drawn full screen behind the panels like the prototype. The scene itself (../scene/NocScene.ts) is plain three.js;
+// M19: React host of the 3D scene, drawn inside the map card. The scene itself (../scene/NocScene.ts) is plain three.js;
 // it is loaded on demand so /admin and the panels do not pay for three.js.
 import type { StatusSnapshot } from '@sbc-noc/shared';
 import type { LayerKey } from '@sbc-noc/ui';

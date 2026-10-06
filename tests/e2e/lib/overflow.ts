@@ -88,7 +88,11 @@ export async function findTextOverflow(page: Page): Promise<OverflowHit[]> {
       }
       if (!why && !scrollable) {
         if (box.left < -1 || box.right > vw + 1) why = 'past the left/right edge of the window';
-        else if (box.top < -slackY || box.bottom > vh + slackY)
+        // a page that scrolls down (stacked layout on tablets/phones) shows text below the window
+        else if (
+          box.top + window.scrollY < -slackY ||
+          box.bottom + window.scrollY > Math.max(vh, document.documentElement.scrollHeight) + slackY
+        )
           why = 'past the top/bottom edge of the window';
       }
       if (why)

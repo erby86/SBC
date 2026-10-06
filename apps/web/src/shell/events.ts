@@ -1,5 +1,5 @@
 // Live feed: what changed between two snapshots (new incident, got worse, recovered), shown as
-// short cards over the scene, and the overall health of the network for the top bar ring.
+// short cards over the scene.
 import type { StatusSnapshot } from '@sbc-noc/shared';
 import { useEffect, useRef, useState } from 'react';
 

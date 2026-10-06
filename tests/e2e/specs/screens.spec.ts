@@ -2,7 +2,7 @@
 // has no text past an edge. Incidents come from the demo mode (M38, ADR-0014), so the run
 // never depends on what the real network is doing.
 import { expect, test } from '@playwright/test';
-import { checkScreen, isPhone, openNoc, panel } from '../lib/noc.js';
+import { checkScreen, openNoc, panel } from '../lib/noc.js';
 
 const LINKS = {
   zabbix:
@@ -26,7 +26,7 @@ test('NOC page (real data)', async ({ page }, info) => {
 test('demo: incidents', async ({ page }, info) => {
   await openNoc(page, '/?demo=mixed');
   await expect(page.getByTestId('demo-bar')).toBeVisible();
-  await expect(panel(page, info).locator('.inc').first()).toBeVisible();
+  await expect(panel(page).locator('.inc').first()).toBeVisible();
   await checkScreen(page, info, '02-incidents');
 });
 
@@ -34,7 +34,7 @@ test('demo: device details with Zabbix/Grafana/GLPI buttons', async ({ page }, i
   await page.route('**/api/config/links', (r) => r.fulfill({ json: LINKS }));
   await openNoc(page, '/?demo=mixed');
   // an incident of a device on the map (the scenario also has one without a position)
-  await panel(page, info).locator('.inc', { hasText: 'NVR' }).first().click();
+  await panel(page).locator('.inc', { hasText: 'NVR' }).first().click();
   const card = page.getByTestId('info');
   await expect(card).toBeVisible();
   const links = card.getByTestId('out-links').locator('a');
@@ -49,15 +49,14 @@ test('demo: device details with Zabbix/Grafana/GLPI buttons', async ({ page }, i
 
 test('demo: 24 h history', async ({ page }, info) => {
   await openNoc(page, '/?demo=mixed');
-  await panel(page, info).getByRole('tab', { name: 'ประวัติ' }).click();
+  await panel(page).getByRole('tab', { name: 'ประวัติ' }).click();
   await expect(page.getByTestId('history').first()).toBeVisible();
   await checkScreen(page, info, '04-history');
 });
 
 test('search', async ({ page }, info) => {
   await openNoc(page, '/');
-  if (isPhone(info)) await panel(page, info).getByRole('tab', { name: 'ค้นหา' }).click();
-  else await page.keyboard.press('/');
+  await page.keyboard.press('/');
   const box = page.getByRole('combobox', { name: 'ค้นหา' }).locator('visible=true');
   await box.fill('main');
   await expect(page.locator('[role="listbox"] [role="option"]').first()).toBeVisible();
@@ -66,7 +65,8 @@ test('search', async ({ page }, info) => {
 
 test('help', async ({ page }, info) => {
   await openNoc(page, '/');
-  await page.getByRole('button', { name: 'วิธีใช้' }).locator('visible=true').first().click();
+  await page.getByTestId('menu').click();
+  await page.getByRole('button', { name: 'วิธีใช้' }).click();
   await expect(page.getByTestId('help')).toBeVisible();
   await checkScreen(page, info, '06-help');
 });

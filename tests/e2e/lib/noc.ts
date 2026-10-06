@@ -2,8 +2,6 @@
 import { expect, type Page, type TestInfo } from '@playwright/test';
 import { findTextOverflow } from './overflow.js';
 
-export const isPhone = (info: TestInfo) => info.project.name.startsWith('phone');
-
 /** Opens a NOC page without the first-visit tour and waits for the layout and the 3D scene. */
 export async function openNoc(page: Page, url: string): Promise<void> {
   await page.addInitScript(() => {
@@ -26,9 +24,9 @@ export async function openNoc(page: Page, url: string): Promise<void> {
   await page.waitForTimeout(2500); // the camera fly-in settles
 }
 
-/** The incidents/history/… panel the user sees: right column on desktop, bottom sheet on phones. */
-export const panel = (page: Page, info: TestInfo) =>
-  page.locator(isPhone(info) ? '#sheet' : '#right');
+/** The incidents/history/… panel: right column on wide screens, stacked under the map (tablet) or
+ * above it (phone) — the same element on every size. */
+export const panel = (page: Page) => page.locator('#right');
 
 /** Screenshot into shots/ (CI artifact) after checking that no text runs past an edge. */
 export async function checkScreen(page: Page, info: TestInfo, name: string): Promise<void> {

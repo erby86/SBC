@@ -15,9 +15,9 @@ import {
   type LinkValues,
   type OutLinkSystem,
 } from '@sbc-noc/shared';
-import { LAYERS, STATE_ICON, type LayerKey, type UiState } from '@sbc-noc/ui';
+import { BREAKPOINTS, LAYERS, STATE_ICON, type LayerKey, type UiState } from '@sbc-noc/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { useLayout, useOutLinks } from '../data/api.js';
 import {
   demoLabOnline,
@@ -32,12 +32,16 @@ import { buildSceneModel, deviceKind, type SceneModel } from '../scene/model.js'
 import type { NocScene, Selection } from '../scene/NocScene.js';
 import { useIncidentFeed, useNow } from './events.js';
 import { useTabStatus } from './tab.js';
-import { Feed, HealthRing } from './feed.js';
+import { timelineBars, type TimelineBar } from './console.js';
+import { Feed } from './feed.js';
 import { Help, Tour, tourSeen } from './Help.js';
 import { Icon } from './icons.js';
+import { Menu } from './Menu.js';
 import { plainMessage } from './messages.js';
 import {
+  FirstCard,
   fmtAgo,
+  hhmm,
   History,
   Incidents,
   Labs,
@@ -53,7 +57,6 @@ import { useTheme } from './theme.js';
 import { tvParam, useTvMode } from './tv.js';
 
 type RightTab = 'inc' | 'hist' | 'unl';
-type SheetTab = 'inc' | 'bld' | 'hist' | 'find';
 
 const timeTh = (iso: string) =>
   new Date(iso).toLocaleTimeString('th-TH', {
@@ -76,35 +79,29 @@ interface ViewControls {
   onEco: () => void;
   onTv: () => void;
   onHelp: () => void;
+  theme: ReturnType<typeof useTheme>;
 }
 
-/** Category chips of the prototype: usable/total and the worst state (maintenance not counted). */
-function categoryChips(layout: Layout | undefined, snap: StatusSnapshot | null) {
-  const cats = [
-    {
-      label: 'เครือข่าย',
-      kinds: ['core', 'main', 'access'],
-      tip: 'อุปกรณ์เครือข่ายที่ใช้งานได้/ทั้งหมด (เราเตอร์ main และสวิตช์ ไม่นับที่อยู่ระหว่างบำรุงรักษา)',
-    },
-    { label: 'AP', kinds: ['ap'], tip: 'Access Point ที่ใช้งานได้/ทั้งหมด (ไม่นับที่บำรุงรักษา)' },
-    { label: 'NVR', kinds: ['nvr'], tip: 'เครื่องบันทึกกล้องวงจรปิดที่ใช้งานได้/ทั้งหมด' },
-  ];
-  return cats
-    .map((c) => {
-      const all = (layout?.devices ?? []).filter((d) => {
-        const k = deviceKind(d);
-        return k && c.kinds.includes(k) && stateOfDevice(snap, d.code) !== 'maint';
-      });
-      const sts = all.map((d) => stateOfDevice(snap, d.code));
-      const on = sts.filter((s) => s === 'ok' || s === 'warn').length;
-      const worst: UiState = sts.some((s) => s === 'down' || s === 'cut')
-        ? 'down'
-        : sts.some((s) => s === 'warn')
-          ? 'warn'
-          : 'ok';
-      return { ...c, on, total: all.length, worst };
+/** Devices the top bar counts (network, AP, NVR — maintenance not counted): usable/total + worst. */
+function deviceHealth(layout: Layout | undefined, snap: StatusSnapshot | null) {
+  const kinds = ['core', 'main', 'access', 'ap', 'nvr'];
+  const sts = (layout?.devices ?? [])
+    .filter((d) => {
+      const k = deviceKind(d);
+      return k && kinds.includes(k) && stateOfDevice(snap, d.code) !== 'maint';
     })
-    .filter((c) => c.total > 0);
+    .map((d) => stateOfDevice(snap, d.code));
+  const worst = (list: UiState[]): UiState =>
+    list.some((s) => s === 'down' || s === 'cut')
+      ? 'down'
+      : list.some((s) => s === 'warn')
+        ? 'warn'
+        : 'ok';
+  return {
+    on: sts.filter((s) => s === 'ok' || s === 'warn').length,
+    total: sts.length,
+    worst: worst(sts),
+  };
 }
 
 function TopBar({
@@ -114,7 +111,7 @@ function TopBar({
   view,
   demo,
   search,
-  theme,
+  menu,
   onBigNum,
   onGo,
 }: {
@@ -124,22 +121,22 @@ function TopBar({
   view: ViewControls;
   demo: React.ReactNode;
   search: React.ReactNode;
-  theme: ReturnType<typeof useTheme>;
+  menu: React.ReactNode;
   onBigNum: () => void;
   onGo: (code: string) => void;
 }) {
-  const open = snap?.incidents.filter((i) => !i.ack).length ?? 0;
+  const incs = snap?.incidents ?? [];
+  const downs = incs.filter((i) => i.severity === 'down').length;
+  const open = incs.filter((i) => !i.ack).length;
   const wans = (layout?.devices ?? []).filter((d) => deviceKind(d) === 'wan');
-  const cats = snap ? categoryChips(layout, snap) : [];
-  const health = {
-    on: cats.reduce((n, c) => n + c.on, 0),
-    total: cats.reduce((n, c) => n + c.total, 0),
-    worst: cats.some((c) => c.worst === 'down')
-      ? ('down' as const)
-      : cats.some((c) => c.worst === 'warn')
-        ? ('warn' as const)
-        : ('ok' as const),
-  };
+  const wanSt = wans.map((d) => ({ d, st: stateOfDevice(snap, d.code) }));
+  const wanBad = wanSt.filter((w) => w.st !== 'ok' && w.st !== 'maint');
+  const wanWorst: UiState = wanBad.some((w) => w.st === 'down' || w.st === 'cut')
+    ? 'down'
+    : wanBad.length
+      ? 'warn'
+      : 'ok';
+  const dev = deviceHealth(layout, snap);
   return (
     <header id="top" className="panel">
       {demo}
@@ -151,51 +148,57 @@ function TopBar({
           <small>โรงเรียน SB School</small> ศูนย์ดูแลเครือข่าย
         </span>
       </h1>
-      <div className="stat">
-        {snap && <HealthRing {...health} />}
+      <div className="nums" aria-live="polite">
+        <button className="num down" onClick={onBigNum} title="อุปกรณ์ที่ใช้งานไม่ได้ (ต้นเหตุ)">
+          <b className={downs ? 'hot' : ''}>{snap ? downs : '–'}</b>
+          <span>ใช้งานไม่ได้</span>
+        </button>
+        <button className="num warn" onClick={onBigNum} title="เหตุที่ควรตรวจสอบ">
+          <b className={incs.length - downs ? 'hot' : ''}>{snap ? incs.length - downs : '–'}</b>
+          <span>ควรตรวจสอบ</span>
+        </button>
         <button
           id="bigNum"
-          className={open ? 'hot' : ''}
+          className={`num${open ? ' hot' : ''}`}
           title="เหตุที่ยังไม่มีคนรับเรื่อง"
           data-testid="open-incidents"
           onClick={onBigNum}
         >
-          <b key={open}>{open}</b>
+          <b key={open}>{snap ? open : '–'}</b>
           <span>ยังไม่มีคนรับ</span>
         </button>
       </div>
+      {snap && (
+        <div className="chips" data-testid="state-chips">
+          <span
+            className={`chip st-${dev.worst}`}
+            title="อุปกรณ์ที่ใช้งานได้/ทั้งหมด (เครือข่าย AP NVR ไม่นับที่บำรุงรักษา)"
+          >
+            <i className={`sdot ${dev.worst}`} aria-hidden="true" />
+            <span>
+              อุปกรณ์ <b>{dev.on}</b>/{dev.total}
+            </span>
+          </span>
+          {wans.length > 0 && (
+            <button
+              className={`chip wanchip st-${wanWorst}`}
+              title={wanSt.map(({ d, st }) => `${d.name} · ${DEVICE_STATE_TH[st]}`).join('\n')}
+              onClick={() => {
+                const w = wanBad[0];
+                if (w) onGo(w.d.code);
+              }}
+            >
+              <i className={`sdot ${wanWorst}`} aria-hidden="true" />
+              <span>
+                อินเทอร์เน็ต <b>{wans.length - wanBad.length}</b>/{wans.length}
+              </span>
+            </button>
+          )}
+        </div>
+      )}
       <div className="sfield">
         <Icon name="search" className="sicon" />
         {search}
-      </div>
-      <div className="status">
-        <div className="chips" aria-live="polite" data-testid="state-chips">
-          {cats.map((c) => (
-            <span key={`${c.label}${c.on}`} className={`chip st-${c.worst}`} title={c.tip}>
-              <span className={`i ${c.worst}`}>{STATE_ICON[c.worst]}</span>
-              {c.label} <b>{c.on}</b>/{c.total}
-            </span>
-          ))}
-        </div>
-        {snap && wans.length > 0 && (
-          <div className="chips" id="wanChips" aria-label="สถานะอินเทอร์เน็ต">
-            {wans.map((d) => {
-              const st = stateOfDevice(snap, d.code);
-              const inc = snap.incidents.find((i) => i.device === d.code);
-              return (
-                <button
-                  key={d.code}
-                  className={`chip wanchip st-${st}`}
-                  title={`อินเทอร์เน็ต ${d.name} · ${DEVICE_STATE_TH[st]}${inc ? ` · ${plainMessage(inc.message)}` : ''}`}
-                  onClick={() => onGo(d.code)}
-                >
-                  <span className={`i ${st}`}>{STATE_ICON[st]}</span>
-                  {d.name}
-                </button>
-              );
-            })}
-          </div>
-        )}
       </div>
       <span
         className={`chip fresh ${!snap ? 'f-wait' : snap.stale ? 'stale' : `f-${mode}`}`}
@@ -210,11 +213,16 @@ function TopBar({
         }
       >
         <i className="dot" aria-hidden="true" />
-        {!snap
-          ? 'รอข้อมูล…'
-          : snap.stale
-            ? `ข้อมูลค้าง · ${timeTh(snap.lastUpdate)}`
-            : `อัปเดต ${timeTh(snap.lastUpdate)}`}
+        {!snap ? (
+          'รอข้อมูล…'
+        ) : snap.stale ? (
+          `ข้อมูลค้าง · ${timeTh(snap.lastUpdate)}`
+        ) : (
+          <>
+            <span className="fw">อัปเดต </span>
+            {timeTh(snap.lastUpdate)}
+          </>
+        )}
         {mode === 'poll' ? ' · ดึงเอง' : ''}
       </span>
       {view.fps !== null && (
@@ -222,163 +230,325 @@ function TopBar({
           {Math.round(view.fps)} fps
         </span>
       )}
-      <div className="topbtns" role="toolbar" aria-label="มุมมองและการแสดงผล">
-        <div className="seg">
-          <button
-            className="ib wide"
-            aria-pressed={view.top}
-            disabled={!view.ready}
-            onClick={view.onTop}
-            aria-label="มุมบน"
-            title="มองจากด้านบน (T)"
-          >
-            <Icon name="top" />
-          </button>
-          <button
-            className="ib"
-            disabled={!view.ready}
-            onClick={view.onHome}
-            aria-label="ทั้งโรงเรียน"
-            title="กลับไปมุมมองทั้งโรงเรียน (H)"
-          >
-            <Icon name="home" />
-          </button>
-        </div>
-        <div className="seg wide">
-          <button
-            className="ib"
-            aria-pressed={view.tv}
-            onClick={view.onTv}
-            aria-label="โหมดทีวี"
-            title="โหมดทีวี: เต็มจอ วนแจ้งเตือนที่ยังไม่มีคนรับจุดละ 10 วินาที เสียงเตือนเมื่อมีอุปกรณ์ใช้งานไม่ได้เพิ่ม"
-            data-testid="tv"
-          >
-            <Icon name="tv" />
-          </button>
-          <button
-            className="ib"
-            aria-pressed={view.eco}
-            disabled={!view.ready}
-            onClick={view.onEco}
-            aria-label="โหมดประหยัด"
-            title="โหมดประหยัด: ปิดแสงเรืองและหางแสง สำหรับเครื่องที่กราฟิกไม่แรง (E)"
-          >
-            <Icon name="leaf" />
-          </button>
-        </div>
-        <div className="seg">
-          <button
-            className="ib"
-            onClick={theme.toggle}
-            aria-label={theme.theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'}
-            title={`${theme.theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'} (L)`}
-            data-testid="theme-toggle"
-          >
-            <Icon name={theme.theme === 'dark' ? 'sun' : 'moon'} />
-          </button>
-          <button className="ib" onClick={view.onHelp} aria-label="วิธีใช้" title="วิธีใช้ (?)">
-            <Icon name="help" />
-          </button>
-        </div>
-        <Link to="/admin" className="btnlink adminlink" title="จัดการทะเบียน">
-          <Icon name="gear" />
-          <span>จัดการ</span>
-        </Link>
-      </div>
+      {menu}
     </header>
   );
 }
 
-/** Worst state of the devices in each building (prototype bStatus). */
+interface BState {
+  st: UiState;
+  /** Devices with a problem (down, cut or warn). */
+  n: number;
+  /** Usable/total devices (planned and maintenance not counted). */
+  up: number;
+  total: number;
+}
+
+/** Worst state of the devices in each building (prototype bStatus) and how many are usable. */
 function buildingStates(layout: Layout | undefined, snap: StatusSnapshot | null) {
-  const out = new Map<string, { st: UiState; n: number }>();
+  const out = new Map<string, BState>();
   for (const d of layout?.devices ?? []) {
     if (!d.building || d.layer === 'planned') continue;
     const st = stateOfDevice(snap, d.code);
-    const cur = out.get(d.building) ?? { st: 'ok' as UiState, n: 0 };
+    const cur = out.get(d.building) ?? { st: 'ok' as UiState, n: 0, up: 0, total: 0 };
     if (st === 'down' || st === 'cut') cur.st = 'down';
     else if (st === 'warn' && cur.st !== 'down') cur.st = 'warn';
     else if (st === 'maint' && cur.st === 'ok') cur.st = 'maint';
     if (st === 'down' || st === 'cut' || st === 'warn') cur.n += 1;
+    if (st !== 'maint') {
+      cur.total += 1;
+      if (st === 'ok' || st === 'warn') cur.up += 1;
+    }
     out.set(d.building, cur);
   }
   return out;
 }
 
+const RANK: Record<UiState, number> = { down: 0, cut: 0, warn: 1, maint: 2, ok: 3 };
+const bad = (s: BState | undefined) => !!s && (s.st === 'down' || s.st === 'warn');
+
+/** Buildings with a problem first (worst first, layout order otherwise). */
+function sortedBuildings(layout: Layout, states: Map<string, BState>) {
+  const st = (code: string) => states.get(code)?.st ?? 'ok';
+  return [...layout.buildings].sort((a, b) => RANK[st(a.code)] - RANK[st(b.code)]);
+}
+
+/** Left column: buildings with a problem as cards with a usable bar, the rest as small rows. */
 function BuildingList({
+  layout,
+  states,
+  selected,
+  onSelect,
+}: {
+  layout: Layout | undefined;
+  states: Map<string, BState>;
+  selected: string | null;
+  onSelect: (code: string | null) => void;
+}) {
+  if (!layout) return <p className="empty">กำลังโหลดผัง…</p>;
+  const list = sortedBuildings(layout, states);
+  const hot = list.filter((b) => bad(states.get(b.code)));
+  const calm = list.filter((b) => !bad(states.get(b.code)));
+  const pick = (code: string) => onSelect(selected === code ? null : code);
+  return (
+    <div className="blist" data-testid="buildings">
+      {hot.map((b) => {
+        const s = states.get(b.code) as BState;
+        return (
+          <button
+            key={b.code}
+            className={`bhot ${s.st}`}
+            aria-current={selected === b.code}
+            onClick={() => pick(b.code)}
+            title={`${DEVICE_STATE_TH[s.st]} · ใช้งานได้ ${s.up}/${s.total} อุปกรณ์`}
+          >
+            <span className="r1">
+              <i className={`sdot ${s.st}`} aria-hidden="true" />
+              <span className="nm">{b.name}</span>
+              <span className={`iss ${s.st}`}>
+                {STATE_ICON[s.st]} {s.n}
+              </span>
+            </span>
+            <span className="r2">
+              <span className="bar">
+                <i style={{ width: `${s.total ? Math.round((s.up / s.total) * 100) : 100}%` }} />
+              </span>
+              <span className="up">
+                {s.up}/{s.total}
+              </span>
+            </span>
+          </button>
+        );
+      })}
+      {hot.length > 0 && calm.length > 0 && <hr />}
+      {calm.map((b) => {
+        const s = states.get(b.code);
+        const st = s?.st ?? 'ok';
+        return (
+          <button
+            key={b.code}
+            className="bcalm"
+            aria-current={selected === b.code}
+            onClick={() => pick(b.code)}
+            title={`${DEVICE_STATE_TH[st]} · ${s?.total ?? 0} อุปกรณ์`}
+          >
+            <i className={`sdot sm ${st}`} aria-hidden="true" />
+            <span className="nm">{b.name}</span>
+            <span className="fl">{b.floorCount} ชั้น</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Building chips over the map when there is no left column (< 1180 px). */
+function BuildingStrip({
+  layout,
+  states,
+  selected,
+  onSelect,
+}: {
+  layout: Layout | undefined;
+  states: Map<string, BState>;
+  selected: string | null;
+  onSelect: (code: string | null) => void;
+}) {
+  if (!layout) return null;
+  return (
+    <div className="bstrip" role="group" aria-label="เลือกอาคาร">
+      {sortedBuildings(layout, states).map((b) => {
+        const st = states.get(b.code)?.st ?? 'ok';
+        return (
+          <button
+            key={b.code}
+            className={`bchip ${st}`}
+            aria-pressed={selected === b.code}
+            onClick={() => onSelect(selected === b.code ? null : b.code)}
+            title={DEVICE_STATE_TH[st]}
+          >
+            <i className={`sdot sm ${st}`} aria-hidden="true" />
+            {b.name}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Card of the focused building over the map: counts, floor cut, computer labs. */
+function BuildingCard({
   layout,
   model,
   snap,
-  selected,
+  states,
+  code,
   floor,
-  onSelect,
+  names,
   onFloor,
+  onClose,
   onLab,
 }: {
-  layout: Layout | undefined;
+  layout: Layout;
   model: SceneModel | null;
   snap: StatusSnapshot | null;
-  selected: string | null;
+  states: Map<string, BState>;
+  code: string;
   floor: number | null;
-  onSelect: (code: string | null) => void;
+  names: Names;
   onFloor: (floor: number | null) => void;
+  onClose: () => void;
   onLab: (locCode: string) => void;
 }) {
-  if (!layout) return <p className="empty">กำลังโหลดผัง…</p>;
-  const devicesIn = (b: string) => layout.devices.filter((d) => d.building === b).length;
-  const states = buildingStates(layout, snap);
-  const focused = layout.buildings.find((b) => b.code === selected);
+  const b = layout.buildings.find((x) => x.code === code);
+  if (!b) return null;
+  const s = states.get(code);
+  const st = s?.st ?? 'ok';
+  const open = (snap?.incidents ?? []).filter((i) => names.building(i.device) === code);
   return (
-    <>
-      <ul className="blist" data-testid="buildings">
-        {layout.buildings.map((b) => {
-          const s = states.get(b.code) ?? { st: 'ok' as UiState, n: 0 };
-          return (
-            <li key={b.code}>
-              <button
-                aria-current={selected === b.code}
-                onClick={() => onSelect(selected === b.code ? null : b.code)}
-                title={DEVICE_STATE_TH[s.st]}
-              >
-                <span className={`i ${s.st}`}>{STATE_ICON[s.st]}</span>
-                {b.name}
-                <span className="n">
-                  {s.n ? `${s.n} จุด · ` : ''}
-                  {b.floorCount} ชั้น · {devicesIn(b.code)}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-      {focused && (
-        <div className="floorBox">
-          <div className="floors" role="group" aria-label="เลือกชั้น" data-testid="floors">
-            <button aria-pressed={!floor} onClick={() => onFloor(null)}>
-              ทุกชั้น
-            </button>
-            {Array.from({ length: focused.floorCount }, (_, i) => i + 1).map((f) => (
-              <button
-                key={f}
-                aria-pressed={floor === f}
-                onClick={() => onFloor(f)}
-                title={`แสดงถึงชั้น ${f} ซ่อนชั้นที่สูงกว่า`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-          <button className="back" onClick={() => onSelect(null)}>
-            ดูทั้งโรงเรียน
+    <section id="bcard" className="panel" aria-label={`อาคาร ${b.name}`} data-testid="bcard">
+      <div className="bh">
+        <i className={`sdot ${st}`} aria-hidden="true" />
+        <h2>{b.name}</h2>
+        <button
+          className="close"
+          onClick={onClose}
+          aria-label="ดูทั้งโรงเรียน"
+          title="ดูทั้งโรงเรียน"
+        >
+          ✕
+        </button>
+      </div>
+      <div className="bnums">
+        <span>
+          <small>ชั้น</small>
+          <b>{b.floorCount}</b>
+        </span>
+        <span>
+          <small>อุปกรณ์</small>
+          <b>{layout.devices.filter((d) => d.building === code).length}</b>
+        </span>
+        <span>
+          <small>เหตุเปิด</small>
+          <b className={open.length ? st : ''}>{open.length}</b>
+        </span>
+      </div>
+      <p className={`bnote${open.length ? '' : ' ok'}`}>
+        {open.length
+          ? open.map((i) => names.name(i.device)).join(' · ')
+          : 'ทุกอุปกรณ์ในอาคารนี้ใช้งานได้'}
+      </p>
+      <div className="floors" role="group" aria-label="เลือกชั้น" data-testid="floors">
+        <button aria-pressed={!floor} onClick={() => onFloor(null)}>
+          ทุกชั้น
+        </button>
+        {Array.from({ length: b.floorCount }, (_, i) => i + 1).map((f) => (
+          <button
+            key={f}
+            aria-pressed={floor === f}
+            onClick={() => onFloor(f)}
+            title={`แสดงถึงชั้น ${f} ซ่อนชั้นที่สูงกว่า`}
+          >
+            {f}
           </button>
-          <Labs
-            labs={(model?.labs ?? []).filter((l) => l.building === focused.code)}
-            snap={snap}
-            onLab={onLab}
+        ))}
+      </div>
+      <Labs
+        labs={(model?.labs ?? []).filter((l) => l.building === code)}
+        snap={snap}
+        onLab={onLab}
+      />
+    </section>
+  );
+}
+
+/** Fibre links whose far end is not usable; the rest only counted (left column). */
+function FiberHealth({
+  model,
+  layout,
+  snap,
+  rows,
+  onGo,
+}: {
+  model: SceneModel | null;
+  layout: Layout | undefined;
+  snap: StatusSnapshot | null;
+  rows: ReturnType<typeof fiberRows>;
+  onGo: (code: string) => void;
+}) {
+  const fibers = (model?.links ?? []).filter((l) => l.kind === 'fiber');
+  if (!fibers.length || !snap) return null;
+  const badOnes = fibers
+    .map((f) => ({ f, st: stateOfDevice(snap, f.b) }))
+    .filter(({ st }) => st === 'down' || st === 'cut');
+  if (!badOnes.length) return null; // all fine: nothing to say (declutter)
+  const text = (key: string) => rows.find((r) => r.key === key)?.text ?? key;
+  const nm = (code: string) => layout?.devices.find((d) => d.code === code)?.name ?? code;
+  return (
+    <section className="panel fibers-box" aria-label="ลิงก์ไฟเบอร์" data-testid="fiber-health">
+      <p className="ptitle">
+        ลิงก์ไฟเบอร์
+        <span className={badOnes.length ? 'cnt' : 'cnt ok'}>
+          ปกติ {fibers.length - badOnes.length}/{fibers.length}
+        </span>
+      </p>
+      {badOnes.map(({ f, st }) => (
+        <button
+          key={f.key}
+          className="fbad"
+          onClick={() => onGo(f.b)}
+          title={`${text(f.key)} · ปลายทาง ${nm(f.b)} ${DEVICE_STATE_TH[st]}`}
+        >
+          <i className="fl" style={{ background: f.color ?? undefined }} aria-hidden="true" />
+          <span className="tx">
+            {text(f.key)}
+            {f.cable && <small>{f.cable}</small>}
+          </span>
+          <span className="st">{st === 'cut' ? 'ขาด' : 'ไม่ตอบ'}</span>
+        </button>
+      ))}
+    </section>
+  );
+}
+
+/** 24 h strip under the map: down lane on top, warnings below; a bar opens its device. */
+function Timeline({
+  history,
+  names,
+  now,
+  onGo,
+}: {
+  history: StatusHistory | null | undefined;
+  names: Names;
+  now: number;
+  onGo: (code: string) => void;
+}) {
+  if (!history) return null;
+  const { bars, from, started } = timelineBars(history, now);
+  const nm = (b: TimelineBar) => (b.device && names.has(b.device) ? names.name(b.device) : b.host);
+  return (
+    <div className="tline" data-testid="timeline">
+      <p className="tlh">
+        <span>
+          เหตุการณ์ {history.hours} ชม. · {started ? `เหตุใหม่ ${started}` : 'ไม่มีเหตุใหม่'}
+        </span>
+        <span className="tm">{hhmm(new Date(from).toISOString(), new Date(now))} — ตอนนี้</span>
+      </p>
+      <div className="track" role="list" aria-label={`เหตุการณ์ ${history.hours} ชั่วโมงล่าสุด`}>
+        {bars.map((b, k) => (
+          <button
+            key={`${b.host}:${b.start}:${k}`}
+            role="listitem"
+            className={`tb ${b.severity}${b.open ? ' open' : ''}`}
+            style={{ left: `${b.left}%`, width: `${b.width}%` }}
+            title={`${nm(b)} · ${b.severity === 'down' ? 'ใช้งานไม่ได้' : 'ควรตรวจสอบ'} · ${plainMessage(b.message)} · ${b.open ? 'ยังไม่หาย' : `หายแล้ว ${hhmm(b.end as string, new Date(now))}`}`}
+            aria-label={`${nm(b)} ${b.severity === 'down' ? 'ใช้งานไม่ได้' : 'ควรตรวจสอบ'}`}
+            disabled={!b.device || !names.has(b.device)}
+            onClick={() => b.device && onGo(b.device)}
           />
-        </div>
-      )}
-    </>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -562,25 +732,6 @@ function fiberRows(model: SceneModel | null, layout: Layout | undefined) {
     }));
 }
 
-function FiberLegend({ rows }: { rows: ReturnType<typeof fiberRows> }) {
-  if (!rows.length) return null;
-  return (
-    <details className="fibers">
-      <summary>ไฟเบอร์ ▾</summary>
-      <div id="fiberLegend" className="panel" data-testid="fiber-legend">
-        <b>ไฟเบอร์</b>
-        {rows.map((f) => (
-          <span key={f.key}>
-            <i className="fl" style={{ background: f.color ?? undefined }} />
-            {f.text}
-            {f.cable ? <small> · {f.cable}</small> : null}
-          </span>
-        ))}
-      </div>
-    </details>
-  );
-}
-
 /** Demo band (M38/ADR-0014): always visible while a scenario is shown, never on the real page. */
 function DemoBar({
   name,
@@ -633,7 +784,19 @@ const showFps = () => {
     return false;
   }
 };
-const isMobile = () => typeof matchMedia === 'function' && matchMedia('(max-width: 900px)').matches;
+/** Single column (< 980 px): the map and the alerts are stacked and the page scrolls. */
+const stacked = () =>
+  typeof matchMedia === 'function' &&
+  matchMedia(`(max-width: ${BREAKPOINTS.stack - 0.02}px)`).matches;
+/** Bring a stacked part of the page into view (no-op when everything is on screen). */
+const reveal = (id: string) => {
+  if (!stacked()) return;
+  const el = document.getElementById(id);
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  if (r.top < 0 || r.bottom > innerHeight)
+    el.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+};
 
 export function NocShell() {
   const loc = useLocation();
@@ -648,10 +811,6 @@ export function NocShell() {
   const unlocatedQ = useUnlocated(!isDemo);
 
   const [rightTab, setRightTab] = useState<RightTab>('inc');
-  const [sheetTab, setSheetTab] = useState<SheetTab>('inc');
-  const [sheetMin, setSheetMin] = useState(false);
-  const [leftMin, setLeftMin] = useState(false);
-  const [rightMin, setRightMin] = useState(false);
   const [building, setBuilding] = useState<string | null>(null);
   const [floor, setFloor] = useState<number | null>(null);
   const [sel, setSel] = useState<Selection | null>(null);
@@ -663,12 +822,15 @@ export function NocShell() {
   const [tour, setTour] = useState(false);
   const [hl, setHl] = useState<{ codes: string[]; label: string } | null>(null);
   const [layers, setLayers] = useState<Record<LayerKey, boolean>>(
-    Object.fromEntries(LAYERS.map((l) => [l.key, true])) as Record<LayerKey, boolean>,
+    // planned controllers start hidden (declutter); the layer bar shows them on demand
+    Object.fromEntries(LAYERS.map((l) => [l.key, l.key !== 'planned'])) as Record<
+      LayerKey,
+      boolean
+    >,
   );
   const [scene, setScene] = useState<NocScene | null>(null);
   const [mini, setMini] = useState<HTMLCanvasElement | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  const msearchRef = useRef<HTMLInputElement>(null);
   const fpsOn = useRef(showFps());
   const hint = useHint();
   const model = useMemo(() => (layout.data ? buildSceneModel(layout.data) : null), [layout.data]);
@@ -697,6 +859,22 @@ export function NocShell() {
   const bStates = useMemo(() => buildingStates(layout.data, snap), [layout.data, snap]);
   const fibers = useMemo(() => fiberRows(model, layout.data), [model, layout.data]);
   const incCount = snap?.incidents.length ?? 0;
+  const outLinks = useOutLinks();
+  const zabbixUrl = (code: string) => {
+    const d = layout.data?.devices.find((x) => x.code === code);
+    return d
+      ? fillLinkTemplate(outLinks.zabbix, {
+          code: d.code,
+          name: d.name,
+          hostname: d.hostname,
+          ip: d.ip,
+          loc: d.locCode,
+          building: d.building,
+          zabbixHostId: d.zabbixHostId,
+          assetTag: d.assetTag,
+        })
+      : null;
+  };
   const unlCount = unlocatedCount(unlocated, unplaced);
   const feed = useIncidentFeed(snap, isDemo ? `demo:${demoName}` : 'live');
   const now = useNow();
@@ -741,6 +919,7 @@ export function NocShell() {
         setFloor(b && b.floors > 1 ? m.floor : null);
       }
       scene?.select(next);
+      reveal('center');
     },
     [model, scene],
   );
@@ -777,7 +956,7 @@ export function NocShell() {
       }
       go(e.id);
     }
-    setSheetMin(true);
+    reveal('center');
   };
   const highlight = (codes: string[] | null, label = '') => {
     setHl(codes ? { codes, label } : null);
@@ -894,11 +1073,7 @@ export function NocShell() {
       if (typing && !ctrlK) return;
       if (slash || ctrlK) {
         e.preventDefault();
-        if (isMobile()) {
-          setSheetTab('find');
-          setSheetMin(false);
-          setTimeout(() => msearchRef.current?.focus(), 0);
-        } else searchRef.current?.focus();
+        searchRef.current?.focus();
       } else if (question) {
         e.preventDefault();
         setHelp(true);
@@ -932,6 +1107,7 @@ export function NocShell() {
     },
     onTv: tv.toggle,
     onHelp: () => setHelp(!help),
+    theme,
   };
 
   const searchProps = {
@@ -953,19 +1129,6 @@ export function NocShell() {
     void navigate({ pathname: loc.pathname, search: q ? `?${q}` : '' });
   };
 
-  const incidentsPanel = (onGo: (c: string) => void) => (
-    <Incidents
-      snap={snap}
-      layout={layout.data}
-      names={names}
-      current={sel?.kind === 'device' ? sel.code : null}
-      demo={demoLabel}
-      now={now}
-      isFresh={(d) => feed.isFresh(d, now)}
-      onGo={onGo}
-      onNext={nextIncident}
-    />
-  );
   const historyPanel = (
     <History
       history={history}
@@ -978,6 +1141,13 @@ export function NocShell() {
   const unlocatedPanel = (
     <Unlocated unlocated={unlocated} unplaced={unplaced} names={names} snap={snap} onGo={go} />
   );
+  const tabs = [
+    ['inc', `เปิดอยู่ ${incCount}`],
+    ['hist', `ประวัติ ${history?.hours ?? 24} ชม.`],
+    // devices without a position open from the menu; their tab shows only while looked at
+    ...(rightTab === 'unl' && unlCount ? [['unl', `ไม่มีตำแหน่ง ${unlCount}`] as const] : []),
+  ] as const;
+  const tab = rightTab === 'unl' && !unlCount ? 'inc' : rightTab;
 
   return (
     <div
@@ -991,20 +1161,6 @@ export function NocShell() {
         .filter(Boolean)
         .join(' ')}
     >
-      <Scene3D
-        model={model}
-        snapshot={snap}
-        layers={layers}
-        mini={mini}
-        onReady={setScene}
-        onSelect={onSelect}
-        onFps={setFps}
-        onInteract={hint.hide}
-        onAutoEco={(f) => {
-          setEco(true);
-          setToast(`เปิดโหมดประหยัดอัตโนมัติ เพราะภาพกระตุก (${Math.round(f)} เฟรม/วินาที)`);
-        }}
-      />
       <div id="ui">
         <TopBar
           snap={snap}
@@ -1036,40 +1192,46 @@ export function NocShell() {
               {...searchProps}
             />
           }
+          menu={
+            <Menu
+              ready={view.ready}
+              top={view.top}
+              tv={view.tv}
+              eco={view.eco}
+              dark={theme.theme === 'dark'}
+              layers={layers}
+              fibers={fibers}
+              unlocated={unlCount}
+              onTop={view.onTop}
+              onTv={view.onTv}
+              onEco={view.onEco}
+              onTheme={theme.toggle}
+              onLayer={(k) => setLayers({ ...layers, [k]: !layers[k] })}
+              onUnlocated={() => {
+                setRightTab('unl');
+                reveal('right');
+              }}
+              onHelp={view.onHelp}
+            />
+          }
           onBigNum={() => {
             setRightTab('inc');
-            setRightMin(false);
-            setSheetTab('inc');
-            setSheetMin(false);
+            reveal('right');
           }}
-          theme={theme}
           onGo={go}
         />
 
         <div id="leftcol">
-          <nav id="left" className={`panel${leftMin ? ' collapsed' : ''}`} aria-label="อาคาร">
-            <p className="ptitle">
-              อาคาร{' '}
-              <button
-                className="pmin"
-                aria-label="ย่อแผงอาคาร"
-                aria-expanded={!leftMin}
-                onClick={() => setLeftMin(!leftMin)}
-              >
-                {leftMin ? '+' : '–'}
-              </button>
-            </p>
+          <nav id="left" className="panel" aria-label="อาคาร">
+            <p className="ptitle">อาคาร</p>
             <BuildingList
               layout={layout.data}
-              model={model}
-              snap={snap}
+              states={bStates}
               selected={building}
-              floor={floor}
               onSelect={(c) => focus(c)}
-              onFloor={onFloor}
-              onLab={goLab}
             />
           </nav>
+          <FiberHealth model={model} layout={layout.data} snap={snap} rows={fibers} onGo={go} />
           <figure id="miniBox" className="panel">
             <figcaption>
               แผนที่ย่อ <small>คลิกเพื่อย้ายมุมมอง</small>
@@ -1095,111 +1257,134 @@ export function NocShell() {
                 scene?.pan(m[0], m[1]);
               }}
             />
-            <p className="mlegend">
-              <span>
-                <i className="view" />
-                ที่เห็นอยู่
-              </span>
-              <span>
-                <b className="i down">{STATE_ICON.down}</b>ใช้งานไม่ได้
-              </span>
-              <span>
-                <b className="i warn">{STATE_ICON.warn}</b>ควรตรวจสอบ
-              </span>
-            </p>
           </figure>
         </div>
 
-        <main id="center" aria-label="ผัง 3 มิติ">
-          {snap?.stale && (
-            <div id="staleBar" role="alert">
-              ข้อมูลค้าง — ไม่ได้รับข้อมูลใหม่จาก Zabbix ตั้งแต่ {timeTh(snap.lastUpdate)}{' '}
-              สถานะที่เห็นอาจไม่ตรงความจริง
-            </div>
-          )}
-          {hl && (
-            <div id="hlBar" className="panel" data-testid="hl-bar">
-              ไฮไลต์ผลค้นหา &quot;{hl.label}&quot; {hl.codes.length} รายการ{' '}
-              <button onClick={() => highlight(null)}>ล้าง</button>
-            </div>
-          )}
-          {hint.show && scene && !tv.on && <p id="hint">{hint.text}</p>}
-          {toast && (
-            <div id="toast" role="status" key={toast}>
-              {toast}
-            </div>
-          )}
-          <Feed events={feed.events} names={names} onGo={go} onDismiss={feed.dismiss} />
-          {sel && layout.data && model && (
-            <InfoPanel
-              sel={sel}
-              layout={layout.data}
-              model={model}
-              snap={snap}
-              names={names}
-              onClose={closeInfo}
-            />
-          )}
-        </main>
-
-        <aside id="right" className={`panel${rightMin ? ' collapsed' : ''}`} aria-label="แจ้งเตือน">
-          <div className="rtabs" role="tablist">
-            {(
-              [
-                ['inc', `แจ้งเตือน ${incCount ? `(${incCount})` : ''}`],
-                ['hist', 'ประวัติ'],
-                ['unl', `ยังไม่ระบุที่ตั้ง ${unlCount ? `(${unlCount})` : ''}`],
-              ] as const
-            ).map(([k, label]) => (
-              <button
-                key={k}
-                role="tab"
-                aria-selected={rightTab === k}
-                onClick={() => {
-                  setRightTab(k);
-                  setRightMin(false);
-                }}
-              >
-                {label}
-              </button>
-            ))}
+        <main id="center" className="panel" aria-label="ผัง 3 มิติ">
+          <div className="mhead">
+            <h2 className="ptitle">ผังเครือข่าย 3 มิติ</h2>
             <button
-              className="pmin"
-              aria-label="ย่อแผงแจ้งเตือน"
-              aria-expanded={!rightMin}
-              onClick={() => setRightMin(!rightMin)}
+              className="ib"
+              disabled={!view.ready}
+              onClick={view.onHome}
+              aria-label="ทั้งโรงเรียน"
+              title="กลับไปมุมมองทั้งโรงเรียน (H)"
             >
-              {rightMin ? '+' : '–'}
+              <Icon name="home" />
             </button>
           </div>
-          <div className="rbody">
-            {rightTab === 'inc' && incidentsPanel(go)}
-            {rightTab === 'hist' && historyPanel}
-            {rightTab === 'unl' && unlocatedPanel}
-          </div>
-        </aside>
-
-        <footer id="bottom" className="panel">
-          {LAYERS.map((l) => (
-            <label key={l.key}>
-              <input
-                type="checkbox"
-                checked={layers[l.key]}
-                onChange={(e) => setLayers({ ...layers, [l.key]: e.target.checked })}
+          <BuildingStrip
+            layout={layout.data}
+            states={bStates}
+            selected={building}
+            onSelect={(c) => focus(c)}
+          />
+          <div className="stage">
+            <Scene3D
+              model={model}
+              snapshot={snap}
+              layers={layers}
+              mini={mini}
+              onReady={setScene}
+              onSelect={onSelect}
+              onFps={setFps}
+              onInteract={hint.hide}
+              onAutoEco={(f) => {
+                setEco(true);
+                setToast(`เปิดโหมดประหยัดอัตโนมัติ เพราะภาพกระตุก (${Math.round(f)} เฟรม/วินาที)`);
+              }}
+            />
+            {snap?.stale && (
+              <div id="staleBar" role="alert">
+                ข้อมูลค้าง — ไม่ได้รับข้อมูลใหม่จาก Zabbix ตั้งแต่ {timeTh(snap.lastUpdate)}{' '}
+                สถานะที่เห็นอาจไม่ตรงความจริง
+              </div>
+            )}
+            {hl && (
+              <div id="hlBar" className="panel" data-testid="hl-bar">
+                ไฮไลต์ผลค้นหา &quot;{hl.label}&quot; {hl.codes.length} รายการ{' '}
+                <button onClick={() => highlight(null)}>ล้าง</button>
+              </div>
+            )}
+            {hint.show && scene && !tv.on && <p id="hint">{hint.text}</p>}
+            {toast && (
+              <div id="toast" role="status" key={toast}>
+                {toast}
+              </div>
+            )}
+            <Feed events={feed.events} names={names} onGo={go} onDismiss={feed.dismiss} />
+            {building && layout.data && !sel && (
+              <BuildingCard
+                layout={layout.data}
+                model={model}
+                snap={snap}
+                states={bStates}
+                code={building}
+                floor={floor}
+                names={names}
+                onFloor={onFloor}
+                onClose={() => focus(null)}
+                onLab={goLab}
               />
-              <span className="sw" style={{ background: l.color }} />
-              {l.label}
-            </label>
-          ))}
-          <FiberLegend rows={fibers} />
-          <span className="stlegend" title="ความหมายสัญลักษณ์สถานะ">
-            <span className="i ok">{STATE_ICON.ok}</span>ปกติ{' '}
-            <span className="i warn">{STATE_ICON.warn}</span>ควรตรวจสอบ{' '}
-            <span className="i down">{STATE_ICON.down}</span>ใช้งานไม่ได้{' '}
-            <span className="i cut">{STATE_ICON.cut}</span>
-            ขาดจากต้นทาง <span className="i maint">{STATE_ICON.maint}</span>บำรุงรักษา
-          </span>
-        </footer>
+            )}
+            {sel && layout.data && model && (
+              <InfoPanel
+                sel={sel}
+                layout={layout.data}
+                model={model}
+                snap={snap}
+                names={names}
+                onClose={closeInfo}
+              />
+            )}
+          </div>
+          <Timeline history={history} names={names} now={now} onGo={go} />
+        </main>
+
+        <div id="rightcol">
+          <FirstCard
+            snap={snap}
+            names={names}
+            demo={isDemo}
+            now={now}
+            zabbixUrl={zabbixUrl}
+            onGo={go}
+          />
+          <aside id="right" className="panel" aria-label="แจ้งเตือน">
+            <div className="rhead">
+              <h2 className="ptitle">แจ้งเตือน</h2>
+              <div className="rtabs" role="tablist">
+                {tabs.map(([k, label]) => (
+                  <button
+                    key={k}
+                    role="tab"
+                    aria-selected={tab === k}
+                    onClick={() => setRightTab(k)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="rbody">
+              {tab === 'inc' && (
+                <Incidents
+                  snap={snap}
+                  layout={layout.data}
+                  names={names}
+                  current={sel?.kind === 'device' ? sel.code : null}
+                  building={building}
+                  now={now}
+                  isFresh={(d) => feed.isFresh(d, now)}
+                  onGo={go}
+                  onClearBuilding={() => focus(null)}
+                />
+              )}
+              {tab === 'hist' && historyPanel}
+              {tab === 'unl' && unlocatedPanel}
+            </div>
+          </aside>
+        </div>
 
         {help && (
           <Help
@@ -1213,72 +1398,6 @@ export function NocShell() {
           />
         )}
         {tour && <Tour onDone={() => setTour(false)} />}
-
-        <section id="sheet" className={`panel${sheetMin ? ' min' : ''}`} aria-label="แผงข้อมูล">
-          <div className="tabs" role="tablist">
-            {(
-              [
-                ['inc', `แจ้งเตือน ${incCount ? `(${incCount})` : ''}`],
-                ['bld', 'อาคาร'],
-                ['hist', 'ประวัติ'],
-                ['find', 'ค้นหา'],
-              ] as const
-            ).map(([k, label]) => (
-              <button
-                key={k}
-                role="tab"
-                aria-selected={sheetTab === k}
-                onClick={() => {
-                  setSheetTab(k);
-                  setSheetMin(false);
-                }}
-              >
-                {label}
-              </button>
-            ))}
-            <button
-              id="sheetMin"
-              aria-label="ย่อ/ขยาย"
-              aria-expanded={!sheetMin}
-              onClick={() => setSheetMin(!sheetMin)}
-            >
-              {sheetMin ? '▴' : '▾'}
-            </button>
-          </div>
-          <div className="tabbody">
-            {sheetTab === 'inc' &&
-              incidentsPanel((c) => {
-                go(c);
-                setSheetMin(true);
-              })}
-            {sheetTab === 'bld' && (
-              <>
-                <BuildingList
-                  layout={layout.data}
-                  model={model}
-                  snap={snap}
-                  selected={building}
-                  floor={floor}
-                  onSelect={(c) => focus(c)}
-                  onFloor={onFloor}
-                  onLab={goLab}
-                />
-                <p className="sub2">ยังไม่ระบุที่ตั้ง {unlCount ? `(${unlCount})` : ''}</p>
-                {unlocatedPanel}
-              </>
-            )}
-            {sheetTab === 'hist' && historyPanel}
-            {sheetTab === 'find' && (
-              <SearchBox
-                ref={msearchRef}
-                id="msearch"
-                popup={false}
-                placeholder="ค้นหา ตึก ชั้น ห้อง อุปกรณ์ IP"
-                {...searchProps}
-              />
-            )}
-          </div>
-        </section>
       </div>
     </div>
   );

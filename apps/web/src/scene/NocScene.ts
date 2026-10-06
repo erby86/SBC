@@ -47,7 +47,8 @@ export interface SceneOptions {
   reducedMotion?: boolean;
 }
 
-const HOME = { pos: new THREE.Vector3(-62, 70, 95), tgt: new THREE.Vector3(0, 2, 18) };
+// the map card is smaller than the old full-screen scene, so home sits closer
+const HOME = { pos: new THREE.Vector3(-49, 56, 80), tgt: new THREE.Vector3(0, 2, 20) };
 const AUTO_ECO_FPS = 24;
 const EMISSIVE = 0.35;
 /** Wireframe buildings: bright outlines and floor lines, near-clear slabs and glass. */
@@ -135,6 +136,8 @@ interface Label {
   below: boolean;
   w: number;
   h: number;
+  /** Device the label names (ISP): hidden while that device has a problem badge. */
+  device?: string;
 }
 
 interface Fx {
@@ -792,10 +795,10 @@ export class NocScene {
         g.add(p);
       }
       this.addLabel(
-        `${escapeHtml(a.name)}<small>ไม่มีอุปกรณ์</small>`,
+        escapeHtml(a.name),
         new THREE.Vector3(a.x, h + 0.8, a.z),
         () => 3,
-      );
+      ).el.classList.add('quiet', 'area');
     }
   }
 
@@ -857,12 +860,14 @@ export class NocScene {
         maxOpacity: mat.opacity,
       });
       if (m.kind === 'wan') {
-        this.addLabel(
+        const l = this.addLabel(
           escapeHtml(m.name),
           new THREE.Vector3(m.pos.x, m.pos.y - 1.6, m.pos.z),
           () => 2,
           true,
         );
+        l.device = m.code;
+        l.el.classList.add('quiet');
       }
     }
     if (this.apList.length) {
@@ -1160,7 +1165,10 @@ export class NocScene {
       }
       b.state = st;
       b.ring.className = `ring ${st}`;
+      // a building without a problem gets a small plain name (declutter); problems stand out
+      b.label.classList.toggle('quiet', st === 'ok' || st === 'maint');
     }
+    for (const l of this.labelsList) l.w = l.h = 0; // label sizes change with the style
     this.syncFx();
     this.syncBadges();
     this.applyVisibility();
@@ -1550,7 +1558,7 @@ export class NocScene {
         h,
       ];
       const hit = overlaps(rect);
-      const show = !o.off && !hit;
+      const show = !o.off && !hit && !(o.l.device && this.badges.has(o.l.device));
       el.style.visibility = show ? 'visible' : 'hidden';
       if (show) {
         placed.push(rect);
