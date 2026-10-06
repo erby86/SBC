@@ -355,7 +355,7 @@ export class NocScene {
       this.composer = new EffectComposer(this.renderer, target);
       this.composer.addPass(new RenderPass(this.scene, this.camera));
       // tight, soft glow: a wide radius smears thin cables and building edges
-      this.bloom = new UnrealBloomPass(new THREE.Vector2(800, 600), 0.45, 0.15, 0.6);
+      this.bloom = new UnrealBloomPass(new THREE.Vector2(800, 600), 0.3, 0.15, 0.65);
       this.composer.addPass(this.bloom);
       this.composer.addPass(new OutputPass());
     } catch {

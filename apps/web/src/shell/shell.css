@@ -3055,3 +3055,39 @@ code {
   height: 0.3rem;
   margin-right: 0.7rem;
 }
+
+/* ── NOC pass (2026-10-07): decoration measured in the page and taken out; colour only where it
+   carries a severity. Layout: the left column's last panel reaches the bottom like the others. ── */
+.sdot.warn,
+.sdot.down,
+.sdot.sm.warn,
+.sdot.sm.down {
+  box-shadow: none;
+}
+.num.down b.hot {
+  text-shadow: none;
+}
+/* "ทำอะไรก่อน": a flat panel; its severity shows in the P badge and the red edge */
+#first {
+  background: var(--panel);
+  box-shadow: none;
+}
+/* alert cards: severity in the left edge and the P badge only, not a tint over the whole card */
+.inc.down,
+.inc.warn {
+  background: transparent;
+}
+@media (min-width: 1180px) {
+  #leftcol > #left {
+    flex-grow: 1;
+  }
+}
+/* scrollbars stay thin and inside their box (Windows draws wide ones with arrows) */
+#ui,
+#ui *,
+#menuPanel,
+#help,
+#fibers {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--ink) 28%, transparent) transparent;
+}
