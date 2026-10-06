@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   firstToHandle,
   isLongStanding,
+  logLines,
   ownCards,
   priority,
   rootGroup,
@@ -163,5 +164,72 @@ describe('root-cause groups', () => {
     expect(shownState(snap, 'sw-i2')).toBe('cut');
     expect(shownState(snap, 'core')).toBe('ok');
     expect(shownState(null, 'core')).toBe('ok');
+  });
+});
+
+describe('event log (syslog style)', () => {
+  const at = (min: number) => new Date(NOW - min * 60_000).toISOString();
+  const ev = (
+    device: string,
+    severity: 'down' | 'warn',
+    start: number,
+    end: number | null,
+    message = 'ไม่ตอบ ping',
+  ) => ({
+    device,
+    host: device,
+    severity,
+    start: at(start),
+    end: end === null ? null : at(end),
+    message,
+  });
+  const history = (events: ReturnType<typeof ev>[]) => ({ updatedAt: at(0), hours: 24, events });
+
+  it('one line per start and per recovery, newest first, with how long it was out', () => {
+    const lines = logLines(
+      history([ev('wan1', 'down', 300, 294), ev('mainB', 'warn', 40, null)]),
+      null,
+    );
+    expect(lines.map((l) => [l.level, l.host, l.at])).toEqual([
+      ['warn', 'mainB', at(40)],
+      ['ok', 'wan1', at(294)],
+      ['down', 'wan1', at(300)],
+    ]);
+    expect(lines[1]).toMatchObject({ outMin: 6, was: 'down' });
+  });
+
+  it('folds the followers of a root cause into one "+N" line', () => {
+    const snap = {
+      stale: false,
+      lastUpdate: at(0),
+      incidents: [
+        inc('c1036', 'down', 0.01, 21),
+        inc('m-i2', 'down', 0.01, 7, null, 'c1036'),
+        inc('m-s8', 'down', 0.01, 3, null, 'c1036'),
+      ],
+    };
+    const lines = logLines(
+      history([
+        ev('c1036', 'down', 6, null),
+        ev('m-i2', 'down', 5, null),
+        ev('m-s8', 'down', 4, null),
+      ]),
+      snap,
+    );
+    expect(lines.map((l) => [l.level, l.host, l.followers ?? 0, l.root ?? null])).toEqual([
+      ['down', '+2 ตัว', 2, 'c1036'],
+      ['down', 'c1036', 0, null],
+    ]);
+    expect(lines[0]?.at).toBe(at(4));
+    expect(lines[0]?.device).toBe('c1036');
+  });
+
+  it('puts a system line on top when the data is not fresh', () => {
+    const lines = logLines(history([ev('mainB', 'warn', 40, null)]), {
+      stale: true,
+      lastUpdate: at(6),
+      incidents: [],
+    });
+    expect(lines[0]).toMatchObject({ level: 'sys', host: 'worker', at: at(6) });
   });
 });

@@ -41,6 +41,8 @@ test('demo: one root cause takes 21 devices with it (storm)', async ({ page }, i
     .getByRole('button', { name: /ดูรายชื่อ/ })
     .click();
   await expect(page.getByTestId('root-group').locator('.glist li')).toHaveCount(21);
+  // event log: the devices Zabbix also sees down fold into one line behind the root cause
+  await expect(page.getByTestId('event-log')).toContainText('รวมเข้าเหตุเดียวกัน');
   await checkScreen(page, info, '02b-storm');
 });
 

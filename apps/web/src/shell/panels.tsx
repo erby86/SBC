@@ -36,7 +36,7 @@ const KIND_SHORT: Record<string, string> = {
 
 const MIN = 60_000;
 /** "12 นาที", "2 ชม. 5 นาที", "3 วัน 4 ชม.", "149 วัน" — days once it is past a day. */
-function minutesTxt(m: number): string {
+export function minutesTxt(m: number): string {
   if (m < 60) return `${m} นาที`;
   const h = Math.floor(m / 60);
   if (h < 24) return `${h} ชม. ${m % 60} นาที`;

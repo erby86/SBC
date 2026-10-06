@@ -32,7 +32,8 @@ import { buildSceneModel, deviceKind, type SceneModel } from '../scene/model.js'
 import type { NocScene, Selection } from '../scene/NocScene.js';
 import { useIncidentFeed, useNow } from './events.js';
 import { useTabStatus } from './tab.js';
-import { ownCards, shownState, timelineBars, topCounts, type TimelineBar } from './console.js';
+import { ownCards, shownState, topCounts } from './console.js';
+import { EventLog } from './evlog.js';
 import { Feed } from './feed.js';
 import { Help, Tour, tourSeen } from './Help.js';
 import { Icon } from './icons.js';
@@ -41,7 +42,6 @@ import { plainMessage } from './messages.js';
 import {
   FirstCard,
   fmtAgo,
-  hhmm,
   History,
   Incidents,
   Labs,
@@ -531,47 +531,6 @@ function FiberHealth({
         </button>
       ))}
     </section>
-  );
-}
-
-/** 24 h strip under the map: down lane on top, warnings below; a bar opens its device. */
-function Timeline({
-  history,
-  names,
-  now,
-  onGo,
-}: {
-  history: StatusHistory | null | undefined;
-  names: Names;
-  now: number;
-  onGo: (code: string) => void;
-}) {
-  if (!history) return null;
-  const { bars, from, started } = timelineBars(history, now);
-  const nm = (b: TimelineBar) => (b.device && names.has(b.device) ? names.name(b.device) : b.host);
-  return (
-    <div className="tline" data-testid="timeline">
-      <p className="tlh">
-        <span>
-          เหตุการณ์ {history.hours} ชม. · {started ? `เหตุใหม่ ${started}` : 'ไม่มีเหตุใหม่'}
-        </span>
-        <span className="tm">{hhmm(new Date(from).toISOString(), new Date(now))} — ตอนนี้</span>
-      </p>
-      <div className="track" role="list" aria-label={`เหตุการณ์ ${history.hours} ชั่วโมงล่าสุด`}>
-        {bars.map((b, k) => (
-          <button
-            key={`${b.host}:${b.start}:${k}`}
-            role="listitem"
-            className={`tb ${b.severity}${b.open ? ' open' : ''}`}
-            style={{ left: `${b.left}%`, width: `${b.width}%` }}
-            title={`${nm(b)} · ${b.severity === 'down' ? 'ใช้งานไม่ได้' : 'ควรตรวจสอบ'} · ${plainMessage(b.message)} · ${b.open ? 'ยังไม่หาย' : `หายแล้ว ${hhmm(b.end as string, new Date(now))}`}`}
-            aria-label={`${nm(b)} ${b.severity === 'down' ? 'ใช้งานไม่ได้' : 'ควรตรวจสอบ'}`}
-            disabled={!b.device || !names.has(b.device)}
-            onClick={() => b.device && onGo(b.device)}
-          />
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -1375,7 +1334,7 @@ export function NocShell() {
               />
             )}
           </div>
-          <Timeline history={history} names={names} now={now} onGo={go} />
+          <EventLog history={history} snap={snap} names={names} now={now} onGo={go} />
         </main>
 
         <div id="rightcol">

@@ -154,3 +154,81 @@ export function timelineBars(history: StatusHistory | null | undefined, now = Da
   );
   return { bars, from, started };
 }
+
+export interface LogLine {
+  at: string;
+  /** down/warn = a problem started, ok = it recovered, sys = about the data itself. */
+  level: 'down' | 'warn' | 'ok' | 'sys';
+  /** Registry device to fly to (the root cause for a folded line); null = not on the map. */
+  device: string | null;
+  host: string;
+  message: string;
+  /** Recovery lines: what it was and for how many minutes. */
+  was?: 'down' | 'warn';
+  outMin?: number;
+  /** Folded line: how many devices went out behind `root`. */
+  followers?: number;
+  root?: string;
+}
+
+/** Event log under the map, newest first: a line per problem start and per recovery; devices
+ * still out behind a root cause fold into one "+N ตัว" line; a system line on top when the data
+ * is not fresh. */
+export function logLines(
+  history: StatusHistory | null | undefined,
+  snap: Pick<StatusSnapshot, 'stale' | 'lastUpdate' | 'incidents'> | null,
+  max = 60,
+): LogLine[] {
+  const rootOf = new Map(
+    (snap?.incidents ?? []).filter((i) => i.root !== null).map((i) => [i.device, i.root as string]),
+  );
+  const lines: LogLine[] = [];
+  const folded = new Map<string, { n: number; at: string }>();
+  for (const e of history?.events ?? []) {
+    const root = e.device && e.end === null ? rootOf.get(e.device) : undefined;
+    if (root) {
+      const f = folded.get(root) ?? { n: 0, at: e.start };
+      f.n += 1;
+      if (e.start > f.at) f.at = e.start;
+      folded.set(root, f);
+      continue;
+    }
+    lines.push({
+      at: e.start,
+      level: e.severity,
+      device: e.device,
+      host: e.host,
+      message: e.message,
+    });
+    if (e.end)
+      lines.push({
+        at: e.end,
+        level: 'ok',
+        device: e.device,
+        host: e.host,
+        message: e.message,
+        was: e.severity,
+        outMin: Math.max(1, Math.round((Date.parse(e.end) - Date.parse(e.start)) / 60_000)),
+      });
+  }
+  for (const [root, f] of folded)
+    lines.push({
+      at: f.at,
+      level: 'down',
+      device: root,
+      host: `+${f.n} ตัว`,
+      message: root,
+      followers: f.n,
+      root,
+    });
+  lines.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+  if (snap?.stale)
+    lines.unshift({
+      at: snap.lastUpdate,
+      level: 'sys',
+      device: null,
+      host: 'worker',
+      message: 'ไม่ได้ข้อมูลใหม่',
+    });
+  return lines.slice(0, max);
+}

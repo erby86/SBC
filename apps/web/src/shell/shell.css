@@ -866,7 +866,7 @@
 #app.stale #left,
 #app.stale #right,
 #app.stale #first,
-#app.stale .tline {
+#app.stale .evlog {
   filter: saturate(0.2) brightness(0.85);
   transition: filter 0.5s ease;
 }
@@ -943,26 +943,117 @@
   background: #1b2f4b;
 }
 
-.tline {
+/* event log under the map: syslog-style lines, the 24 h strip in its header */
+.evlog {
   flex: none;
-  padding: 0.45rem 0.85rem 0.6rem;
-}
-.tlh {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 0.1rem 0.6rem;
-  margin: 0 0 0.3rem;
-  font-size: max(12px, 0.75rem);
-  color: var(--ink-2);
+  flex-direction: column;
+  padding: 0.45rem 0.85rem 0.5rem;
 }
-.tline .track {
+.elh {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.3rem;
+}
+.elh .ptitle {
+  margin: 0;
+  white-space: nowrap;
+}
+.evlog .track {
   position: relative;
+  flex: 1;
+  max-width: 22rem;
   height: 1rem;
-  border-radius: 0.35rem;
   border: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg) 70%, transparent);
   overflow: hidden;
+}
+.elines {
+  max-height: 6.6rem;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: max(12px, 0.78rem);
+  line-height: 1.5;
+}
+.eline {
+  display: grid;
+  grid-template-columns: 4.6rem 2.6rem 7rem minmax(0, 1fr);
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 0;
+  padding: 0.05rem 0.2rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font: inherit;
+  text-align: left;
+  color: var(--ink-2);
+}
+.eline:not(:disabled) {
+  cursor: pointer;
+}
+.eline:not(:disabled):hover {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+.eline:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.eline > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.eline .et {
+  color: var(--ink-2);
+  opacity: 0.8;
+}
+.eline .el {
+  font-weight: 600;
+}
+.eline .eh {
+  color: var(--ink);
+}
+.eline.down .el {
+  color: var(--down-ink);
+}
+.eline.warn .el {
+  color: var(--warn-ink);
+}
+.eline.ok .el {
+  color: var(--ok-ink);
+}
+.eline.sys .el,
+.eline.sys .em {
+  color: var(--cut-ink);
+}
+/* problems still worth reading stand out; recoveries and folded lines stay quiet */
+.eline.down:not(.fold) .em,
+.eline.warn .em {
+  color: var(--ink);
+}
+.eday {
+  display: block;
+  margin: 0.15rem 0 0.05rem 0.2rem;
+  font-size: max(12px, 0.72rem);
+  color: var(--ink-2);
+}
+.eprompt {
+  padding: 0.05rem 0.2rem;
+  color: var(--ink-2);
+  opacity: 0.8;
+}
+.caret {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.85rem;
+  vertical-align: -0.12rem;
+  background: var(--accent);
 }
 .tb {
   position: absolute;
@@ -2656,4 +2747,21 @@ code {
 }
 #first::after {
   --line: color-mix(in srgb, var(--down) 50%, #24364f);
+}
+
+/* phones: time · level · host on one row, the message wraps below it */
+@media (max-width: 599.98px) {
+  .eline {
+    grid-template-columns: 4.6rem 2.6rem minmax(0, 1fr);
+    row-gap: 0;
+    padding: 0.15rem 0.2rem;
+  }
+  .eline .em {
+    grid-column: 2 / -1;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .elines {
+    max-height: 11rem;
+  }
 }
