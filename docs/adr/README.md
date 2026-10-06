@@ -24,3 +24,4 @@
 | [0020](0020-registry-editor-before-3d.md) | ทำหน้าจัดการทะเบียน (M21) ก่อนฉาก 3D             |
 | [0021](0021-g4-parallel-with-g1-g3.md)    | ทำและปิด G4 บน dev ขนานกับ G1–G3                 |
 | [0022](0022-build-on-host.md)             | build image บน sbc-ubuntu และ deploy ด้วยสคริปต์ |
+| [0023](0023-local-accounts.md)            | เข้าสู่ระบบด้วยบัญชีในเครื่อง (แทน Google OIDC)  |
