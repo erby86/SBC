@@ -9,3 +9,4 @@ export * from './demo/topology.js';
 export * from './live.js';
 export * from './registry-edit.js';
 export * from './links.js';
+export * from './selfmon.js';

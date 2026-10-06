@@ -88,7 +88,7 @@ deploy_staging() {
   fi
 
   step "build"
-  "${compose[@]}" build --pull
+  "${compose[@]}" build --pull --build-arg OS_REFRESH="$(date +%F)"
 
   step "Trivy scan"
   mkdir -p /opt/sbc-noc/sbom
@@ -157,7 +157,8 @@ deploy_prod() {
   step "build images $tag"
   local app
   for app in "${APPS[@]}"; do
-    docker build --pull -f "apps/$app/Dockerfile" -t "${prefix}sbc-noc-$app:$tag" \
+    docker build --pull --build-arg OS_REFRESH="$(date +%F)" -f "apps/$app/Dockerfile" \
+      -t "${prefix}sbc-noc-$app:$tag" \
       --label "org.opencontainers.image.version=$version" \
       --label "org.opencontainers.image.revision=$(git rev-parse HEAD)" .
   done

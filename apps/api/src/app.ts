@@ -17,7 +17,7 @@ import {
   type StatusSnapshot,
 } from '@sbc-noc/shared';
 import { z } from 'zod';
-import { registerMetrics } from './metrics.js';
+import { registerMetrics, type SelfMonSource } from './metrics.js';
 import { demoRoutes } from './routes/demo.js';
 import { statusExtraRoutes, statusRoutes, type StatusExtras } from './routes/status.js';
 import { liveRoutes, type LiveHub } from './routes/live.js';
@@ -45,6 +45,8 @@ export interface AppDeps {
   live?: LiveHub;
   /** M21 registry editor; only with REGISTRY_EDIT=true (dev until login, ADR-0020). */
   registryEdit?: RegistryEditor;
+  /** M35 self-monitoring gauges on /metrics (worker heartbeat, queue, sync jobs). */
+  selfmon?: SelfMonSource;
   /** M22 URL templates of the Zabbix/Grafana/GLPI buttons (LINK_*_URL); null = no button. */
   links?: OutLinks;
 }
@@ -102,7 +104,7 @@ export async function buildApp(
     transform: jsonSchemaTransform,
   });
   await app.register(fastifySwaggerUi, { routePrefix: '/docs' });
-  registerMetrics(app);
+  registerMetrics(app, deps.selfmon);
   // Weak ETag from the body hash; clients revalidate every time (no stale registry data).
   await app.register(fastifyEtag, { weak: true });
   app.addHook('onSend', async (req, reply) => {

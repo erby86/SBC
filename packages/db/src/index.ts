@@ -47,3 +47,5 @@ export {
   updateDevice,
   updateLocation,
 } from './registry/write.js';
+export { readSyncHealth } from './selfmon.js';
+export type { SyncJobHealth } from './selfmon.js';
