@@ -339,7 +339,15 @@ export class NocScene {
     this.scene.add(this.content);
 
     try {
-      this.composer = new EffectComposer(this.renderer);
+      // the composer draws into its own target, where the canvas' antialias does not apply:
+      // multisample that target or edges and thin cables come out jagged and soft
+      // (logical size: the composer multiplies by the pixel ratio itself, setSize follows on resize)
+      const size = this.renderer.getSize(new THREE.Vector2());
+      const target = new THREE.WebGLRenderTarget(size.x, size.y, {
+        type: THREE.HalfFloatType,
+        samples: 4,
+      });
+      this.composer = new EffectComposer(this.renderer, target);
       this.composer.addPass(new RenderPass(this.scene, this.camera));
       this.bloom = new UnrealBloomPass(new THREE.Vector2(800, 600), 0.6, 0.4, 0.55);
       this.composer.addPass(this.bloom);
