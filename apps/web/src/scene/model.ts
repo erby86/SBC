@@ -336,6 +336,48 @@ export function routeBetween(
   return dedupe((best as { pts: Vec3[] }).pts);
 }
 
+/**
+ * Cable run inside one building, at right angles along its walls like a fibre: straight up or
+ * down at the source to the target's height, then along the building's long side and across.
+ * A riser (main → floor switch) keeps the source's line across and turns last; an AP run turns
+ * across first and then runs along the AP row under the ceiling, so the APs of a floor share
+ * one line. `lane` sets parallel runs of one source a little apart, towards the middle.
+ */
+export function routeInside(
+  a: Vec3,
+  b: Vec3,
+  bld: BuildingModel,
+  lane: number,
+  ap: boolean,
+): Vec3[] {
+  const F = frameOf(bld);
+  const [cx, cz] = F.toF(bld);
+  const long = bld.width >= bld.depth;
+  // (along, across) relative to the centre, and back
+  const rel = (p: Vec3): [number, number] => {
+    const [x, z] = F.toF(p);
+    return long ? [x - cx, z - cz] : [z - cz, x - cx];
+  };
+  const at = (al: number, ac: number, y: number) =>
+    long ? F.fromF(cx + al, cz + ac, y) : F.fromF(cx + ac, cz + al, y);
+  const [aAl, aAc] = rel(a);
+  const [bAl, bAc] = rel(b);
+  const y = b.y;
+  if (ap) {
+    const o = (lane % 6) * 0.04 * (bAc > 0 ? -1 : 1);
+    return dedupe([a, at(aAl, aAc, y), at(aAl, bAc + o, y), at(bAl, bAc + o, y), b]);
+  }
+  const o = (lane % 6) * 0.06 * (aAc > 0 ? -1 : 1);
+  return dedupe([
+    a,
+    at(aAl, aAc + o, a.y),
+    at(aAl, aAc + o, y),
+    at(bAl, aAc + o, y),
+    at(bAl, bAc, y),
+    b,
+  ]);
+}
+
 // ---------- the model ----------
 
 function linkKind(l: Link, a: DeviceModel, b: DeviceModel): LinkKind {
@@ -481,6 +523,7 @@ export function buildSceneModel(layout: Layout): SceneModel {
       .map((a) => ({ ...a, floors: 2, floorHeight: FLOOR_H, ring: null })),
   ];
   const lanes = new Map<string, number>();
+  const inside = new Map<string, number>();
   const links: LinkModel[] = [];
   let fibers = 0;
   for (const l of layout.links) {
@@ -499,8 +542,17 @@ export function buildSceneModel(layout: Layout): SceneModel {
         ) *
           0.35;
       points = dedupe([a.pos, { ...a.pos, y: yh }, { ...b.pos, y: yh }, b.pos]);
-    } else if (kind === 'ap' || (sameBuilding && kind !== 'planned')) {
-      points = [a.pos, b.pos];
+    } else if (sameBuilding && kind !== 'planned' && !l.waypoints.length) {
+      const key = `${kind === 'ap' ? 'ap' : 'net'}|${l.a}`;
+      const lane = inside.get(key) ?? 0;
+      inside.set(key, lane + 1);
+      points = routeInside(
+        a.pos,
+        b.pos,
+        B.get(a.building as string) as BuildingModel,
+        lane,
+        kind === 'ap',
+      );
     } else {
       const lane = l.lane ?? (lanes.get(l.a) ?? 0) + 1;
       lanes.set(l.a, lane);

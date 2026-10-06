@@ -114,6 +114,7 @@ interface LinkView {
   dots: Dot[];
   speed: number;
   state: UiState;
+  /** AP runs: first vertex in apLinkGeo; -1 for the others. */
   apIndex: number;
   visible: boolean;
 }
@@ -249,6 +250,8 @@ export class NocScene {
   private links: LinkView[] = [];
   private apLinks: LinkView[] = [];
   private apLinkGeo: THREE.BufferGeometry | null = null;
+  /** Vertices of all AP runs in apLinkGeo (two per segment). */
+  private apVerts = 0;
   private tails: Tail[] = [];
   private tailInst: THREE.InstancedMesh | null = null;
   private blds = new Map<string, BuildingView>();
@@ -973,9 +976,10 @@ export class NocScene {
           dots: [],
           speed: 0,
           state: 'ok',
-          apIndex: this.apLinks.length,
+          apIndex: this.apVerts,
           visible: true,
         };
+        this.apVerts += (m.points.length - 1) * 2;
         this.apLinks.push(v);
         this.links.push(v);
         continue;
@@ -1076,10 +1080,10 @@ export class NocScene {
       });
     }
     if (this.apLinks.length) {
-      const n = this.apLinks.length;
+      const n = this.apVerts;
       const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 6), 3));
-      geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 6), 3));
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
       const seg = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ vertexColors: true }));
       seg.frustumCulled = false;
       this.content.add(seg);
@@ -1115,6 +1119,7 @@ export class NocScene {
     this.links = [];
     this.apLinks = [];
     this.apLinkGeo = null;
+    this.apVerts = 0;
     this.tails = [];
     this.tailInst = null;
     this.blds.clear();
@@ -1582,14 +1587,19 @@ export class NocScene {
       const pos = this.apLinkGeo.attributes.position as THREE.BufferAttribute;
       const col = this.apLinkGeo.attributes.color as THREE.BufferAttribute;
       for (const l of this.apLinks) {
-        const a = l.m.points[0] as { x: number; y: number; z: number };
-        const b = l.visible ? (l.m.points[l.m.points.length - 1] as typeof a) : a;
-        const o = l.apIndex * 2;
-        pos.setXYZ(o, a.x, a.y, a.z);
-        pos.setXYZ(o + 1, b.x, b.y, b.z);
+        // every segment of the run; a hidden run collapses onto its switch
+        const pts = l.m.points;
+        const a0 = pts[0] as { x: number; y: number; z: number };
         c.copy(l.mat.color).lerp(C.bg, 1 - l.mat.opacity);
-        col.setXYZ(o, c.r, c.g, c.b);
-        col.setXYZ(o + 1, c.r, c.g, c.b);
+        for (let i = 0; i < pts.length - 1; i++) {
+          const o = l.apIndex + i * 2;
+          const a = l.visible ? (pts[i] as typeof a0) : a0;
+          const b = l.visible ? (pts[i + 1] as typeof a0) : a0;
+          pos.setXYZ(o, a.x, a.y, a.z);
+          pos.setXYZ(o + 1, b.x, b.y, b.z);
+          col.setXYZ(o, c.r, c.g, c.b);
+          col.setXYZ(o + 1, c.r, c.g, c.b);
+        }
       }
       pos.needsUpdate = true;
       col.needsUpdate = true;

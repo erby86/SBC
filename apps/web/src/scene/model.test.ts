@@ -238,10 +238,30 @@ describe('buildSceneModel — cable runs', () => {
     expect(run('fixed').color).toBe(FIBER_FALLBACK[0]);
   });
 
-  it('draws links inside one building and AP links straight', () => {
-    expect(run('sw-b2-2').points).toHaveLength(2);
+  it('runs links inside one building and AP links at right angles, end to end', () => {
     expect(run('ap-b2-1')).toMatchObject({ kind: 'ap', layer: 'ap' });
-    expect(run('ap-b2-1').points).toHaveLength(2);
+    for (const b of ['sw-b2-2', 'ap-b2-1', 'ap-b2-2', 'ap-b2-3', 'ap-b2-4']) {
+      const pts = run(b).points;
+      expect(pts[0]).toEqual(dev(run(b).a).pos);
+      expect(pts[pts.length - 1]).toEqual(dev(b).pos);
+      for (const [p, q] of segs(pts)) {
+        const moved = [p.x - q.x, p.y - q.y, p.z - q.z].filter((d) => Math.abs(d) > 1e-9);
+        expect(moved.length).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it('lets the APs of a floor share one line along the AP row, under the ceiling', () => {
+    const rows = [1, 2, 3, 4].map((i) => {
+      const pts = run(`ap-b2-${i}`).points;
+      // the long run is the one along x (b2 is wide), at the AP height
+      const along = segs(pts).find(([p, q]) => Math.abs(p.x - q.x) > 1e-9);
+      if (!along) throw new Error('no run along the building');
+      expect(along[0].y).toBeCloseTo(dev(`ap-b2-${i}`).pos.y);
+      return along[0].z;
+    });
+    // parallel lines a few cm apart, not a fan
+    expect(Math.max(...rows) - Math.min(...rows)).toBeLessThan(0.2);
   });
 
   it('goes up to the ISP globes and skips links to unplaced devices', () => {
