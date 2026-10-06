@@ -10,6 +10,7 @@ import {
   splitIncidents,
   timelineBars,
   topCounts,
+  tracePath,
 } from './console.js';
 
 const NOW = Date.parse('2026-10-05T12:00:00Z');
@@ -231,5 +232,51 @@ describe('event log (syslog style)', () => {
       incidents: [],
     });
     expect(lines[0]).toMatchObject({ level: 'sys', host: 'worker', at: at(6) });
+  });
+});
+
+describe('trace path (first card)', () => {
+  const devices = [
+    { code: 'c2116', ip: '192.168.1.1', uplink: null, uplinkMedia: null },
+    { code: 'c1036', ip: '192.168.1.2', uplink: 'c2116', uplinkMedia: 'lacp' },
+    { code: 'm-s8', ip: null, uplink: 'c1036', uplinkMedia: 'fiber' },
+    { code: 'fin', ip: null, uplink: 'm-s8', uplinkMedia: 'copper' },
+  ];
+  const snap = (states: Record<string, 'down' | 'cut'>) => ({ states, incidents: [] });
+
+  it('walks from the top down to the device, with each hop state', () => {
+    const hops = tracePath(devices, snap({ fin: 'down' }), 'fin');
+    expect(hops.map((h) => (h.kind === 'device' ? [h.code, h.state] : ['fiber']))).toEqual([
+      ['c2116', 'ok'],
+      ['c1036', 'ok'],
+      ['m-s8', 'ok'],
+      ['fin', 'down'],
+    ]);
+  });
+
+  it('marks the fibre into a down device whose upstream answers as suspect', () => {
+    const hops = tracePath(devices, snap({ 'm-s8': 'down', fin: 'cut' }), 'm-s8');
+    expect(hops).toEqual([
+      { kind: 'device', code: 'c2116', ip: '192.168.1.1', state: 'ok' },
+      { kind: 'device', code: 'c1036', ip: '192.168.1.2', state: 'ok' },
+      { kind: 'fiber', from: 'c1036', to: 'm-s8' },
+      { kind: 'device', code: 'm-s8', ip: null, state: 'down' },
+    ]);
+    // not over copper / LACP
+    expect(
+      tracePath(devices, snap({ c1036: 'down' }), 'c1036').some((h) => h.kind === 'fiber'),
+    ).toBe(false);
+  });
+
+  it('survives uplink loops and unknown devices', () => {
+    const loop = [
+      { code: 'a', ip: null, uplink: 'b', uplinkMedia: null },
+      { code: 'b', ip: null, uplink: 'a', uplinkMedia: null },
+    ];
+    expect(tracePath(loop, null, 'a').map((h) => (h.kind === 'device' ? h.code : ''))).toEqual([
+      'b',
+      'a',
+    ]);
+    expect(tracePath(loop, null, 'ghost')).toEqual([]);
   });
 });

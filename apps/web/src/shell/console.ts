@@ -232,3 +232,44 @@ export function logLines(
     });
   return lines.slice(0, max);
 }
+
+export interface TraceDevice {
+  code: string;
+  ip: string | null;
+  uplink: string | null;
+  uplinkMedia: string | null;
+}
+
+export type Hop =
+  | { kind: 'device'; code: string; ip: string | null; state: ReturnType<typeof shownState> }
+  /** The fibre into a down device whose upstream still answers: the first thing to suspect. */
+  | { kind: 'fiber'; from: string; to: string };
+
+/** "traceroute" of the first card: the registry uplink path from the top (core) down to the
+ * device, each hop with its state now. No timings: those need a Zabbix item per hop. */
+export function tracePath(
+  devices: readonly TraceDevice[],
+  snap: Pick<StatusSnapshot, 'states' | 'incidents'> | null,
+  code: string,
+): Hop[] {
+  const byCode = new Map(devices.map((d) => [d.code, d]));
+  const chain: TraceDevice[] = [];
+  const seen = new Set<string>();
+  for (
+    let d = byCode.get(code);
+    d && !seen.has(d.code);
+    d = d.uplink ? byCode.get(d.uplink) : undefined
+  ) {
+    seen.add(d.code);
+    chain.unshift(d);
+  }
+  const hops: Hop[] = [];
+  chain.forEach((d, k) => {
+    const state = shownState(snap, d.code);
+    const up = chain[k - 1];
+    if (up && d.uplinkMedia === 'fiber' && state === 'down' && shownState(snap, up.code) !== 'down')
+      hops.push({ kind: 'fiber', from: up.code, to: d.code });
+    hops.push({ kind: 'device', code: d.code, ip: d.ip, state });
+  });
+  return hops;
+}

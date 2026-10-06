@@ -36,6 +36,11 @@ test('demo: one root cause takes 21 devices with it (storm)', async ({ page }, i
   // followers have no card of their own: the root cause and the separate warning only
   await expect(panel(page).locator('.inc')).toHaveCount(2);
   await expect(page.getByTestId('root-group')).toContainText('ดับตาม 21 ตัว ใน 6 อาคาร');
+  // path from the core: CCR2116 answers, CCR1036 does not (states only, no made-up timings)
+  await expect(page.getByTestId('trace').locator('.hop')).toHaveText([
+    /CCR2116.*ตอบ/,
+    /CCR1036.*ไม่ตอบ/,
+  ]);
   await page
     .getByTestId('root-group')
     .getByRole('button', { name: /ดูรายชื่อ/ })

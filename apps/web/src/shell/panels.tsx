@@ -21,6 +21,8 @@ import {
   rootGroup,
   splitIncidents,
   STALE_DAYS,
+  tracePath,
+  type Hop,
   type RootGroup,
 } from './console.js';
 import { plainMessage } from './messages.js';
@@ -264,6 +266,49 @@ export function Incidents({
   );
 }
 
+const HOP_TH: Record<Extract<Hop, { kind: 'device' }>['state'], string> = {
+  ok: 'ตอบ',
+  warn: 'ควรตรวจสอบ',
+  down: 'ไม่ตอบ',
+  cut: 'หลังต้นเหตุ',
+  maint: 'บำรุงรักษา',
+};
+
+/** Registry path from the core down to the device, each hop with its state (no timings: the
+ * worker reads no per-hop latency item yet, and numbers are never made up). */
+function Trace({ hops, names }: { hops: Hop[]; names: Names }) {
+  if (hops.length < 2) return null;
+  let n = 0;
+  return (
+    <div className="trace" data-testid="trace">
+      <p className="tcap mono">เส้นทางจาก core</p>
+      <ol className="mono">
+        {hops.map((h) =>
+          h.kind === 'fiber' ? (
+            <li key={`f:${h.to}`} className="hop fiber">
+              <i aria-hidden="true" />
+              <span className="hn">
+                ไฟเบอร์ {names.buildingName(names.building(h.from) ?? '')} →{' '}
+                {names.buildingName(names.building(h.to) ?? '')}
+              </span>
+              <span className="hv">ต้องสงสัย</span>
+            </li>
+          ) : (
+            <li key={h.code} className={`hop ${h.state}`}>
+              <i aria-hidden="true" />
+              <span className="hn">
+                {++n} {names.name(h.code)}
+                {h.ip ? ` ${h.ip}` : ''}
+              </span>
+              <span className="hv">{HOP_TH[h.state]}</span>
+            </li>
+          ),
+        )}
+      </ol>
+    </div>
+  );
+}
+
 /** "ดับตาม 21 ตัว ใน 6 อาคาร" */
 const darkTxt = (g: RootGroup) =>
   `ดับตาม ${g.dark.length} ตัว${g.buildings.length > 1 ? ` ใน ${g.buildings.length} อาคาร` : ''}`;
@@ -315,6 +360,7 @@ export function FirstCard({
         {names.where(i.device)} · {plainMessage(i.message)} · {fmtAgo(i.since, now)}
         {!group && i.impacted > 0 ? ` · กระทบ ${i.impacted} อุปกรณ์` : ''}
       </p>
+      <Trace hops={tracePath(layout?.devices ?? [], snap, i.device)} names={names} />
       {group && (
         <div className="grp" data-testid="root-group">
           <p className="gnote">{darkTxt(g)} — แก้ที่ต้นเหตุแล้วจะกลับมาเอง</p>

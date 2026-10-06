@@ -1159,9 +1159,75 @@
 #first .hnote {
   margin: 0.55rem 0 0;
 }
+/* "traceroute": registry path from the core, hop states (no timings) */
+#first .trace {
+  margin-top: 0.55rem;
+  padding: 0.45rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--down) 30%, transparent);
+}
+#first .tcap {
+  margin: 0 0 0.25rem;
+  font-size: max(12px, 0.72rem);
+  color: var(--ink-2);
+}
+#first .trace ol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: max(12px, 0.78rem);
+}
+.hop {
+  display: grid;
+  grid-template-columns: 0.45rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+.hop i {
+  width: 0.45rem;
+  height: 0.45rem;
+  background: var(--main);
+}
+.hop .hn {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.hop .hv {
+  white-space: nowrap;
+  color: var(--ok-ink);
+}
+.hop.down i,
+.hop.fiber i {
+  background: var(--down);
+}
+.hop.down .hv,
+.hop.fiber .hv {
+  color: var(--down-ink);
+  font-weight: 600;
+}
+.hop.warn i {
+  background: var(--warn);
+}
+.hop.warn .hv {
+  color: var(--warn-ink);
+}
+.hop.cut i,
+.hop.maint i {
+  background: var(--muted);
+}
+.hop.cut .hv,
+.hop.maint .hv {
+  color: var(--cut-ink);
+}
+.hop.fiber .hn {
+  color: var(--ink-2);
+}
 /* root-cause group: devices out with it per building, folded name list */
 #first .grp {
-  margin-top: 0.55rem;
   padding-top: 0.5rem;
   border-top: 1px solid color-mix(in srgb, var(--down) 30%, transparent);
 }
