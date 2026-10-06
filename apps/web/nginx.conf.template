@@ -10,6 +10,13 @@ real_ip_header X-Real-IP;
 
 # Rate limit per client (ADR-0016). Normal use is a few requests a minute per screen
 # (snapshot + WebSocket, 30 s fallback poll); bursts cover page load and search typing.
+# NPM terminates https and sends X-Forwarded-Proto; pass it on so the api knows the browser used
+# https (Secure session cookie, login refused over http — ADR-0023). Only NPM reaches this port.
+map $http_x_forwarded_proto $noc_forwarded_proto {
+    default $http_x_forwarded_proto;
+    ''      $scheme;
+}
+
 limit_req_zone $binary_remote_addr zone=noc_api:10m rate=10r/s;
 limit_req_zone $binary_remote_addr zone=noc_ws:10m rate=30r/m;
 limit_req_status 429;
@@ -58,7 +65,7 @@ server {
         proxy_pass $api_upstream;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $noc_forwarded_proto;
     }
 
     location /assets/ {

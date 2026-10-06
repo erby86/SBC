@@ -49,3 +49,24 @@ export {
 } from './registry/write.js';
 export { readSyncHealth } from './selfmon.js';
 export type { SyncJobHealth } from './selfmon.js';
+export {
+  AccountError,
+  createAccount,
+  findLoginCandidate,
+  getActiveUser,
+  listAccounts,
+  logUserAction,
+  markLogin,
+  setAccountActive,
+  setAccountPassword,
+  setAccountRoles,
+  USER_ROLES,
+} from './auth.js';
+export type {
+  AccountInput,
+  AccountRow,
+  AccountUser,
+  LoginCandidate,
+  UserAction,
+  UserRole,
+} from './auth.js';

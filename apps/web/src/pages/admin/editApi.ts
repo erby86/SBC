@@ -1,5 +1,5 @@
-// M21 back-office data access. Writes send X-Noc-Editor (who is editing — no login before M23)
-// and fail with the api's { message, field } so forms can point at the wrong field.
+// M21 back-office data access. The session cookie (M23) says who is editing; calls fail with the
+// api's { message, field } so forms can point at the wrong field.
 import {
   deviceEditSchema,
   editErrorSchema,
@@ -13,10 +13,7 @@ import {
   type LocationEdit,
 } from '@sbc-noc/shared';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
 import { z } from 'zod';
-
-const EDITOR_KEY = 'noc-editor';
 
 export class EditError extends Error {
   constructor(
@@ -28,25 +25,14 @@ export class EditError extends Error {
   }
 }
 
-export function readEditor(): string {
-  try {
-    return localStorage.getItem(EDITOR_KEY) ?? '';
-  } catch {
-    return '';
-  }
-}
+let unauthorized: (() => void) | null = null;
 
-/** The editor's name, remembered in this browser only. */
-export function useEditor(): [string, (v: string) => void] {
-  const [name, setName] = useState(readEditor);
-  useEffect(() => {
-    try {
-      localStorage.setItem(EDITOR_KEY, name);
-    } catch {
-      // private mode: keep it in memory only
-    }
-  }, [name]);
-  return [name, setName];
+/** Called when the api answers 401 (session expired or account disabled); returns an unsubscribe. */
+export function onUnauthorized(fn: () => void): () => void {
+  unauthorized = fn;
+  return () => {
+    if (unauthorized === fn) unauthorized = null;
+  };
 }
 
 async function call<T>(
@@ -60,11 +46,11 @@ async function call<T>(
     headers: {
       Accept: 'application/json',
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-      ...(method !== 'GET' ? { 'X-Noc-Editor': encodeURIComponent(readEditor()) } : {}),
     },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
   if (res.status === 204) return parse(null);
+  if (res.status === 401) unauthorized?.();
   const json: unknown = await res.json().catch(() => ({}));
   if (!res.ok) {
     const e = editErrorSchema.safeParse(json);

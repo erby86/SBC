@@ -8,12 +8,6 @@ export const LIFECYCLES = ['planned', 'active', 'spare', 'retired'] as const;
 export const DATA_STATUSES = ['unverified', 'verified'] as const;
 export const LOCATION_SIDES = ['north', 'south', 'east', 'west', 'inner', 'outer'] as const;
 
-/** Who is editing (no login before M23): a staff code or name typed in the back office. */
-export const editorSchema = z
-  .string()
-  .trim()
-  .regex(/^[\p{L}\p{N} ._-]{2,40}$/u, 'ใส่ชื่อหรือรหัสผู้แก้ 2–40 ตัวอักษร');
-
 const place = {
   /** Room (LOC). When set, building/floor follow the room. */
   locCode: z

@@ -71,9 +71,20 @@ test('help', async ({ page }, info) => {
   await checkScreen(page, info, '06-help');
 });
 
+// M23: /admin needs login. CI creates the account (user-cli) and sets E2E_EMAIL / E2E_PASSWORD;
+// without them (e.g. a run against staging) only the login screen is checked.
+const e2eEmail = process.env['E2E_EMAIL'];
+const e2ePassword = process.env['E2E_PASSWORD'];
+
 test('registry admin', async ({ page }, info) => {
   await page.goto('/admin/checks');
-  await expect(page.locator('main, #root').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'เข้าสู่ระบบ' })).toBeVisible();
+  await checkScreen(page, info, '07-admin-login');
+  test.skip(!e2eEmail || !e2ePassword, 'no e2e account (E2E_EMAIL / E2E_PASSWORD)');
+  await page.getByLabel('อีเมล').fill(e2eEmail ?? '');
+  await page.getByLabel('รหัสผ่าน').fill(e2ePassword ?? '');
+  await page.getByRole('button', { name: 'เข้าสู่ระบบ' }).click();
+  await expect(page.getByTestId('whoami')).toBeVisible();
   await page.waitForLoadState('networkidle');
-  await checkScreen(page, info, '07-admin-checks');
+  await checkScreen(page, info, '08-admin-checks');
 });

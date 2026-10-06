@@ -66,9 +66,9 @@ services:
     restart: unless-stopped
     environment:
       <<: *node-env
-      # prod: no demo scenarios (ADR-0014), no editor without login until M23 (ADR-0020).
+      # prod: no demo scenarios (ADR-0014); login only over https (ADR-0023, never false here).
       DEMO_MODE: 'false'
-      REGISTRY_EDIT: 'false'
+      SESSION_COOKIE_SECURE: 'true'
       LINK_ZABBIX_URL: ${LINK_ZABBIX_URL:-}
       LINK_GRAFANA_URL: ${LINK_GRAFANA_URL:-}
       LINK_GLPI_URL: ${LINK_GLPI_URL:-}
