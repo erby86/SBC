@@ -5,7 +5,9 @@
 # the URL can post to the channel.
 #
 # Alerts: on the 2nd failed check in a row (about 1 minute), once per outage; one message on
-# recovery. State is one global counter (nocWatchFails). Every command is on one line: a pasted
+# recovery. The failure count is kept in the comment of the noc-watch script itself: a global
+# variable set from the scheduler did not survive between runs on this router (always
+# "check 1"). Every command is on one line: a pasted
 # "\" continuation followed by a Windows CR breaks silently. Each post logs "discord sent" or
 # "discord failed".
 # - server: 3 pings to 192.168.1.6 all lost
@@ -16,8 +18,10 @@ add name=noc-watch dont-require-permissions=no policy=read,write,test source={
   :local webhook "PASTE_DISCORD_WEBHOOK_URL"
   :local server 192.168.1.6
   :local url "http://noc.sbc.lan/api/health/ready"
-  :global nocWatchFails
-  :if ([:typeof $nocWatchFails] != "num") do={ :set nocWatchFails 0 }
+  :local self [/system script find name=noc-watch]
+  :local fails [:tonum [/system script get $self comment]]
+  :if ([:typeof $fails] != "num") do={ :set fails 0 }
+  :local before $fails
 
   :local problem ""
   :if ([/ping $server count=3] = 0) do={ :set problem ("SBC NOC: server " . $server . " does not answer ping") }
@@ -32,13 +36,15 @@ add name=noc-watch dont-require-permissions=no policy=read,write,test source={
 
   :local message ""
   :if ($problem = "") do={
-    :if ($nocWatchFails >= 2) do={ :set message "SBC NOC: back to normal" }
-    :set nocWatchFails 0
+    :if ($fails >= 2) do={ :set message "SBC NOC: back to normal" }
+    :set fails 0
   } else={
-    :set nocWatchFails ($nocWatchFails + 1)
-    :log warning ("noc-watch: " . $problem . " (check " . $nocWatchFails . ")")
-    :if ($nocWatchFails = 2) do={ :set message $problem }
+    :set fails ($fails + 1)
+    :log warning ("noc-watch: " . $problem . " (check " . $fails . ")")
+    :if ($fails = 2) do={ :set message $problem }
   }
+  # Write only on change: every write is a config change in the router log.
+  :if ($fails != $before) do={ /system script set $self comment=[:tostr $fails] }
 
   :if ($message != "") do={
     :do {
