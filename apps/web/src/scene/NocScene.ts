@@ -184,6 +184,9 @@ const LINK_COLOR: Record<Exclude<LinkModel['kind'], 'fiber'>, PaletteKey> = {
   planned: 'planned',
 };
 
+/** Devices are coloured by state only (green / yellow / red); the shape tells the kind. */
+const okColor = (C: Palette, kind: DeviceKind) => (kind === 'planned' ? C.planned : C.main);
+
 function curveOf(points: { x: number; y: number; z: number }[]): THREE.CurvePath<THREE.Vector3> {
   const path = new THREE.CurvePath<THREE.Vector3>();
   for (let i = 0; i < points.length - 1; i++) {
@@ -856,7 +859,7 @@ export class NocScene {
       return g;
     };
     for (const m of model.devices) {
-      const base = C[m.kind];
+      const base = okColor(C, m.kind);
       if (m.kind === 'ap') {
         const v: DevView = {
           m,
@@ -1162,7 +1165,7 @@ export class NocScene {
           ? C.muted
           : st === 'maint'
             ? C.planned
-            : C[kind];
+            : okColor(C, kind);
   }
 
   private applyStatus() {

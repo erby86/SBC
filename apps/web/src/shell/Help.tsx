@@ -14,28 +14,28 @@ const SHAPES: [string, ReactNode, string][] = [
   [
     'core',
     <svg key="c" width="18" height="12" viewBox="0 0 18 12">
-      <rect x="1" y="3" width="16" height="7" fill="var(--core)" />
+      <rect x="1" y="3" width="16" height="7" fill="var(--main)" />
     </svg>,
     'อุปกรณ์แกนกลาง (ห้อง server)',
   ],
   [
     'access',
     <svg key="a" width="18" height="10" viewBox="0 0 18 10">
-      <rect x="2" y="3" width="14" height="4" fill="var(--access)" />
+      <rect x="2" y="3" width="14" height="4" fill="var(--main)" />
     </svg>,
     'สวิตช์ประจำชั้น',
   ],
   [
     'ap',
     <svg key="ap" width="18" height="10" viewBox="0 0 18 10">
-      <ellipse cx="9" cy="5" rx="7" ry="3" fill="var(--ap)" />
+      <ellipse cx="9" cy="5" rx="7" ry="3" fill="var(--main)" />
     </svg>,
     'Access Point (Wi-Fi) ใต้เพดาน',
   ],
   [
     'nvr',
     <svg key="n" width="12" height="16" viewBox="0 0 12 16">
-      <rect x="2" y="2" width="8" height="12" rx="4" fill="var(--nvr)" />
+      <rect x="2" y="2" width="8" height="12" rx="4" fill="var(--main)" />
     </svg>,
     'NVR กล้องวงจรปิด',
   ],
@@ -49,7 +49,7 @@ const SHAPES: [string, ReactNode, string][] = [
   [
     'wan',
     <svg key="w" width="16" height="16" viewBox="0 0 16 16">
-      <circle cx="8" cy="8" r="7" fill="var(--wan)" />
+      <circle cx="8" cy="8" r="7" fill="var(--main)" />
     </svg>,
     'อินเทอร์เน็ต (ISP)',
   ],
@@ -138,7 +138,7 @@ export function Help({
             </tr>
           </tbody>
         </table>
-        <h3>ในภาพ 3D</h3>
+        <h3>ในภาพ 3D (รูปทรงบอกชนิด สีบอกสถานะ)</h3>
         <table>
           <tbody>
             {SHAPES.map(([k, svg, t]) => (
