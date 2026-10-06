@@ -2,11 +2,10 @@
 # to a Discord channel webhook directly, so an alert still goes out when sbc-noc, Zabbix or the
 # server is down. RouterOS 7.
 #
-# Install with /import, never by pasting into the terminal: a paste from a Windows browser adds a
-# CR to every line and the source on the router comes out broken (2026-10-06: every line ended
-# in "\;" and the router still ran an older copy). Re-importing replaces the script and the
-# scheduler; the webhook URL lives in a separate script "noc-watch-url" (created by hand, never in
-# git, ADR-0005: anyone with the URL can post to the channel), so a re-import keeps it.
+# Install with /import (Winbox Files, then /import file-name=noc-watch.rsc verbose=yes) rather
+# than pasting the source into the terminal. Re-importing replaces the script and the scheduler;
+# the webhook URL lives in a separate script "noc-watch-url" (created by hand, never in git,
+# ADR-0005: anyone with the URL can post to the channel), so a re-import keeps it.
 #
 # Alerts: on the 2nd failed check in a row (about 1 minute), once per outage; one message on
 # recovery. The failure count is kept in the comment of the noc-watch script (a global variable
