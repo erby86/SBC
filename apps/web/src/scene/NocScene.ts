@@ -350,7 +350,8 @@ export class NocScene {
       });
       this.composer = new EffectComposer(this.renderer, target);
       this.composer.addPass(new RenderPass(this.scene, this.camera));
-      this.bloom = new UnrealBloomPass(new THREE.Vector2(800, 600), 0.6, 0.4, 0.55);
+      // tight, soft glow: a wide radius smears thin cables and building edges
+      this.bloom = new UnrealBloomPass(new THREE.Vector2(800, 600), 0.45, 0.15, 0.6);
       this.composer.addPass(this.bloom);
       this.composer.addPass(new OutputPass());
     } catch {
@@ -533,8 +534,10 @@ export class NocScene {
 
   // ---------- building the scene ----------
 
+  /** Eco saves by dropping bloom and the tails; it keeps the screen's own resolution (capped at
+   * 1.5) because a canvas drawn at 1 and stretched by the browser looks blurry on 125 %+ screens. */
   private pixelRatio() {
-    return this.eco ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+    return Math.min(window.devicePixelRatio || 1, this.eco ? 1.5 : 2);
   }
 
   private makeGrid() {
