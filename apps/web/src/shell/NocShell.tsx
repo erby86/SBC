@@ -36,6 +36,7 @@ import { ownCards, rootGroup, shownState, topCounts } from './console.js';
 import { EventLog } from './evlog.js';
 import { Leaving } from './leaving.js';
 import { Feed } from './feed.js';
+import { FiberColors } from './FiberColors.js';
 import { Help, Tour, tourSeen } from './Help.js';
 import { Icon } from './icons.js';
 import { Menu } from './Menu.js';
@@ -802,6 +803,9 @@ export function NocShell() {
   const [fps, setFps] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [help, setHelp] = useState(false);
+  const [fibDlg, setFibDlg] = useState(false);
+  // stable: the dialog listens for Esc and focuses its close button once, not on every tick
+  const closeFibDlg = useCallback(() => setFibDlg(false), []);
   const [tour, setTour] = useState(false);
   const [hl, setHl] = useState<{ codes: string[]; label: string } | null>(null);
   const [layers, setLayers] = useState<Record<LayerKey, boolean>>(
@@ -1214,7 +1218,7 @@ export function NocShell() {
               eco={view.eco}
               dark={theme.theme === 'dark'}
               layers={layers}
-              fibers={fibers}
+              fibers={fibers.length}
               unlocated={unlCount}
               onTop={view.onTop}
               onTv={view.onTv}
@@ -1226,6 +1230,7 @@ export function NocShell() {
                 reveal('right');
               }}
               onHelp={view.onHelp}
+              onFibers={() => setFibDlg(true)}
             />
           }
           onBigNum={() => {
@@ -1407,6 +1412,9 @@ export function NocShell() {
           </aside>
         </div>
 
+        <Leaving show={fibDlg}>
+          <FiberColors fibers={fibers} onClose={closeFibDlg} />
+        </Leaving>
         <Leaving show={help}>
           <Help
             fibers={fibers.map((f) => ({ color: f.color, text: f.text }))}

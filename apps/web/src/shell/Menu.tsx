@@ -13,7 +13,8 @@ export interface MenuProps {
   eco: boolean;
   dark: boolean;
   layers: Record<LayerKey, boolean>;
-  fibers: { key: string; color: string | null; text: string; cable: string | null }[];
+  /** Number of fibre links; their colours open in a dialog of their own (FiberColors). */
+  fibers: number;
   unlocated: number;
   onTop: () => void;
   onTv: () => void;
@@ -22,6 +23,7 @@ export interface MenuProps {
   onLayer: (key: LayerKey) => void;
   onUnlocated: () => void;
   onHelp: () => void;
+  onFibers: () => void;
 }
 
 function Item({
@@ -58,7 +60,6 @@ function Item({
 
 export function Menu(p: MenuProps) {
   const [open, setOpen] = useState(false);
-  const [fib, setFib] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
 
@@ -164,21 +165,13 @@ export function Menu(p: MenuProps) {
           </div>
 
           <p className="mh">ข้อมูล</p>
-          {p.fibers.length > 0 && (
-            <>
-              <Item icon="fiber" label="สีสายไฟเบอร์" pressed={fib} onClick={() => setFib(!fib)} />
-              {fib && (
-                <div id="fiberLegend" data-testid="fiber-legend">
-                  {p.fibers.map((f) => (
-                    <span key={f.key}>
-                      <i className="fl" style={{ background: f.color ?? undefined }} />
-                      <span className="ft">{f.text}</span>
-                      {f.cable ? <small>{f.cable}</small> : null}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </>
+          {p.fibers > 0 && (
+            <Item
+              icon="fiber"
+              label={`สีสายไฟเบอร์ (${p.fibers})`}
+              testid="fiber-colors-open"
+              onClick={act(p.onFibers)}
+            />
           )}
           {p.unlocated > 0 && (
             <Item

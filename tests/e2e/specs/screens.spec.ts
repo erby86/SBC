@@ -112,6 +112,21 @@ test('help', async ({ page }, info) => {
   await checkScreen(page, info, '06-help');
 });
 
+test('fibre colours open as a dialog of their own', async ({ page }, info) => {
+  // the demo topology has the 8 fibre links (the CI seed has none, so no menu item there)
+  await openNoc(page, '/?demo=mixed');
+  await page.getByTestId('menu').click();
+  await page.getByTestId('fiber-colors-open').click();
+  const dlg = page.getByTestId('fiber-colors');
+  await expect(dlg).toBeVisible();
+  // the menu closed (its panel fades out over 0.3 s, inert, so check the button's state)
+  await expect(page.getByTestId('menu')).toHaveAttribute('aria-expanded', 'false');
+  await expect(dlg.locator('#fiberLegend > span')).toHaveCount(8);
+  await checkScreen(page, info, '06b-fibers');
+  await page.keyboard.press('Escape');
+  await expect(dlg).toHaveCount(0, { timeout: 10_000 }); // after its fade, slow on software WebGL
+});
+
 // M23: /admin needs login. CI creates the account (user-cli) and sets E2E_EMAIL / E2E_PASSWORD;
 // without them (e.g. a run against staging) only the login screen is checked.
 const e2eEmail = process.env['E2E_EMAIL'];

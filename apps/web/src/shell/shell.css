@@ -3009,3 +3009,49 @@ code {
   position: relative;
   z-index: 46;
 }
+
+/* fibre colours dialog (FiberColors.tsx): same frame as help, a narrower list */
+#fibers {
+  position: relative;
+  width: min(30rem, 100%);
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+  padding: 0 1.2rem 1rem;
+  animation: dlgin 0.18s ease-out;
+}
+#fibers .helpHead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 -1.2rem 0.4rem;
+  padding: 0.75rem 1.2rem 0.6rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+#fibers h2 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+#fibers .close {
+  flex: none;
+}
+#fibers .hp {
+  margin: 0.2rem 0 0.6rem;
+  font-size: max(12px, 0.85rem);
+  color: var(--ink-2);
+}
+#fibers #fiberLegend {
+  gap: 0.55rem;
+  padding: 0;
+  font-size: max(12px, 0.9rem);
+  color: var(--ink);
+}
+#fibers #fiberLegend .fl {
+  width: 1.8rem;
+  height: 0.3rem;
+  margin-right: 0.7rem;
+}
