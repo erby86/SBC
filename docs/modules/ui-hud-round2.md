@@ -1,8 +1,6 @@
 # UI ลูกเล่น รอบ 2 — แนว HUD โทนทางการ (เอกสารต่องาน)
 
 สถานะ 2026-10-07: **เสร็จ — ผู้ใช้ยืนยันบน dev** (main `1c01268`, PR #109 `module/ui-modern`); เรื่องที่ยังต้องตัดสินอยู่ในหัวข้อด้านล่าง
-**รอผู้ใช้**: ดึงเข้า Gitea (`module/ui-hud-round2`) → PR + CI → merge → `deploy.sh staging` → ยืนยันบน dev
-คำสั่งชุดนี้อยู่ใน `docs/runbooks/github-to-gitea.md` (ใส่ branch ข้างบน)
 
 ## แบบอ้างอิง
 
