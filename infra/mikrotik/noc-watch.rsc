@@ -54,6 +54,8 @@ add name=noc-watch dont-require-permissions=no policy=read,write,test source={
   }
 }
 
+# No start-time: it defaults to now, so the first run is 30 s after adding and the schedule also
+# survives a reboot (start-time=startup would wait for the next reboot before running at all).
 /system scheduler
 add name=noc-watch interval=30s on-event="/system script run noc-watch" policy=read,write,test \
-  start-time=startup comment="M35 sbc-noc self-monitoring (ADR-0010)"
+  comment="M35 sbc-noc self-monitoring (ADR-0010)"
