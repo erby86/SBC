@@ -27,10 +27,6 @@ const store = {
 export const ECO_KEY = 'noc-eco-v2';
 export const savedEco = () => store.get(ECO_KEY) === '1';
 export const saveEco = (on: boolean) => store.set(ECO_KEY, on ? '1' : '0');
-// ISP names on the map: off unless this viewer turned them on
-export const WAN_NAMES_KEY = 'noc-wan-names';
-export const savedWanNames = () => store.get(WAN_NAMES_KEY) === '1';
-export const saveWanNames = (on: boolean) => store.set(WAN_NAMES_KEY, on ? '1' : '0');
 
 const touchUi = () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
 
@@ -52,8 +48,6 @@ export interface Scene3DProps {
   model: SceneModel | null;
   snapshot: StatusSnapshot | null;
   layers: Record<LayerKey, boolean>;
-  /** ISP names on the map. */
-  wanNames: boolean;
   mini: HTMLCanvasElement | null;
   onReady: (scene: NocScene | null) => void;
   onSelect: (sel: Selection | null) => void;
@@ -124,9 +118,6 @@ export function Scene3D(p: Scene3DProps) {
   useEffect(() => {
     scene?.setLayers(p.layers);
   }, [scene, p.layers, p.model]);
-  useEffect(() => {
-    scene?.setWanNames(p.wanNames);
-  }, [scene, p.wanNames, p.model]);
   useEffect(() => {
     scene?.setStill(!!p.still);
   }, [scene, p.still]);

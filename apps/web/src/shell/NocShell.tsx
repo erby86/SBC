@@ -52,7 +52,7 @@ import {
   unlocatedCount,
   type Names,
 } from './panels.js';
-import { Scene3D, saveEco, savedEco, saveWanNames, savedWanNames, useHint } from './Scene3D.js';
+import { Scene3D, saveEco, savedEco, useHint } from './Scene3D.js';
 import { buildIndex, stateGetter, type SearchEntry } from './search.js';
 import { SearchBox } from './Search.js';
 import { StaleBand, staleCause } from './stale.js';
@@ -800,7 +800,6 @@ export function NocShell() {
   const [sel, setSel] = useState<Selection | null>(null);
   const [top, setTop] = useState(false);
   const [eco, setEco] = useState(savedEco);
-  const [wanNames, setWanNames] = useState(savedWanNames);
   const [fps, setFps] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [help, setHelp] = useState(false);
@@ -810,11 +809,11 @@ export function NocShell() {
   const [tour, setTour] = useState(false);
   const [hl, setHl] = useState<{ codes: string[]; label: string } | null>(null);
   const [layers, setLayers] = useState<Record<LayerKey, boolean>>(
-    // planned controllers start hidden (declutter); the layer bar shows them on demand
-    Object.fromEntries(LAYERS.map((l) => [l.key, l.key !== 'planned'])) as Record<
-      LayerKey,
-      boolean
-    >,
+    // planned controllers and the ISPs start hidden (declutter: the building names lead);
+    // the menu shows them on demand, an ISP with an incident shows anyway
+    Object.fromEntries(
+      LAYERS.map((l) => [l.key, l.key !== 'planned' && l.key !== 'wan']),
+    ) as Record<LayerKey, boolean>,
   );
   const [scene, setScene] = useState<NocScene | null>(null);
   const [mini, setMini] = useState<HTMLCanvasElement | null>(null);
@@ -1219,7 +1218,6 @@ export function NocShell() {
               eco={view.eco}
               dark={theme.theme === 'dark'}
               layers={layers}
-              wanNames={wanNames}
               fibers={fibers.length}
               unlocated={unlCount}
               onTop={view.onTop}
@@ -1227,10 +1225,6 @@ export function NocShell() {
               onEco={view.onEco}
               onTheme={theme.toggle}
               onLayer={(k) => setLayers({ ...layers, [k]: !layers[k] })}
-              onWanNames={() => {
-                saveWanNames(!wanNames);
-                setWanNames(!wanNames);
-              }}
               onUnlocated={() => {
                 setRightTab('unl');
                 reveal('right');
@@ -1309,7 +1303,6 @@ export function NocShell() {
               model={model}
               snapshot={snap}
               layers={layers}
-              wanNames={wanNames}
               mini={mini}
               onReady={setScene}
               onSelect={onSelect}

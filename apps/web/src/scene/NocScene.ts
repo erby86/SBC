@@ -150,7 +150,7 @@ interface Label {
   h: number;
   /** Device the label names (ISP): hidden while that device has a problem badge. */
   device?: string;
-  /** ISP name: shown only when the menu turns ISP names on. */
+  /** ISP name: shown only while the internet layer is on (menu ☰). */
   wan?: boolean;
   /** A problem building's label: lifted out of the way first. */
   major?: () => boolean;
@@ -280,8 +280,6 @@ export class NocScene {
   /** Search results highlighted in the view (M20); null = no highlight. */
   private hl: Set<string> | null = null;
   private selected: Selection | null = null;
-  /** ISP names on the map (menu ☰); off by default, the building names lead. */
-  private wanNames = false;
   /** Camera is on (or flying to) the home view: it follows the card size until someone moves it. */
   private atHome = true;
   private fly: {
@@ -418,10 +416,6 @@ export class NocScene {
   setStatus(snap: StatusSnapshot | null): void {
     this.snap = snap;
     this.applyStatus();
-  }
-
-  setWanNames(on: boolean): void {
-    this.wanNames = on;
   }
 
   setLayers(on: Record<LayerKey, boolean>): void {
@@ -853,6 +847,8 @@ export class NocScene {
         p.position.y = 0.045;
         g.add(p);
       }
+      // the playground needs no name: it is a strip between buildings with no network in it
+      if (a.kind === 'play') continue;
       this.addLabel(
         escapeHtml(a.name),
         new THREE.Vector3(a.x, h + 0.8, a.z),
@@ -1425,7 +1421,13 @@ export class NocScene {
     for (const l of this.links) {
       const a = this.devs.get(l.m.a);
       const b = this.devs.get(l.m.b);
-      const vis = !!a && !!b && this.layerOn[l.m.layer] && a.visible && b.visible;
+      // a cable to a device with an incident stays, like the device, when its layer is off
+      const vis =
+        !!a &&
+        !!b &&
+        (this.layerOn[l.m.layer] || incIds.has(l.m.a) || incIds.has(l.m.b)) &&
+        a.visible &&
+        b.visible;
       const rel =
         (!focus || a?.m.building === focus || b?.m.building === focus) &&
         (!hl || hl.has(l.m.a) || hl.has(l.m.b));
@@ -1717,12 +1719,12 @@ export class NocScene {
     }
     for (const l of this.labelsList) {
       v.copy(l.pos).project(this.camera);
-      // open areas (dome, field, pool, playground) are named only once someone moves in:
+      // open areas (dome, field, pool) are named only once someone moves in:
       // at the whole-school view their names sit among the buildings and read as clutter
       if (
         v.z > 1 ||
         (!!l.device && this.badges.has(l.device)) ||
-        (l.wan && !this.wanNames) ||
+        (l.wan && !this.layerOn.wan) ||
         (this.atHome && l.el.classList.contains('area'))
       ) {
         l.el.style.visibility = 'hidden';

@@ -13,7 +13,6 @@ export interface MenuProps {
   eco: boolean;
   dark: boolean;
   layers: Record<LayerKey, boolean>;
-  wanNames: boolean;
   /** Number of fibre links; their colours open in a dialog of their own (FiberColors). */
   fibers: number;
   unlocated: number;
@@ -22,7 +21,6 @@ export interface MenuProps {
   onEco: () => void;
   onTheme: () => void;
   onLayer: (key: LayerKey) => void;
-  onWanNames: () => void;
   onUnlocated: () => void;
   onHelp: () => void;
   onFibers: () => void;
@@ -165,13 +163,6 @@ export function Menu(p: MenuProps) {
               </button>
             ))}
           </div>
-          <Item
-            icon="pin"
-            label="ชื่อ ISP บนผัง"
-            pressed={p.wanNames}
-            testid="wan-names"
-            onClick={act(p.onWanNames, false)}
-          />
 
           <p className="mh">ข้อมูล</p>
           {p.fibers > 0 && (
