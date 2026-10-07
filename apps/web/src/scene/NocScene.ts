@@ -53,8 +53,8 @@ export interface SceneOptions {
 const HOME = { pos: new THREE.Vector3(-49, 56, 80), tgt: new THREE.Vector3(0, 2, 20) };
 /** Motion standard (canvas "มาตรฐานหน้าจอ NOC"): packets are the only thing that loops, one per
  * link, released together every 2.4 s (4.8 s on a weak link, none when cut off or behind a root
- * cause); the camera moves only when someone asks, in 0.9 s; selecting a problem ripples twice. */
-const MOTION = { packetMs: 2400, weakPacketMs: 4800, cameraS: 0.9, rippleMs: 1500, ripples: 2 };
+ * cause); the camera moves only when someone asks, in 0.9 s. */
+const MOTION = { packetMs: 2400, weakPacketMs: 4800, cameraS: 0.9 };
 /** Room kept around the school in the home view (NDC): labels sit above the roofs. */
 const FIT = { x: 0.9, top: 0.72, bottom: -0.9 };
 const AUTO_ECO_FPS = 24;
@@ -158,15 +158,6 @@ interface Label {
   keep?: () => boolean;
 }
 
-interface Fx {
-  severity: 'down' | 'warn';
-  ring: THREE.Mesh;
-  beam: THREE.Mesh | null;
-  code: string;
-  /** When the selection ripple started (0 = none); it runs MOTION.ripples times, then stops. */
-  rippleAt: number;
-}
-
 const GEO: Record<DeviceKind | 'lab', () => THREE.BufferGeometry> = {
   core: () => new THREE.BoxGeometry(1.1, 0.4, 0.7),
   main: () => new THREE.OctahedronGeometry(0.6),
@@ -262,7 +253,6 @@ export class NocScene {
   private themed: [{ color: THREE.Color }, PaletteKey][] = [];
   private labelsList: Label[] = [];
   private badges = new Map<string, HTMLButtonElement>();
-  private fx = new Map<string, Fx>();
   private pickables: THREE.Object3D[] = [];
   private waterTex: THREE.Texture | null = null;
 
@@ -456,6 +446,7 @@ export class NocScene {
   /** Highlight a device or lab (null clears) and fly to it. */
   select(sel: Selection | null, fly = true): void {
     this.selected = sel;
+    this.applyVisibility();
     this.syncBadges();
     for (const d of this.devs.values()) {
       d.scale = 1;
@@ -469,8 +460,6 @@ export class NocScene {
       if (!d) return;
       d.scale = 1.6;
       if (d.mesh) d.mesh.scale.setScalar(1.6);
-      const f = this.fx.get(sel.code);
-      if (f) f.rippleAt = performance.now();
       p = new THREE.Vector3(d.m.pos.x, d.m.pos.y, d.m.pos.z);
       if (fly && d.m.building && d.m.building !== this.focusB) {
         const b = this.blds.get(d.m.building);
@@ -1115,7 +1104,6 @@ export class NocScene {
     for (const b of this.badges.values()) b.remove();
     this.labelsList = [];
     this.badges.clear();
-    this.fx.clear();
     this.scene.remove(this.content);
     this.disposeTree(this.content);
     this.content = new THREE.Group();
@@ -1168,19 +1156,6 @@ export class NocScene {
     return (this.snap?.states[code] as UiState | undefined) ?? 'ok';
   }
 
-  private colorOf(kind: DeviceKind, st: UiState): THREE.Color {
-    const C = this.C;
-    return st === 'down'
-      ? C.down
-      : st === 'warn'
-        ? C.warn
-        : st === 'cut'
-          ? C.muted
-          : st === 'maint'
-            ? C.planned
-            : okColor(C, kind);
-  }
-
   private applyStatus() {
     if (!this.model) return;
     const C = this.C;
@@ -1192,11 +1167,11 @@ export class NocScene {
     for (const d of this.devs.values()) {
       d.state = d.m.kind === 'planned' ? 'ok' : this.stateOf(d.m.code);
       if (d.state === 'down' && follows.has(d.m.code)) d.state = 'cut';
-      const c = this.colorOf(d.m.kind, d.state);
+      // devices keep one colour whatever their state: the building labels, the alert cards and the
+      // cables carry the problem (user 2026-10-07: the orange marks repeated the alerts)
+      const c = okColor(C, d.m.kind);
       d.mat.color.copy(c);
       d.mat.emissive.copy(c);
-      // problems glow a little brighter, steadily (no pulsing)
-      d.mat.emissiveIntensity = d.state === 'down' ? 0.9 : d.state === 'warn' ? 0.7 : EMISSIVE;
     }
     const online = this.snap?.labOnline ?? {};
     for (const l of this.labs.values()) {
@@ -1251,12 +1226,12 @@ export class NocScene {
       }
     }
     for (const l of this.labelsList) l.w = l.h = 0; // label sizes change with the style
-    this.syncFx();
+    this.syncHalos();
     this.syncBadges();
     this.applyVisibility();
   }
 
-  /** Incidents with a beam, ring and badge: root causes and single ones (not their followers). */
+  /** Incidents with a badge: root causes and single ones (not their followers). */
   private incidents() {
     return (this.snap?.incidents ?? []).filter((i) => i.root === null && this.devs.has(i.device));
   }
@@ -1272,46 +1247,7 @@ export class NocScene {
     });
   }
 
-  private removeFx(f: Fx) {
-    for (const o of [f.ring, f.beam]) {
-      if (!o) continue;
-      this.content.remove(o);
-      o.geometry.dispose();
-      (o.material as THREE.Material).dispose();
-    }
-  }
-
-  private syncFx() {
-    const incs = this.incidents();
-    const want = new Set(incs.map((i) => i.device));
-    for (const [code, f] of this.fx) {
-      if (!want.has(code)) {
-        this.removeFx(f);
-        this.fx.delete(code);
-      }
-    }
-    incs.forEach((i) => {
-      const old = this.fx.get(i.device);
-      if (old?.severity === i.severity) return;
-      if (old) this.removeFx(old);
-      const d = this.devs.get(i.device) as DevView;
-      const c = i.severity === 'down' ? this.C.down : this.C.warn;
-      const p = d.m.pos;
-      const ring = new THREE.Mesh(new THREE.RingGeometry(0.85, 1.05, 56), this.beamMat(c, 0.6));
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.set(p.x, d.m.kind === 'wan' ? p.y : 0.05, p.z);
-      this.content.add(ring);
-      let beam: THREE.Mesh | null = null;
-      if (i.severity === 'down') {
-        beam = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.2, 0.2, 40, 14, 1, true),
-          this.beamMat(c, 0.35),
-        );
-        beam.position.set(p.x, p.y + 20, p.z);
-        this.content.add(beam);
-      }
-      this.fx.set(i.device, { severity: i.severity, ring, beam, code: i.device, rippleAt: 0 });
-    });
+  private syncHalos() {
     // red halo over buildings with a down device or devices cut off
     for (const b of this.blds.values()) {
       const hit = b.state === 'down';
@@ -1364,10 +1300,10 @@ export class NocScene {
 
   // ---------- visibility ----------
 
-  private devVisible(d: DevView, incIds: Set<string>) {
+  private devVisible(d: DevView, pick: string | null) {
     const m = d.m;
     return (
-      (this.layerOn[m.layer] || incIds.has(m.code)) &&
+      (this.layerOn[m.layer] || m.code === pick) &&
       !(
         this.focusB &&
         this.floorSel &&
@@ -1399,10 +1335,11 @@ export class NocScene {
       }
       b.label.classList.toggle('dim', dim);
     }
-    const incIds = new Set(this.incidents().map((i) => i.device));
+    // the selected device (e.g. from an alert card) shows even when its layer is off
+    const pick = this.selected?.kind === 'device' ? this.selected.code : null;
     const hl = this.hl;
     for (const d of this.devs.values()) {
-      d.visible = this.devVisible(d, incIds) || !!hl?.has(d.m.code);
+      d.visible = this.devVisible(d, pick) || !!hl?.has(d.m.code);
       const faded = (focus && d.m.building !== focus) || (hl && !hl.has(d.m.code));
       d.mat.opacity = Math.min(faded ? 0.12 : 1, d.maxOpacity);
       if (d.mesh) {
@@ -1421,11 +1358,11 @@ export class NocScene {
     for (const l of this.links) {
       const a = this.devs.get(l.m.a);
       const b = this.devs.get(l.m.b);
-      // a cable to a device with an incident stays, like the device, when its layer is off
+      // the selected device's cable stays, like the device, when its layer is off
       const vis =
         !!a &&
         !!b &&
-        (this.layerOn[l.m.layer] || incIds.has(l.m.a) || incIds.has(l.m.b)) &&
+        (this.layerOn[l.m.layer] || l.m.a === pick || l.m.b === pick) &&
         a.visible &&
         b.visible;
       const rel =
@@ -1576,14 +1513,6 @@ export class NocScene {
     (this.ground.material as THREE.MeshBasicMaterial).color.copy(C.ground);
     this.makeGrid();
     for (const [m, k] of this.themed) m.color.copy(C[k]);
-    for (const f of this.fx.values()) {
-      for (const o of [f.ring, f.beam]) {
-        if (!o) continue;
-        const m = o.material as THREE.MeshBasicMaterial;
-        m.blending = isDark(C) ? THREE.AdditiveBlending : THREE.NormalBlending;
-        m.needsUpdate = true;
-      }
-    }
     this.applyStatus();
   }
 
@@ -1674,20 +1603,6 @@ export class NocScene {
           d.mesh.visible = false;
           for (const tl of d.tail) tl.visible = false;
         }
-    }
-    // problem marks stand still; a selected one ripples twice, then rests
-    for (const f of this.fx.values()) {
-      const vis = this.devs.get(f.code)?.visible ?? false;
-      const k = f.rippleAt ? (now - f.rippleAt) / MOTION.rippleMs : MOTION.ripples;
-      const rippling = !this.reduce && k >= 0 && k < MOTION.ripples;
-      const fr = rippling ? k % 1 : 0;
-      f.ring.visible = vis;
-      f.ring.scale.setScalar(rippling ? 1 + fr * (f.severity === 'down' ? 6 : 3.5) : 1.6);
-      (f.ring.material as THREE.MeshBasicMaterial).opacity = rippling ? 0.65 * (1 - fr) : 0.5;
-      if (f.beam) {
-        f.beam.visible = vis;
-        (f.beam.material as THREE.MeshBasicMaterial).opacity = 0.3;
-      }
     }
   }
 
