@@ -10,3 +10,5 @@ docs/prototype
 packages/db/reference
 packages/db/migrations
 infra/seed
+# Fiber plan artifact sources (published pages, not app code)
+docs/plans/**/*.html

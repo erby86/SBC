@@ -1,0 +1,238 @@
+<title>ไฟเบอร์ โดม–สนามฟุตบอล</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=Noto+Sans+Thai:wght@400;500;600&display=swap">
+<style>
+/* Layout: single reading column; schematic → core table → calculator → BOM → next steps */
+:root{
+  --bg:#f6f8fb; --surface:#ffffff; --fg:#14213a; --muted:#56637a; --line:#d5dce8;
+  --accent:#1d4e89; --accent-soft:#e3ecf7; --aerial:#c26a12; --warn:#8a5a00; --warn-bg:#fff4dc;
+  --font-body:"Noto Sans Thai",system-ui,sans-serif; --font-display:"Chakra Petch","Noto Sans Thai",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1522; --surface:#162133; --fg:#e6ecf5; --muted:#9fadc4; --line:#2a3850;
+  --accent:#7fb0ec; --accent-soft:#1d2e48; --aerial:#f0a35a; --warn:#f2c46b; --warn-bg:#3a2e12; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1522; --surface:#162133; --fg:#e6ecf5; --muted:#9fadc4; --line:#2a3850;
+  --accent:#7fb0ec; --accent-soft:#1d2e48; --aerial:#f0a35a; --warn:#f2c46b; --warn-bg:#3a2e12; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.65}
+.wrap{max-width:920px;margin:0 auto;padding-inline:16px;padding-block:28px 56px;display:grid;gap:36px}
+h1,h2{font-family:var(--font-display);text-wrap:balance;margin:0;line-height:1.25}
+h1{font-size:1.9rem;color:var(--accent)}
+h2{font-size:1.25rem;margin-bottom:12px}
+p{margin:0;max-width:68ch}
+.eyebrow{font-size:.78rem;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.head{display:grid;gap:8px}
+.note{background:var(--warn-bg);color:var(--fg);border-left:4px solid var(--warn);padding:10px 14px;border-radius:4px;font-size:.92rem}
+.note b{color:var(--warn)}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px}
+.scroll{overflow-x:auto}
+svg text{font-family:var(--font-body)}
+table{border-collapse:collapse;width:100%;font-size:.92rem;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:.82rem}
+.sw{display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid var(--muted);vertical-align:-2px;margin-right:6px}
+.tag{display:inline-block;font-size:.78rem;padding:1px 8px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-weight:600}
+.calc{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+label{display:grid;gap:4px;font-size:.88rem;color:var(--muted)}
+input{font:inherit;font-variant-numeric:tabular-nums;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:14px}
+.res .box{display:grid;gap:4px}
+.big{font-family:var(--font-display);font-size:1.6rem;color:var(--accent);font-variant-numeric:tabular-nums}
+.small{font-size:.84rem;color:var(--muted)}
+ol,ul{margin:0;padding-left:1.3em;display:grid;gap:4px}
+</style>
+
+<style>
+.cables{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:12px}
+.cables .box{min-width:0}
+.cables h3{font-family:var(--font-display);font-size:1rem;margin:0 0 6px}
+.cables h3 span{font-family:var(--font-body);font-weight:400;color:var(--muted);font-size:.84rem}
+.dark{color:var(--muted)}
+@media (max-width:440px){.cables{grid-template-columns:1fr}}
+</style>
+<div class="wrap">
+  <header class="head">
+    <span class="eyebrow">แผนวางสายไฟเบอร์ · ร่าง 9 ต.ค. 2026 · ฉบับ 14</span>
+    <h1>ไฟเบอร์ อาคาร 2 → โดม และ อาคาร 2 → สนามฟุตบอล</h1>
+    <p>สาย 12C สองเส้นออกจากห้อง server อาคาร 2 ชั้น 1 (LOC-187) แขวนอากาศบนแนวเสาเดียวกัน FO-09 เข้า ODF โดม แล้วแยก 6C ไปอีกฝั่งของโดม FO-10 จบที่ตู้พัก SP-01 ซึ่งเป็นจุดหลัก ต่อหลอมออก 3 เส้น: FO-12 6C เข้าสระว่ายน้ำ, FO-14 6C เข้า ODF ตู้สนาม และ FO-13 2C ไปองค์เจ้าแม่กวนอิม เสาทั้งหมดอยู่ในแนวตรงเดียวกัน และลากเลยขอบสนามไปอีก 2 ต้น FO-13 (2C) จาก SP-01 แขวนตามแนวเสาไปถึงตู้พัก SP-02 ที่เสาต้นแรกเลยขอบสนาม (แนวเดียวกับท่อ FO-13) แล้วลงดินไปองค์เจ้าแม่กวนอิมจุดเดียว ส่วนอีกฝั่งสนาม (ฝั่งซอยนาบชายเสีย 19) ใช้ FO-15 (2C) จากตู้สนาม แขวนเลียบขอบสนามด้านสระไปฝั่งตรงข้าม</p>
+    <p class="note"><b>สมมติฐานที่ต้องยืนยัน:</b> SP-01 อยู่บนแนวเสาแขวนอากาศเส้นเดียวกับ FO-10 ตรงแนวขอบสระด้านสนาม FO-12 ลงดินจาก SP-01 ร้อยท่อเข้าสระ สามเส้นรวมกันต้องการ 6 + 6 + 2 = 14 คอร์ แต่ FO-10 มี 12 คอร์ ร่างนี้จึงต่อหลอม FO-14 แค่ 4 คอร์ (คอร์ 1–4 ของ FO-10, คอร์ 5–6 ของ FO-14 ว่างไว้) คอร์ 5–6 เข้า FO-13 และคอร์ 7–12 เข้า FO-12 ไปสระ FO-13 มีแค่ 2 คอร์ จึงไม่มีคอร์สำรอง ส่วน ODF โดมต้องรับ 12 + 6 = 18 คอร์ จึงเปลี่ยนเป็น ODF 24 ระยะทุกช่วงเป็นค่าตัวอย่างจนกว่าจะวัดจริง</p>
+  </header>
+
+  <section>
+    <h2>ผังแนวสาย</h2>
+    <div class="box scroll">
+      <svg viewBox="0 0 860 440" width="860" height="440" role="img" aria-label="ผังแนวสาย อาคาร 2 ไปโดม ตู้พัก สระว่ายน้ำ และสนามฟุตบอล พร้อมสายแยก 6 คอร์">
+        <defs><style>
+          .n{fill:var(--surface);stroke:var(--accent);stroke-width:2}
+          .t{fill:var(--fg);font-size:14px;font-weight:600}
+          .s{fill:var(--muted);font-size:12px}
+          .air{stroke:var(--aerial);stroke-width:3;fill:none;stroke-dasharray:10 6}
+          .six{stroke:var(--accent);stroke-width:2;fill:none;stroke-dasharray:6 5}
+          .pole{fill:var(--aerial)}
+          .ref{fill:var(--accent-soft);stroke:var(--line);stroke-width:1.5}
+          .guide{stroke:var(--muted);stroke-width:1;stroke-dasharray:2 4}
+        </style></defs>
+        <!-- B2 -->
+        <rect class="n" x="20" y="150" width="160" height="80" rx="6"/>
+        <text class="t" x="34" y="176">อาคาร 2 ชั้น 1</text>
+        <text class="s" x="34" y="196">ห้อง server · LOC-187</text>
+        <text class="s" x="34" y="214">ODF 24 · CCR1036</text>
+        <!-- trunk -->
+        <path class="air" d="M180 180 H330"/>
+        <path class="air" d="M180 194 H440"/>
+        <circle class="pole" cx="240" cy="187" r="5"/><circle class="pole" cx="300" cy="187" r="5"/><circle class="pole" cx="390" cy="194" r="5"/>
+        <text class="s" x="196" y="166">FO-09 + FO-10 · 12C</text><text class="s" x="556" y="186">FO-14 6C</text>
+        <!-- dome -->
+        <path class="air" d="M330 180 C330 140 380 120 380 100"/>
+        <rect class="n" x="290" y="20" width="230" height="80" rx="40"/>
+        <text class="t" x="340" y="52">โดม · ODF 24</text>
+        <text class="s" x="340" y="72">FO-09 12 + FO-11 6</text>
+        <path class="six" d="M520 60 H580"/>
+        <rect class="n" x="580" y="36" width="150" height="48" rx="6"/>
+        <text class="t" x="592" y="58">อีกฝั่งโดม</text>
+        <text class="s" x="592" y="76">FO-11 · 6C</text>
+        <!-- SP-01 + pool -->
+        <rect class="n" x="440" y="168" width="100" height="54" rx="6"/>
+        <text class="t" x="452" y="192">SP-01</text>
+        <text class="s" x="452" y="210">ต่อหลอม 12 คอร์</text>
+        <rect class="ref" x="380" y="268" width="160" height="72" rx="10"/>
+        <text class="t" x="396" y="296">สระว่ายน้ำ</text>
+        <text class="s" x="396" y="316">จุดรับ 6 พอร์ต</text>
+        <line class="guide" x1="540" y1="222" x2="540" y2="268"/>
+        <text class="s" x="548" y="246">แนวขอบสระ</text><text class="s" x="548" y="262">บนแนวเสา</text>
+        <path class="six" d="M490 222 V268"/>
+        <text class="s" x="404" y="250">FO-12 ใต้ดิน</text>
+        <!-- field -->
+        <path class="air" d="M540 194 H620"/>
+        <rect class="ref" x="600" y="140" width="245" height="215" rx="22"/>
+        <text class="s" x="760" y="160">สนามฟุตบอล</text><text class="s" x="610" y="276">FO-15 จากตู้สนาม</text><text class="s" x="610" y="292">แขวนเลียบขอบสนาม</text>
+        <rect class="n" x="620" y="168" width="130" height="54" rx="6"/>
+        <text class="t" x="632" y="192">ตู้สนาม · ODF 12</text>
+        <text class="s" x="632" y="210">FO-14 (ใช้ 4) + FO-15 2</text>
+        <path class="six" d="M750 205 C800 205 800 270 790 290"/>
+        <path class="six" d="M528 222 C566 300 566 360 590 376"/>
+        <rect class="n" x="590" y="360" width="250" height="44" rx="6"/>
+        <text class="t" x="602" y="380">องค์เจ้าแม่กวนอิม</text>
+        <text class="s" x="602" y="396">FO-13 2C · แขวนถึง SP-02 แล้วลงดิน</text>
+        <rect class="n" x="680" y="290" width="150" height="48" rx="6"/>
+        <text class="t" x="692" y="312">อีกฝั่งสนาม</text>
+        <text class="s" x="692" y="330">FO-15 2C · ฝั่งซอย 19</text>
+        <!-- legend -->
+        <path class="air" d="M20 426 H60"/><text class="s" x="68" y="430">12C แขวนอากาศ</text>
+        <path class="six" d="M190 426 H230"/><text class="s" x="238" y="430">6C / 2C แยก</text>
+        <circle class="pole" cx="350" cy="426" r="5"/><text class="s" x="362" y="430">เสา</text>
+      </svg>
+    </div>
+  </section>
+
+  <section>
+    <h2>จัดสรรคอร์ ทั้ง 5 เส้น</h2>
+    <div class="cables" id="cables"></div>
+    <p class="small" style="margin-top:8px">คอร์ที่เขียนว่า "ส่งต่อ" ใช้เมื่อปลายทางไม่มีสวิตช์ ให้ patch ผ่าน ODF ตรงไปยังสายแยก ถ้ามีสวิตช์ที่โดม/สนามอยู่แล้ว ใช้สวิตช์ส่งต่อแทน และคอร์คู่นั้นกลายเป็นสำรอง</p>
+  </section>
+
+  <section>
+    <h2>คำนวณความยาวสายและงบสูญเสีย</h2>
+    <p class="small" style="margin-bottom:12px">ใส่ระยะที่วัดได้จริง (เมตร) ค่าตั้งต้นเป็นตัวอย่าง สาย 12C เผื่อหย่อน 5% ม้วนสำรองปลายละ 20 ม. ที่จุดแยก/ตู้พัก 15 ม. และสายในอาคาร 2 อีก 15 ม. สาย 6C เผื่อหย่อน 5% และม้วนสำรองปลายละ 10 ม.</p>
+    <div class="calc">
+      <label for="dTrunk">อาคาร 2 → โดม<input id="dTrunk" type="number" min="0" step="5" value="120"></label>
+      <label for="dDome">โดม → SP-01<input id="dDome" type="number" min="0" step="5" value="90"></label>
+      <label for="dField">FO-14 SP-01 → ตู้สนาม<input id="dField" type="number" min="0" step="5" value="30"></label>
+      <label for="dDomeFar">FO-11 ODF โดม → อีกฝั่งโดม<input id="dDomeFar" type="number" min="0" step="5" value="60"></label>
+      <label for="dPool">FO-12 SP-01 → สระ (ใต้ดิน)<input id="dPool" type="number" min="0" step="5" value="30"></label>
+      <label for="dFieldFar">FO-13 SP-01 → องค์เจ้าแม่กวนอิม<input id="dFieldFar" type="number" min="0" step="5" value="170"></label>
+      <label for="dOpp">FO-15 ตู้สนาม → อีกฝั่งสนาม<input id="dOpp" type="number" min="0" step="5" value="90"></label>
+    </div>
+    <div class="res" id="res"></div>
+    <p class="small" style="margin-top:10px">สูญเสียคิดที่ 1310 nm: สาย 0.4 dB/กม. หัวต่อ 0.5 dB × 2 จุดต่อ pigtail 0.1 dB × 2 ลิงก์สระบวกจุดต่อหลอมที่ SP-01 อีก 0.1 dB ลิงก์ FO-11/FO-13 คิดจากสวิตช์ที่ ODF ถ้า patch ผ่านตรงจากอาคาร 2 ให้รวมระยะและบวกหัวต่ออีก 1 dB เทียบงบ SFP 1000BASE-LX (10 กม.) ประมาณ 8 dB</p>
+  </section>
+
+  <section>
+    <h2>รายการวัสดุ</h2>
+    <div class="box scroll">
+      <table>
+        <thead><tr><th>รายการ</th><th>จำนวน</th><th>หมายเหตุ</th></tr></thead>
+        <tbody>
+          <tr><td>สายไฟเบอร์ 12C single-mode G.652D แบบแขวนอากาศ</td><td id="b12">–</td><td>FO-09 + FO-10 (ถึง SP-01) ปัดขึ้นตามม้วน</td></tr>
+          <tr><td>สายไฟเบอร์ 6C single-mode G.652D แบบแขวนอากาศ</td><td id="b6">–</td><td>FO-11 + FO-14</td></tr>
+          <tr><td>สายไฟเบอร์ 2C single-mode ชนิดแขวนอากาศและร้อยท่อได้</td><td id="b2c">–</td><td>FO-13 (แขวนถึง SP-02 แล้วลงดิน) + FO-15 (แขวน)</td></tr>
+          <tr><td>สายไฟเบอร์ 6C single-mode แบบร้อยท่อใต้ดิน (กันน้ำ/กันหนู)</td><td id="b6u">–</td><td>FO-12</td></tr>
+          <tr><td>ท่อ HDPE + บ่อพักสาย (handhole)</td><td>ตามระยะ FO-12 + ช่วงใต้ดินของ FO-13 · บ่อพัก 4</td><td>FO-12: โคนเสา SP-01, ฝั่งสระ · FO-13: โคนเสา SP-02, หน้าฐานองค์เจ้าแม่ (ท่อตรงแนวเดียว) · ท่อขึ้นเสาเป็นท่อเหล็ก</td></tr>
+          <tr><td>ตู้พัก SP-02 ที่โคนเสาต้นแรกเลยขอบสนาม</td><td>1</td><td>จุดที่ FO-13 เปลี่ยนจากแขวนอากาศเป็นลงดิน · ม้วนสายสำรอง</td></tr>
+          <tr><td>เสา + ชุดยึดสาย dead-end / suspension clamp</td><td>ราว 16 ต้น + 3 ต้นสำหรับ FO-15 (ตามภาพ 3D)</td><td>แนวตรงเส้นเดียว SP-01 อยู่ที่โคนเสา ตู้สนามอยู่ริมสนาม โยงสายลงจากเสา · นับจริงหลังสำรวจ</td></tr>
+          <tr><td>ODF แบบ rack อาคาร 2</td><td>24 พอร์ต</td><td>FO-09 12 + FO-10 12</td></tr>
+          <tr><td>ODF ที่โดม</td><td>24 พอร์ต</td><td>FO-09 12 + FO-11 6 (เหลือ 6)</td></tr>
+          <tr><td>ตู้กันน้ำ IP55 ขึ้นไป + ODF 12 พอร์ต ที่สนาม</td><td>1 ชุด</td><td>FO-14 6 (ใช้ 4) + FO-15 2 · มีกราวด์และกันฟ้าผ่าถ้ามีไฟเข้า</td></tr>
+          <tr><td>กล่องต่อสาย (splice closure) ที่ SP-01</td><td>1</td><td>ต่อหลอม FO-10 ทั้ง 12 คอร์: 1–4 → FO-14, 5–6 → FO-13, 7–12 → FO-12 (12 จุด)</td></tr>
+          <tr><td>กล่องรับสาย 6 พอร์ต (กันน้ำสำหรับนอกอาคาร)</td><td>3</td><td>อีกฝั่งโดม · สระว่ายน้ำ · อีกฝั่งสนาม</td></tr>
+          <tr><td>Pigtail + adapter (SC/UPC หรือ LC/UPC ให้ตรงกับ ODF)</td><td>66 ชุด</td><td>FO-09 24 · FO-10 12 · FO-11 12 · FO-12 6 · FO-14 6 · FO-13 2 · FO-15 4</td></tr>
+          <tr><td>SFP 1000BASE-LX single-mode</td><td>14 ตัว</td><td>7 ลิงก์ × 2 ฝั่ง ตรวจรุ่นกับสวิตช์</td></tr>
+          <tr><td>Patch cord single-mode</td><td>10 เส้นขึ้นไป</td><td>เพิ่มถ้า patch ผ่าน ODF</td></tr>
+          <tr><td>สวิตช์ที่โดมและที่สนาม (ถ้ายังไม่มี)</td><td>2</td><td>ต้องมีช่อง SFP อย่างน้อย 2 ช่อง</td></tr>
+          <tr><td>ป้ายชื่อสาย FO-09 ถึง FO-15</td><td>ทุกเสาและทุกปลาย</td><td>ระบุคอร์ที่ใช้</td></tr>
+          <tr><td>ทดสอบ OTDR + power meter</td><td>46 คอร์</td><td>12 + 12 + 6 + 6 + 6 + 2 + 2 เก็บผลไว้ในเอกสารส่งมอบ</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>สิ่งที่ต้องยืนยันก่อนสั่งของ</h2>
+    <ul>
+      <li>ระยะจริงทั้ง 6 ช่วง และจำนวนเสาตลอดแนว</li>
+      <li>จุดที่ FO-12 ลงดิน และจุดรับสายในสระ (ห้องเครื่อง/ห้องปั๊ม?)</li>
+      <li>FO-11 ไปอีกฝั่งโดม เดินตามโครงหลังคาด้านใน หรืออ้อมนอกโดม</li>
+      <li>ระยะห่างระหว่างเสาจริง</li>
+      <li>FO-10 12C ไม่พอสำหรับ 6 + 6 + 2 คอร์ เลือก: ใช้ FO-14 แค่ 4 คอร์ (ร่างนี้), ลด FO-12 สระเหลือ 4, หรือเปลี่ยน FO-10 เป็น 24C</li>
+      <li>FO-13 2C ไม่มีคอร์สำรอง ถ้าคอร์เสียต้องเดินใหม่ ยืนยันว่า 2C พอ หรือขยับเป็น 4C · FO-13 ใช้สายเส้นเดียวตลอด (ชนิดที่ทั้งแขวนและร้อยท่อได้) หรือต่อหลอมเปลี่ยนเป็นสายใต้ดินที่ SP-02</li>
+      <li>ระยะช่วงใต้ดินของ FO-13 และจุดรับสายที่องค์เจ้าแม่กวนอิม (ไฟส่องสว่าง/กล้อง?)</li>
+      <li>FO-15 อีกฝั่งสนาม: 2C พอไหม และปลายทางต่ออุปกรณ์อะไร</li>
+      <li>อุปกรณ์ที่ปลายทั้ง 5 จุด (สวิตช์ AP กลางแจ้ง กล้อง) และมีไฟฟ้าที่ตู้สนาม สระ และอีกฝั่งสนามหรือไม่</li>
+      <li>สวิตช์ต้นทางในอาคาร 2 มีช่อง SFP ว่างกี่ช่อง (ต้องใช้อย่างน้อย 3: โดม สนาม สระ)</li>
+      <li>หลังติดตั้ง: เพิ่ม FO-09 ถึง FO-15 และจุดปลายทางลงทะเบียน sbc-noc</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const COL=[['ฟ้า','#1f5fd6'],['ส้ม','#f08a1c'],['เขียว','#2e9d4a'],['น้ำตาล','#7a4b26'],['เทา','#7d8590'],['ขาว','#ffffff'],['แดง','#d62b2b'],['ดำ','#111111'],['เหลือง','#f2d21b'],['ม่วง','#7b3fbf'],['ชมพู','#f28cb8'],['ฟ้าอมเขียว','#3cc7c7']];
+const CABLES=[
+ {id:'FO-09',sub:'12C · อาคาร 2 → ODF โดม',rows:[[1,2,'uplink โดม TX / RX','ใช้งาน'],[3,4,'uplink โดม สำรอง',''],[5,6,'ส่งต่อ FO-11 ที่ ODF โดม (ถ้าไม่มีสวิตช์)',''],[7,12,'สำรอง','']]},
+ {id:'FO-10',sub:'12C · อาคาร 2 → SP-01',rows:[[1,4,'ต่อหลอมที่ SP-01 → FO-14 คอร์ 1–4 (สนาม)','ใช้งาน'],[5,6,'ต่อหลอมที่ SP-01 → FO-13 คอร์ 1–2 (อีกฝั่งสนาม)','ใช้งาน'],[7,12,'ต่อหลอมที่ SP-01 → FO-12 คอร์ 1–6 (สระ)','ใช้งาน']]},
+ {id:'FO-14',sub:'6C · SP-01 → ODF ตู้สนาม',rows:[[1,2,'uplink สนาม TX / RX (= FO-10 คอร์ 1–2)','ใช้งาน'],[3,4,'uplink สนาม สำรอง',''],[5,6,'ไม่ได้ต่อที่ SP-01 (FO-10 คอร์ไม่พอ)','dark']]},
+ {id:'FO-11',sub:'6C · ODF โดม → อีกฝั่งโดม',rows:[[1,2,'uplink อีกฝั่งโดม TX / RX','ใช้งาน'],[3,4,'สำรอง',''],[5,6,'สำรอง','']]},
+ {id:'FO-12',sub:'6C · SP-01 → สระว่ายน้ำ',rows:[[1,2,'uplink สระ (= FO-10 คอร์ 7–8)','ใช้งาน'],[3,4,'สำรอง (= FO-10 คอร์ 9–10)',''],[5,6,'สำรอง (= FO-10 คอร์ 11–12)','']]},
+ {id:'FO-13',sub:'2C · SP-01 → SP-02 → องค์เจ้าแม่กวนอิม',rows:[[1,2,'uplink องค์เจ้าแม่ TX / RX (= FO-10 คอร์ 5–6) · ไม่มีสำรอง','ใช้งาน']]},
+ {id:'FO-15',sub:'2C · ODF ตู้สนาม → อีกฝั่งสนาม',rows:[[1,2,'uplink อีกฝั่งสนาม TX / RX จากสวิตช์ที่สนาม · ไม่มีสำรอง','ใช้งาน']]},
+];
+const sw=i=>`<span class="sw" style="background:${COL[i-1][1]}"></span>${COL[i-1][0]}`;
+$('cables').innerHTML=CABLES.map(c=>`<div class="box scroll"><h3>${c.id} <span>${c.sub}</span></h3><table><thead><tr><th>คอร์</th><th>สี</th><th>ใช้ทำอะไร</th></tr></thead><tbody>${
+ c.rows.map(([a,b,use,st])=>`<tr${st==='dark'?' class="dark"':''}><td>${a}–${b}</td><td>${a===b?sw(a):sw(a)+(b-a>1?' ถึง ':' · ')+sw(b)}</td><td>${use}${st==='ใช้งาน'?' <span class="tag">ใช้งาน</span>':''}</td></tr>`).join('')
+}</tbody></table></div>`).join('');
+
+function calc(){
+  const v=id=>Math.max(0,+$(id).value||0);
+  const t=v('dTrunk'),d=v('dDome'),f=v('dField'),dw=v('dDomeFar'),p=v('dPool'),fw=v('dFieldFar'),op=v('dOpp');
+  const len12=s=>s*1.05+40+15+15, len6=s=>s*1.05+20;
+  const loss=(m,extra=0)=>(m/1000)*0.4+1.0+0.2+extra;
+  const up=m=>Math.ceil(m/50)*50;
+  const L={fo09:len12(t),fo10:len12(t+d),fo14:len6(f),fo11:len6(dw),fo12:len6(p),fo13:len6(fw),fo15:len6(op)};
+  const cards=[
+   ['FO-09 · 12C · โดม',L.fo09,loss(L.fo09),'ระยะแนว '+t+' ม.'],
+   ['FO-10 · 12C · SP-01',L.fo10,loss(L.fo10),'ระยะแนว '+(t+d)+' ม.'],
+   ['FO-14 · 6C · สนาม',L.fo14,loss(L.fo10+L.fo14,0.1),'ลิงก์จากอาคาร 2 ผ่าน FO-10 + ต่อหลอม'],
+   ['FO-12 · 6C · สระ',L.fo12,loss(L.fo10+L.fo12,0.1),'ลิงก์จากอาคาร 2 ผ่าน FO-10 + ต่อหลอม'],
+   ['FO-11 · 6C · อีกฝั่งโดม',L.fo11,loss(L.fo11),'ลิงก์จากสวิตช์ที่โดม'],
+   ['FO-13 · 2C · องค์เจ้าแม่กวนอิม',L.fo13,loss(L.fo10+L.fo13,0.1),'ลิงก์จากอาคาร 2 ผ่าน FO-10 + ต่อหลอม'],
+   ['FO-15 · 2C · อีกฝั่งสนาม',L.fo15,loss(L.fo15),'ลิงก์จากสวิตช์ที่สนาม'],
+  ];
+  $('res').innerHTML=cards.map(([n,l,ls,note])=>`<div class="box"><span class="eyebrow">${n}</span><span class="big">${up(l).toLocaleString('th-TH')} ม.</span><span class="small">${note} · คำนวณได้ ${Math.round(l)} ม. · สูญเสีย ~${ls.toFixed(2)} dB · เหลือ ${(8-ls).toFixed(1)} dB</span></div>`).join('');
+  $('b12').textContent=(up(L.fo09)+up(L.fo10)).toLocaleString('th-TH')+' ม.';
+  $('b6').textContent=(up(L.fo11)+up(L.fo14)).toLocaleString('th-TH')+' ม.';
+  $('b2c').textContent=(up(L.fo13)+up(L.fo15)).toLocaleString('th-TH')+' ม.';
+  $('b6u').textContent=up(L.fo12).toLocaleString('th-TH')+' ม.';
+}
+['dTrunk','dDome','dField','dDomeFar','dPool','dFieldFar','dOpp'].forEach(id=>$(id).addEventListener('input',calc));
+calc();
+</script>

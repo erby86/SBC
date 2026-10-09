@@ -1,0 +1,253 @@
+<title>แนวไฟเบอร์ 3D โดม–สนาม</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600&family=Noto+Sans+Thai:wght@400;600&display=swap">
+<style>
+/* Single dark NOC look (matches sbc-noc 3D scene); full-height canvas with overlay panel */
+:root{--bg:#0b1220;--panel:rgba(14,22,38,.88);--fg:#e6ecf5;--muted:#9fadc4;--line:#2a3850;--plan:#ffb347;--accent:#7fb0ec;
+  --font-body:"Noto Sans Thai",system-ui,sans-serif;--font-display:"Chakra Petch","Noto Sans Thai",system-ui,sans-serif;color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);overflow:hidden}
+#app{position:relative;height:100%}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.panel{position:absolute;top:12px;left:12px;right:12px;max-width:360px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:grid;gap:8px;font-size:13px;backdrop-filter:blur(4px)}
+h1{font-family:var(--font-display);font-size:17px;margin:0;color:var(--plan)}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+button{font:inherit;font-size:13px;min-height:36px;padding:4px 12px;border-radius:6px;border:1px solid var(--line);background:#16233a;color:var(--fg);cursor:pointer}
+button[aria-pressed="true"]{border-color:var(--plan);color:var(--plan)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.leg{display:grid;gap:3px;color:var(--muted)}
+.leg i{display:inline-block;width:22px;height:3px;vertical-align:middle;margin-right:6px}
+.hint{color:var(--muted);font-size:12px}
+</style>
+
+<div id="app">
+  <div class="panel">
+    <h1>แผนไฟเบอร์ อาคาร 2 → โดม · สระ · สนามฟุตบอล</h1>
+    <div class="leg">
+      <span><i style="background:#ffb347"></i>FO-09 12C อาคาร 2 → โดม</span>
+      <span><i style="background:#ff6b6b"></i>FO-10 12C อาคาร 2 → SP-01</span>
+      <span><i style="background:#ff6b6b;height:2px"></i>FO-14 6C SP-01 → ตู้สนาม</span>
+      <span><i style="background:#ffd27a;height:2px"></i>FO-11 6C ODF โดม → อีกฝั่งโดม</span>
+      <span><i style="background:#4fc3f7;height:2px"></i>FO-12 6C SP-01 → สระว่ายน้ำ (ร้อยท่อใต้ดิน)</span>
+      <span><i style="background:#ff9aa2;height:2px"></i>FO-13 2C SP-01 → SP-02 → องค์เจ้าแม่กวนอิม (ช่วงท้ายใต้ดิน)</span>
+      <span><i style="background:#c792ea;height:2px"></i>FO-15 2C ตู้สนาม → อีกฝั่งสนาม</span>
+      <span><i style="background:#5b6b85"></i>ไฟเบอร์เดิม 8 เส้น</span>
+    </div>
+    <div class="row">
+      <button id="vAll">ภาพรวม</button>
+      <button id="vB2">อาคาร 2</button>
+      <button id="vDome">โดม</button>
+      <button id="vCab">SP-01 + สระ</button>
+      <button id="vField">สนาม</button>
+    </div>
+    <div class="row">
+      <button id="tOld" aria-pressed="true">ไฟเบอร์เดิม</button>
+      <button id="tSpin" aria-pressed="false">หมุนอัตโนมัติ</button>
+    </div>
+    <span class="hint">ลากเพื่อหมุน · หมุนล้อ/บีบนิ้วเพื่อซูม · ตำแหน่งจากผังต้นแบบ ไม่ใช่มาตราส่วนจริง</span>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const FH=1.1;
+const BUILDINGS=[
+ {n:'อาคารกีฬา',x:-11.39,z:-34.42,w:9.5,d:17.6,r:.33,f:4},
+ {n:'ICET2',x:8.7,z:-33.99,w:17.2,d:6.4,r:.33,f:7},
+ {n:'ICET1',x:4.72,z:-19.6,w:19,d:11.8,r:.33,f:3},
+ {n:'อาคาร 1',x:2.78,z:-6.21,w:24,d:3.2,r:.33,f:3},
+ {n:'อาคาร 2',x:.33,z:2.47,w:25,d:3.2,r:.33,f:3,hl:true},
+ {n:'8 เซียน',x:-14.55,z:18.58,w:15,d:9.5,r:.02,f:8},
+ {n:'อาคาร A',x:2,z:25.58,w:6.5,d:23.5,r:.06,f:7},
+ {n:'อาคาร B',x:12.3,z:25.58,w:6.5,d:23.5,r:.06,f:7},
+];
+const AREAS=[
+ {n:'โดมอเนกประสงค์',x:-15.05,z:39.13,w:17.5,d:20,r:.02,k:'dome'},
+ {n:'สระว่ายน้ำ',x:-16.05,z:58.43,w:10,d:7,r:.05,k:'pool',lx:-21,lz:57},
+ {n:'สนามฟุตบอล',x:-17.55,z:80.23,w:14,d:25,r:.05,k:'field'},
+ {n:'สนามเด็กเล่น',x:1.32,z:-1.95,w:20,d:2.8,r:.33,k:'play'},
+ {n:'องค์เจ้าแม่กวนอิม',x:-17.55,z:102.6,w:14,d:19,r:.05,k:'shrine'},
+];
+const SRV=[8.3,.5,4.9];
+const OLD=[
+ {c:'#c08457',w:[[8.4,.95,5.23],[9.11,.95,3.15],[16.89,.95,5.82],[30.78,.95,-34.73],[-4.17,.95,-46.7]]},
+ {c:'#3dff8f',w:[[8.06,.8,5.12],[8.87,.8,2.75],[16.47,.8,5.35],[30.08,.8,-34.38],[4.56,.8,-43.13]]},
+ {c:'#8b6bff',w:[[7.73,.65,5.01],[8.64,.65,2.36],[16.04,.65,4.89],[23.85,.65,-17.91]]},
+ {c:'#00e5ff',w:[[7.4,.5,4.89],[9.56,.5,-1.4],[2.02,.5,-3.99]]},
+ {c:'#ff4fd8',w:[SRV,[7.9,.68,11.13],[-10.3,.68,11.13]]},
+ {c:'#ff8a5c',w:[[8.82,.5,5.55],[8.82,.5,11.63],[-4.15,.5,11.63],[-4.15,.5,21.08]]},
+ {c:'#00b3a4',w:[SRV,[9.32,.86,11.63],[18.75,.86,11.63],[18.75,.86,30.15]]},
+ {c:'#ffd23f',w:[[7.74,.68,29.78],[8.41,.68,18.67],[6.38,.68,18.54]]},
+];
+// Planned aerial path (height ~3.6 = above 3-floor roofs, on poles)
+const AH=3.6;
+const TRUNK=[[9.3,.5,5.4],[9.3,AH,5.9],[9.6,AH,12.6],[-3.2,AH,12.6],[-3.2,AH,26],[-3.2,AH,40.77]];
+const SPLIT=[-3.2,AH,40.77];
+const FO09=[...TRUNK,[-5.6,AH-.6,40.1],[-6.4,1.2,39]];
+// one straight pole line: evenly spaced so SP-01 (z 61.9) sits on a pole; runs 2 poles past the field's far edge (z 92.7)
+const PSTEP=(61.9-12.6)/7, LINE_X=-3.0;
+const LINE_Z=Array.from({length:14},(_,i)=>+(12.6+i*PSTEP).toFixed(2));
+const FIELD_POLE=LINE_Z[8], LAST_POLE=LINE_Z[13];
+// FO-13: aerial to the last pole, drops at SP-02, then underground to the Guan Yin statue only
+// SP-02 sits on the first pole past the field, in line with FO-13's straight underground run to the statue
+const SP02=[-2.2,0,LINE_Z[12]], UG_Z=LINE_Z[12], STATUE=[-14.4,0,96.6];
+// FO-15 2C: field cabinet -> poles along the field's near edge -> opposite (west) side, as in the earlier layout
+const OPP=[-25.9,0,80];
+const CAB=[-2.2,0,61.9]; // at the foot of an aerial-line pole, on the pool's field-side edge line
+const FO10=[...TRUNK.map(p=>[p[0]+.35,p[1],p[2]]),[-2.85,AH,52],[-2.85,AH,61.2],[-2.3,1.1,61.9]];
+// FO-14 6C: spliced from FO-10 cores 1-6 at SP-01, on to the field cabinet
+const FO14=[[-2.3,1.1,61.9],[-2.85,AH,62.6],[-2.85,AH,FIELD_POLE-.3],[-6.5,AH-.6,69.2],[-9.8,AH-1,69.5],[-10.2,1.0,69.6]];
+const POLES=[[9.6,12.6],[3,12.6],...LINE_Z.map(z=>[LINE_X,z]),[-17.5,66.4],[-25.4,66.6],[-25.6,73.5]];
+const FO11=[[-6.4,1.2,39],[-6.9,2.6,39],[-15,3.2,39],[-23.3,2.6,39],[-24.6,1.0,39]];
+// underground: drops from SP-01 into a conduit just under the grass
+const FO12=[[-2.2,.9,61.9],[-2.6,.1,61.3],[-6.5,.1,61.3],[-10.7,.1,61.3],[-11.4,.6,61.6]];
+// FO-13 2C starts at SP-01 (spliced from FO-10), runs on the same poles past the field to SP-02
+const FO13=[[-2.3,1.1,61.9],[-2.6,AH-.5,62.8],[-2.6,AH-.5,FIELD_POLE+1],[-2.6,AH-.5,UG_Z-.7],[-2.3,1.1,UG_Z],[-2.9,.1,UG_Z],[-9,.1,UG_Z],[-13.6,.1,UG_Z],[-14.2,.5,UG_Z]];
+const FO15=[[-10.2,1.0,69.6],[-10.6,AH-.8,66.6],[-17.5,AH-.8,66.4],[-25.4,AH-.8,66.6],[-25.6,AH-.8,79.6],[-25.9,1.0,80]];
+
+const app=document.getElementById('app');
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+app.prepend(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#0b1220');
+scene.fog=new THREE.Fog('#0b1220',140,320);
+const cam=new THREE.PerspectiveCamera(45,1,.5,800);
+const ctl=new THREE.OrbitControls(cam,renderer.domElement);
+ctl.enableDamping=true;ctl.maxPolarAngle=Math.PI*.48;
+scene.add(new THREE.HemisphereLight('#cfe0ff','#1a2233',.9));
+const sun=new THREE.DirectionalLight('#ffffff',.6);sun.position.set(-40,80,30);scene.add(sun);
+
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(200,220),new THREE.MeshLambertMaterial({color:'#121b2c'}));
+ground.rotation.x=-Math.PI/2;ground.position.set(0,-.02,25);scene.add(ground);
+const grid=new THREE.GridHelper(200,40,'#1d2a42','#16213a');grid.position.set(0,0,25);scene.add(grid);
+
+function label(text,color,scale=1){
+  const c=document.createElement('canvas');const g=c.getContext('2d');const fs=40;
+  g.font=`600 ${fs}px "Noto Sans Thai",sans-serif`;const w=Math.ceil(g.measureText(text).width)+28;
+  c.width=w;c.height=fs+24;g.font=`600 ${fs}px "Noto Sans Thai",sans-serif`;
+  g.fillStyle='rgba(11,18,32,.82)';g.fillRect(0,0,c.width,c.height);
+  g.strokeStyle=color;g.lineWidth=3;g.strokeRect(1.5,1.5,c.width-3,c.height-3);
+  g.fillStyle=color;g.textBaseline='middle';g.fillText(text,14,c.height/2+2);
+  const t=new THREE.CanvasTexture(c);t.minFilter=THREE.LinearFilter;
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,depthTest:false,transparent:true}));
+  const h=2.2*scale;s.scale.set(h*c.width/c.height,h,1);s.renderOrder=10;return s;
+}
+function block(o,h,color,opacity=1){
+  const g=new THREE.Group();g.position.set(o.x,0,o.z);g.rotation.y=-o.r;
+  const m=new THREE.Mesh(new THREE.BoxGeometry(o.w,h,o.d),new THREE.MeshLambertMaterial({color,transparent:opacity<1,opacity}));
+  m.position.y=h/2;g.add(m);
+  const e=new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry),new THREE.LineBasicMaterial({color:'#3a4d70'}));
+  e.position.y=h/2;g.add(e);scene.add(g);return g;
+}
+
+// Guan Yin plaza beyond the field (from the architect's render): statue on a white base facing the field,
+// red paifang gate, parking, trees, school front fence and sign at the road
+function shrine(a){
+  const G=new THREE.Group();G.position.set(a.x,0,a.z);G.rotation.y=-a.r;scene.add(G);
+  const M=c=>new THREE.MeshLambertMaterial({color:c});
+  const add=(geo,c,x,y,z)=>{const m=new THREE.Mesh(geo,M(c));m.position.set(x,y,z);G.add(m);return m;};
+  const plaza=add(new THREE.PlaneGeometry(a.w,a.d),'#3b4150',0,.03,0);plaza.rotation.x=-Math.PI/2;
+  const lawn=add(new THREE.PlaneGeometry(9,4),'#2f6b3f',0,.04,-a.d/2+3.2);lawn.rotation.x=-Math.PI/2;
+  add(new THREE.BoxGeometry(6,.5,3.4),'#d9d6cf',0,.25,-a.d/2+3.4);
+  add(new THREE.BoxGeometry(3.6,.5,2.2),'#e6e3dc',0,.75,-a.d/2+3.4);
+  add(new THREE.CylinderGeometry(.5,.95,3,16),'#f0ece2',0,2.5,-a.d/2+3.4);
+  add(new THREE.SphereGeometry(.42,16,12),'#f0ece2',0,4.3,-a.d/2+3.4);
+  const gz=-a.d/2+6.6;
+  [-3.3,-1.1,1.1,3.3].forEach(x=>add(new THREE.CylinderGeometry(.16,.16,2.6,10),'#b23a2a',x,1.3,gz));
+  add(new THREE.BoxGeometry(7.6,.3,.4),'#b23a2a',0,2.5,gz);
+  add(new THREE.BoxGeometry(8.2,.18,.9),'#7a2a20',0,2.8,gz);
+  for(let i=0;i<5;i++){add(new THREE.SphereGeometry(1.1,12,10),'#2d5a34',-a.w/2+1.2,1.4,-a.d/2+5+i*3);
+    add(new THREE.SphereGeometry(1.1,12,10),'#2d5a34',a.w/2-1.2,1.4,-a.d/2+5+i*3);}
+  add(new THREE.BoxGeometry(a.w,.9,.12),'#1c2230',0,.45,a.d/2-.1);
+  add(new THREE.BoxGeometry(3.4,1.1,.3),'#a8402e',0,.55,a.d/2-.1);
+  const l=label(a.n,'#e0c27a',.9);l.position.set(a.x+6,6,a.z-a.d/2+3.4);scene.add(l);
+  const g=label('ซุ้มประตู · ลานจอดรถ','#c9b48a',.6);g.position.set(a.x,3.8,a.z-a.d/2+6.6);scene.add(g);
+  const f=label('รั้ว + ป้ายโรงเรียน (ถนน)','#9fadc4',.6);f.position.set(a.x,1.8,a.z+a.d/2+.6);scene.add(f);
+}
+BUILDINGS.forEach(b=>{const h=b.f*FH;block(b,h,b.hl?'#2a4a78':'#1f2c44',.92);
+  const l=label(b.n,b.hl?'#7fb0ec':'#9fadc4',.9);l.position.set(b.x,h+1.4,b.z);scene.add(l);});
+AREAS.forEach(a=>{
+  if(a.k==='shrine'){shrine(a);return;}
+  if(a.k==='dome'){block(a,2.2,'#2b3b57',.85);
+    const d=new THREE.Mesh(new THREE.SphereGeometry(1,32,16,0,Math.PI*2,0,Math.PI/2),new THREE.MeshLambertMaterial({color:'#3b5078',transparent:true,opacity:.55}));
+    d.scale.set(a.w/2,3,a.d/2);d.position.set(a.x,2.2,a.z);scene.add(d);}
+  else{const col=a.k==='pool'?'#1d6fb8':a.k==='field'?'#2f7d45':'#3a3550';
+    const p=new THREE.Mesh(new THREE.PlaneGeometry(a.w,a.d),new THREE.MeshLambertMaterial({color:col}));
+    p.rotation.x=-Math.PI/2;p.rotation.z=a.r;p.position.set(a.x,.03,a.z);scene.add(p);
+    if(a.k==='field'){const ln=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(a.w-1,a.d-1)),new THREE.LineBasicMaterial({color:'#cfe8d4'}));
+      ln.rotation.x=-Math.PI/2;ln.rotation.z=a.r;ln.position.set(a.x,.05,a.z);scene.add(ln);}}
+  const l=label(a.n,'#9fadc4',.9);l.position.set(a.lx??a.x,a.k==='dome'?7:1.6,a.lz??a.z);scene.add(l);
+});
+
+const V=p=>new THREE.Vector3(p[0],p[1],p[2]);
+const oldGroup=new THREE.Group();scene.add(oldGroup);
+OLD.forEach(f=>{const g=new THREE.BufferGeometry().setFromPoints(f.w.map(V));
+  oldGroup.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:f.c,transparent:true,opacity:.35})));});
+
+function tube(pts,color,r=.13){
+  const curve=new THREE.CatmullRomCurve3(pts.map(V),false,'catmullrom',.05);
+  const m=new THREE.Mesh(new THREE.TubeGeometry(curve,200,r,8,false),new THREE.MeshBasicMaterial({color}));
+  scene.add(m);return curve;
+}
+const c09=tube(FO09,'#ffb347'),c10=tube(FO10,'#ff6b6b');
+const c14=tube(FO14,'#ff6b6b',.08),c11=tube(FO11,'#ffd27a',.08),c12=tube(FO12,'#4fc3f7',.08),c13=tube(FO13,'#ff9aa2',.05),c15=tube(FO15,'#c792ea',.05);
+// moving light pulses along planned cables
+const pulses=[[c09,'#fff1c9',0],[c09,'#fff1c9',.5],[c10,'#ffd6d6',.25],[c10,'#ffd6d6',.75],[c14,'#ffd6d6',.5],[c11,'#fff4d6',.1],[c12,'#d9f3ff',.4],[c13,'#ffe3e6',.6],[c15,'#efdcff',.3]].map(([c,col,o])=>{
+  const s=new THREE.Mesh(new THREE.SphereGeometry(.32,12,8),new THREE.MeshBasicMaterial({color:col}));scene.add(s);return {c,s,o};});
+
+POLES.forEach(([x,z])=>{const p=new THREE.Mesh(new THREE.CylinderGeometry(.12,.16,AH+.3,8),new THREE.MeshLambertMaterial({color:'#8a7a66'}));
+  p.position.set(x,(AH+.3)/2,z);scene.add(p);});
+// cabinets / ODF markers
+function cabinet(p,text,color,yLab){const b=new THREE.Mesh(new THREE.BoxGeometry(1.2,1.6,.8),new THREE.MeshLambertMaterial({color}));
+  b.position.set(p[0],.8,p[2]);scene.add(b);const l=label(text,color,.85);l.position.set(p[0],yLab,p[2]);scene.add(l);}
+cabinet(CAB,'SP-01 · ต่อหลอม 12 คอร์','#ffd166',4.4);
+cabinet([-10.2,0,69.6],'ตู้สนาม · ODF 12','#ff6b6b',3.2);
+cabinet([-6.4,0,39],'ODF โดม 24','#ffb347',6);
+cabinet([-24.6,0,39],'อีกฝั่งโดม · FO-11','#ffd27a',4.2);
+cabinet([-11.4,0,61.7],'สระ · FO-12','#4fc3f7',2.6);
+cabinet(OPP,'อีกฝั่งสนาม · FO-15','#c792ea',3.2);
+{const b=new THREE.Mesh(new THREE.BoxGeometry(.8,.8,.6),new THREE.MeshLambertMaterial({color:'#ff9aa2'}));b.position.set(STATUE[0],.4,UG_Z);scene.add(b);
+ const l=label('FO-13 → องค์เจ้าแม่กวนอิม','#ff9aa2',.6);l.position.set(-8,1.4,UG_Z-1.6);scene.add(l);}
+cabinet(SP02,'SP-02 · ลงดิน','#ffd166',3.4);
+{[[-2.9,UG_Z],[-13.6,UG_Z]].forEach(([x,z])=>{const h=new THREE.Mesh(new THREE.BoxGeometry(.7,.12,.7),new THREE.MeshLambertMaterial({color:'#6b7a90'}));h.position.set(x,.06,z);scene.add(h);});
+ }
+{const l=label('เลยขอบสนาม 2 เสา','#9fadc4',.6);l.position.set(LINE_X+4.5,1.2,LAST_POLE-1);scene.add(l);
+ const g=new THREE.BufferGeometry().setFromPoints([V([-24.8,.06,92.7]),V([LINE_X+1.2,.06,92.7])]);scene.add(new THREE.Line(g,new THREE.LineDashedMaterial({color:'#9fadc4',dashSize:.6,gapSize:.5})).computeLineDistances());}
+{const g=new THREE.BufferGeometry().setFromPoints([V([-21.2,.06,61.9]),V([-1.4,.06,61.9])]);scene.add(new THREE.Line(g,new THREE.LineDashedMaterial({color:'#9fadc4',dashSize:.6,gapSize:.5})).computeLineDistances());
+ const lp=label('แนวขอบสระ','#9fadc4',.6);lp.position.set(-18,.9,63.6);scene.add(lp);
+ const lg=label('FO-12 ใต้ดิน → สระ','#4fc3f7',.6);lg.position.set(-6.5,.9,58.6);scene.add(lg);
+ [[-2.6,61.3],[-10.9,61.3]].forEach(([x,z])=>{const h=new THREE.Mesh(new THREE.BoxGeometry(.7,.12,.7),new THREE.MeshLambertMaterial({color:'#6b7a90'}));h.position.set(x,.06,z);scene.add(h);});}
+const lSrv=label('ห้อง server · ODF 24','#7fb0ec',.85);lSrv.position.set(9.3,5.6,5.4);scene.add(lSrv);
+const lSplit=label('แยก FO-09 เข้าโดม','#ffb347',.75);lSplit.position.set(SPLIT[0]+1,AH+1.6,SPLIT[2]-2);scene.add(lSplit);
+
+const VIEWS={
+  all:{p:[58,78,110],t:[-6,0,58]},
+  b2:{p:[28,22,-8],t:[4,1,8]},
+  dome:{p:[14,18,52],t:[-8,2,38]},
+  cab:{p:[12,26,88],t:[-12,1,60]},
+  field:{p:[6,30,126],t:[-16,1,86]},
+};
+let fly=null;
+function go(k){const v=VIEWS[k];fly={t0:performance.now(),p0:cam.position.clone(),q0:ctl.target.clone(),p1:V(v.p),q1:V(v.t)};}
+cam.position.copy(V(VIEWS.all.p));ctl.target.copy(V(VIEWS.all.t));
+document.getElementById('vAll').onclick=()=>go('all');
+document.getElementById('vB2').onclick=()=>go('b2');
+document.getElementById('vDome').onclick=()=>go('dome');
+document.getElementById('vCab').onclick=()=>go('cab');
+document.getElementById('vField').onclick=()=>go('field');
+const tOld=document.getElementById('tOld'),tSpin=document.getElementById('tSpin');
+tOld.onclick=()=>{oldGroup.visible=!oldGroup.visible;tOld.setAttribute('aria-pressed',oldGroup.visible);};
+tSpin.onclick=()=>{ctl.autoRotate=!ctl.autoRotate;ctl.autoRotateSpeed=.6;tSpin.setAttribute('aria-pressed',ctl.autoRotate);};
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function resize(){const w=app.clientWidth,h=app.clientHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();
+  if(w<600&&!fly){cam.position.set(80,130,120);}}
+addEventListener('resize',resize);resize();
+function loop(t){
+  if(fly){const e=Math.min(1,(t-fly.t0)/900),k=e<.5?2*e*e:1-Math.pow(-2*e+2,2)/2;
+    cam.position.lerpVectors(fly.p0,fly.p1,k);ctl.target.lerpVectors(fly.q0,fly.q1,k);if(e>=1)fly=null;}
+  pulses.forEach(p=>{const u=reduce?p.o:((t/6000+p.o)%1);p.s.position.copy(p.c.getPointAt(u));});
+  ctl.update();renderer.render(scene,cam);requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
