@@ -27,7 +27,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
       <span><i style="background:#ff6b6b"></i>FO-10 12C อาคาร 2 → SP-01</span>
       <span><i style="background:#ff6b6b;height:2px"></i>FO-14 6C SP-01 → ตู้สนาม</span>
       <span><i style="background:#ffd27a;height:2px"></i>FO-11 6C ODF โดม → อ้อมด้านติดสระ → อีกฝั่งโดม</span>
-      <span><i style="background:#4fc3f7;height:2px"></i>FO-12 6C SP-01 → สระว่ายน้ำ (ร้อยท่อใต้ดิน)</span>
+      <span><i style="background:#4fc3f7;height:2px"></i>FO-12 6C SP-01 → เลียบสระไปเกือบสุด (ร้อยท่อใต้ดิน)</span>
       <span><i style="background:#ff9aa2;height:2px"></i>FO-13 2C SP-01 → SP-02 → องค์เจ้าแม่กวนอิม (ช่วงท้ายใต้ดิน)</span>
       <span><i style="background:#c792ea;height:2px"></i>FO-15 2C ตู้สนาม → อีกฝั่งสนาม</span>
       <span><i style="background:#5b6b85"></i>ไฟเบอร์เดิม 8 เส้น</span>
@@ -101,7 +101,8 @@ const POLES=[[9.6,12.6],[3,12.6],...LINE_Z.map(z=>[LINE_X,z]),[-17.5,66.4],[-25.
 // FO-11 6C: around the outside of the dome along its pool-facing (south) side, not over the roof
 const FO11=[[-6.4,1.2,39],[-5.6,1.6,39.6],[-5.6,1.6,49.4],[-6.2,1.6,50.2],[-23.6,1.6,50.2],[-24.4,1.6,49.4],[-24.4,1.6,39.8],[-24.6,1.0,39]];
 // underground: drops from SP-01 into a conduit just under the grass
-const FO12=[[-2.2,.9,61.9],[-2.6,.1,61.3],[-6.5,.1,61.3],[-10.7,.1,61.3],[-11.4,.6,61.6]];
+// then continues along the pool's field-side edge to near its far (west) end
+const FO12=[[-2.2,.9,61.9],[-2.6,.1,61.3],[-6.5,.1,61.3],[-10.7,.1,61.3],[-11.3,.1,62.5],[-15.5,.1,62.7],[-19.2,.1,62.8],[-19.6,.6,62.4]];
 // FO-13 2C starts at SP-01 (spliced from FO-10), runs on the same poles past the field to SP-02
 const FO13=[[-2.3,1.1,61.9],[-2.6,AH-.5,62.8],[-2.6,AH-.5,FIELD_POLE+1],[-2.6,AH-.5,UG_Z-.7],[-2.3,1.1,UG_Z],[-2.9,.1,UG_Z],[-9,.1,UG_Z],[-13.6,.1,UG_Z],[-14.2,.5,UG_Z]];
 const FO15=[[-10.2,1.0,69.6],[-10.6,AH-.8,66.6],[-17.5,AH-.8,66.4],[-25.4,AH-.8,66.6],[-25.6,AH-.8,79.6],[-25.9,1.0,80]];
@@ -205,7 +206,7 @@ cabinet(CAB,'SP-01 · ต่อหลอม 12 คอร์','#ffd166',4.4);
 cabinet([-10.2,0,69.6],'ตู้สนาม · ODF 12','#ff6b6b',3.2);
 cabinet([-6.4,0,39],'ODF โดม 12','#ffb347',6);
 cabinet([-24.6,0,39],'อีกฝั่งโดม · FO-11','#ffd27a',4.2);
-cabinet([-11.4,0,61.7],'สระ · FO-12','#4fc3f7',2.6);
+cabinet([-19.6,0,62.6],'สระ · FO-12','#4fc3f7',2.6);
 cabinet(OPP,'อีกฝั่งสนาม · FO-15','#c792ea',3.2);
 {const b=new THREE.Mesh(new THREE.BoxGeometry(.8,.8,.6),new THREE.MeshLambertMaterial({color:'#ff9aa2'}));b.position.set(STATUE[0],.4,UG_Z);scene.add(b);
  const l=label('FO-13 → องค์เจ้าแม่กวนอิม','#ff9aa2',.6);l.position.set(-8,1.4,UG_Z-1.6);scene.add(l);}
@@ -215,9 +216,9 @@ cabinet(SP02,'SP-02 · ลงดิน','#ffd166',3.4);
 {const l=label('เลยขอบสนาม 2 เสา','#9fadc4',.6);l.position.set(LINE_X+4.5,1.2,LAST_POLE-1);scene.add(l);
  const g=new THREE.BufferGeometry().setFromPoints([V([-24.8,.06,92.7]),V([LINE_X+1.2,.06,92.7])]);scene.add(new THREE.Line(g,new THREE.LineDashedMaterial({color:'#9fadc4',dashSize:.6,gapSize:.5})).computeLineDistances());}
 {const g=new THREE.BufferGeometry().setFromPoints([V([-21.2,.06,61.9]),V([-1.4,.06,61.9])]);scene.add(new THREE.Line(g,new THREE.LineDashedMaterial({color:'#9fadc4',dashSize:.6,gapSize:.5})).computeLineDistances());
- const lp=label('แนวขอบสระ','#9fadc4',.6);lp.position.set(-18,.9,63.6);scene.add(lp);
+ const lp=label('แนวขอบสระ','#9fadc4',.6);lp.position.set(-14,.9,64.4);scene.add(lp);
  const lg=label('FO-12 ใต้ดิน → สระ','#4fc3f7',.6);lg.position.set(-6.5,.9,58.6);scene.add(lg);
- [[-2.6,61.3],[-10.9,61.3]].forEach(([x,z])=>{const h=new THREE.Mesh(new THREE.BoxGeometry(.7,.12,.7),new THREE.MeshLambertMaterial({color:'#6b7a90'}));h.position.set(x,.06,z);scene.add(h);});}
+ [[-2.6,61.3],[-10.9,61.3],[-19.2,62.8]].forEach(([x,z])=>{const h=new THREE.Mesh(new THREE.BoxGeometry(.7,.12,.7),new THREE.MeshLambertMaterial({color:'#6b7a90'}));h.position.set(x,.06,z);scene.add(h);});}
 const lSrv=label('ห้อง server · ODF 24','#7fb0ec',.85);lSrv.position.set(9.3,5.6,5.4);scene.add(lSrv);
 {const l=label('FO-11 อ้อมด้านติดสระ','#ffd27a',.6);l.position.set(-15,2.6,51.2);scene.add(l);}
 const lSplit=label('แยก FO-09 เข้าโดม','#ffb347',.75);lSplit.position.set(SPLIT[0]+1,AH+1.6,SPLIT[2]-2);scene.add(lSplit);
